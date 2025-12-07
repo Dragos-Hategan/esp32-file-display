@@ -184,7 +184,7 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx);
 /**
  * @brief Click handler for the header "Set Date/Time" button.
  *
- * Delegates to the shared settings dialog to pick a date/time.
+ * Delegates to the shared settings dialog to pick a date&time.
  *
  * @param e LVGL event (CLICKED) with user data = file_manager_ctx_t*.
  */

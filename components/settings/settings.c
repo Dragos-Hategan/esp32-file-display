@@ -35,9 +35,18 @@
 #define SETTINGS_NVS_THEME_KEY          "theme"
 
 #define SETTINGS_ROTATION_STEPS          4
-#define SETTINGS_DEFAULT_ROTATION_STEP   3
 #define SETTINGS_MINIMUM_BRIGHTNESS      1   /**< Lowest brightness percentage to avoid black screen */
-#define SETTINGS_DEFAULT_BRIGHTNESS      100
+
+#define SETTINGS_DEFAULT_BRIGHTNESS             100
+#define SETTINGS_DEFAULT_ROTATION_STEP          3
+#define SETTINGS_DEFAULT_SCREEN_DIM             false
+#define SETTINGS_DEFAULT_SCREEN_DIM_TIME        -1
+#define SETTINGS_DEFAULT_SCREEN_DIM_LEVEL       -1
+#define SETTINGS_DEFAULT_SCREEN_OFF             false
+#define SETTINGS_DEFAULT_SCREEN_OFF_TIME        -1
+#define SETTINGS_DEFAULT_CALI_PROMPT_ENABLE     true
+#define SETTINGS_DEFAULT_DARK_THEME             true
+#define SETTINGS_DEFAULT_TIME_VALID             false
 
 #define SETTINGS_CALIBRATION_TASK_STACK  (10 * 1024)
 #define SETTINGS_CALIBRATION_TASK_PRIO   (5)
@@ -80,16 +89,16 @@ typedef struct{
     lv_obj_t *restart_confirm_mbox;     /**< Active restart confirmation dialog (NULL when closed) */
     lv_obj_t *reset_confirm_mbox;       /**< Active reset confirmation dialog (NULL when closed) */
     lv_obj_t *theme_confirm_mbox;       /**< Active theme change confirmation dialog (NULL when closed) */
-    lv_obj_t *datetime_overlay;         /**< Active date/time overlay (NULL when closed) */
+    lv_obj_t *datetime_overlay;         /**< Active date&time overlay (NULL when closed) */
     lv_obj_t *screensaver_overlay;      /**< Active screensaver overlay (NULL when closed) */
     lv_obj_t *dt_month_ta;              /**< Month input (MM) */
     lv_obj_t *dt_day_ta;                /**< Day input (DD) */
     lv_obj_t *dt_year_ta;               /**< Year input (YY) */
     lv_obj_t *dt_hour_ta;               /**< Hour input (HH) */
     lv_obj_t *dt_min_ta;                /**< Minute input (MM) */
-    lv_obj_t *dt_keyboard;              /**< On-screen keyboard for date/time dialog */
-    lv_obj_t *dt_dialog;                /**< Date/time dialog container */
-    lv_obj_t *screensaver_dialog;       /**< Date/time dialog container */
+    lv_obj_t *dt_keyboard;              /**< On-screen keyboard for date&time dialog */
+    lv_obj_t *dt_dialog;                /**< Date&time dialog container */
+    lv_obj_t *screensaver_dialog;       /**< Date&time dialog container */
     lv_obj_t *dt_row_time;              /**< Time row container */
     lv_obj_t *ss_dim_lbl;               /**< Screensaver dimming label */
     lv_obj_t *ss_dim_switch;            /**< Screensaver dimming on/off switch */
@@ -409,6 +418,24 @@ static void persist_calibration_prompt_to_nvs(void);
 static void init_settings(void);
 
 /**
+ * @brief Seed in-memory settings with compile-time defaults.
+ *
+ * Resets runtime flags and stored values (brightness, rotation, dim/off timers,
+ * calibration prompt, theme, time-valid flag) to their default constants.
+ * Call before loading persisted settings so defaults act as fallbacks.
+ */
+static void init_default_configs(void);
+
+/**
+ * @brief Load persisted settings from NVS and apply to runtime state.
+ *
+ * Reads brightness, rotation, screensaver, calibration prompt, theme, and time
+ * from NVS; then applies rotation to the display. Defaults set by
+ * @ref init_default_configs act as fallbacks when keys are missing/invalid.
+ */
+static void load_last_saved_configs(void);
+
+/**
  * @brief Rotate the display in 90-degree increments (0 -> 90 -> 180 -> 270 -> 0).
  * 
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
@@ -416,7 +443,7 @@ static void init_settings(void);
 static void settings_rotate_screen(lv_event_t *e);
 
 /**
- * @brief Build the date/time dialog overlay and wire its events.
+ * @brief Build the date&time dialog overlay and wire its events.
  *
  * Destroys any existing dialog, constructs the overlay, text areas, action buttons,
  * and numeric keyboard, and stores pointers in the shared settings context.
@@ -427,7 +454,7 @@ static void settings_rotate_screen(lv_event_t *e);
 static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx);
 
 /**
- * @brief Settings button handler to open the date/time dialog.
+ * @brief Settings button handler to open the date&time dialog.
  *
  * Uses @ref settings_build_date_time_dialog() to display the picker.
  *
@@ -436,7 +463,7 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx);
 static void settings_set_date_time(lv_event_t *e);
 
 /**
- * @brief Apply handler for the date/time dialog.
+ * @brief Apply handler for the date&time dialog.
  *
  * Parses and validates all fields, writes them into ctx->settings, and closes the dialog.
  * Shows an "Incorrect Input" message box when validation fails.
@@ -446,7 +473,7 @@ static void settings_set_date_time(lv_event_t *e);
 static void settings_apply_date_time(lv_event_t *e);
 
 /**
- * @brief Close handler for the date/time dialog (Cancel or overlay tap).
+ * @brief Close handler for the date&time dialog (Cancel or overlay tap).
  *
  * Deletes the overlay and clears dialog-related pointers in the settings context.
  *
@@ -514,14 +541,14 @@ static void settings_on_dt_textarea_defocus(lv_event_t *e);
 static void settings_scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta);
 
 /**
- * @brief Hide the date/time keyboard and detach it from any textarea.
+ * @brief Hide the date&time keyboard and detach it from any textarea.
  *
  * @param ctx Settings context.
  */
 static void settings_hide_dt_keyboard(settings_ctx_t *ctx);
 
 /**
- * @brief Re-align the date/time dialog based on which textarea is active.
+ * @brief Re-align the date&time dialog based on which textarea is active.
  * @param ctx Settings context.
  * @param ta  Active textarea (NULL to reset to default position).
  */
@@ -677,7 +704,7 @@ static void settings_notify_time_reset(void);
 /**
  * @brief Restore system time from NVS only after a software reset; clear otherwise.
  */
-static void settings_restore_time_from_nvs(void);
+static void load_time_from_nvs(void);
 
 /**
  * @brief Persist the given epoch seconds to NVS.
@@ -1097,7 +1124,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_add_event_cb(connection_button, settings_reset, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(connection_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *connection_lbl = lv_label_create(connection_button);
-    lv_label_set_text(connection_lbl, "Wi-Fi Connection");
+    lv_label_set_text(connection_lbl, "SNTP & Wi-Fi");
     lv_obj_center(connection_lbl);  
 
     /* Row: Restart + Reset */
@@ -1173,11 +1200,13 @@ static void settings_on_about(lv_event_t *e)
     const char *lines[] = {
         "Brightness: adjusts backlight between " STR(SETTINGS_MINIMUM_BRIGHTNESS) "\% and 100\%.",
         "Screensaver: opens the screensaver configuration for dimming and turning off the screen.",
-        "Set Date/Time: opens the date/time picker to set clock values (HH:MM MM/DD/YY).",
+        "Set Date/Time: opens the date&time picker to set values in this format: HH:MM MM/DD/YY.",
         "Rotate Screen: rotates the display 90 degrees each time.",
         "Run Calibration: starts the touch calibration wizard and saves the new calibration data. Also offers startup calibration toggle.",
-        "Restart: reboots the device after saving system changes. Note: settings are also saved by simply leaving settings.",
-        "Reset: restores and saves screensaver, brightness, rotation and date/time to defaults.",
+        "Change Theme: toggles between dark and light system theme, saves other unsaved configs and restarts.",
+        "SNTP & Wi-Fi: configure the SSID and password of the Wi-fi connection for a precise and automatic time at startup.",
+        "Restart: reboots the device after saving configs. Note: configs are also saved by simply leaving settings.",
+        "Reset: restores all configs to default - calibration, screensaver, brightness, rotation, theme, Wi-Fi connection and date&time.",
     };
 
     for (size_t i = 0; i < sizeof(lines)/sizeof(lines[0]); i++) {
@@ -1605,30 +1634,37 @@ static void load_theme_from_nvs(void)
 
 static void init_settings(void)
 {
-    // Initializing Defaults
-    s_settings_ctx.settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
-    s_settings_ctx.settings.saved_rotation_step = s_settings_ctx.settings.screen_rotation_step;
-    s_settings_ctx.settings.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
-    s_settings_ctx.settings.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
-    s_settings_ctx.settings.time_valid = false;
-    s_settings_ctx.changing_brightness = false; 
-    s_settings_ctx.settings.screen_dim = false;
-    s_settings_ctx.settings.dim_time = -1;
-    s_settings_ctx.settings.dim_level = -1;
-    s_settings_ctx.settings.screen_off = false;
-    s_settings_ctx.settings.off_time = -1;
-    s_settings_ctx.settings.calibration_prompt_enabled = true;
-    s_settings_ctx.settings.running_calibration = false;
-    s_settings_ctx.settings.dark_theme = false;
+    init_default_configs();
+    load_last_saved_configs();
+}
 
-    // Loading Saved Data
+static void init_default_configs(void)
+{
+    s_settings_ctx.settings.calibration_prompt_enabled = SETTINGS_DEFAULT_CALI_PROMPT_ENABLE;
+    s_settings_ctx.settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
+    s_settings_ctx.settings.saved_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
+    s_settings_ctx.settings.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
+    s_settings_ctx.settings.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
+    s_settings_ctx.settings.dim_level = SETTINGS_DEFAULT_SCREEN_DIM_LEVEL;
+    s_settings_ctx.settings.dim_time = SETTINGS_DEFAULT_SCREEN_DIM_TIME;
+    s_settings_ctx.settings.screen_dim = SETTINGS_DEFAULT_SCREEN_DIM;
+    s_settings_ctx.settings.off_time = SETTINGS_DEFAULT_SCREEN_OFF_TIME;
+    s_settings_ctx.settings.screen_off = SETTINGS_DEFAULT_SCREEN_OFF;
+    s_settings_ctx.settings.dark_theme = SETTINGS_DEFAULT_DARK_THEME;
+    s_settings_ctx.settings.time_valid = SETTINGS_DEFAULT_TIME_VALID;
+    s_settings_ctx.settings.running_calibration = false;
+    s_settings_ctx.changing_brightness = false; 
+}
+
+static void load_last_saved_configs()
+{
     load_brightness_from_nvs();
     load_rotation_from_nvs();
     load_screensaver_from_nvs();
     load_calibration_prompt_from_nvs();
     load_theme_from_nvs();
+    load_time_from_nvs();
     apply_rotation_to_display(true);
-    settings_restore_time_from_nvs();
 }
 
 static void settings_rotate_screen(lv_event_t *e)
@@ -2604,7 +2640,7 @@ static void settings_clear_time_in_nvs(void)
     nvs_close(h);
 }
 
-static void settings_restore_time_from_nvs(void)
+static void load_time_from_nvs(void)
 {
     esp_reset_reason_t reason = esp_reset_reason();
     if (reason != ESP_RST_SW) {
@@ -2768,27 +2804,20 @@ static void settings_reset_confirm(lv_event_t *e)
         return;
     }  
 
-    ctx->settings.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
-    ctx->settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
-    lv_slider_set_value(ctx->brightness_slider, ctx->settings.brightness, LV_ANIM_OFF);
-    
-    char brightness_txt[32];
-    lv_snprintf(brightness_txt, sizeof(brightness_txt), "Brightness: %d%%", ctx->settings.brightness);
-    lv_label_set_text(ctx->brightness_label, brightness_txt);    
-
-    /* Reset screensaver settings */
-    ctx->settings.screen_dim = false;
-    ctx->settings.dim_time = -1;
-    ctx->settings.dim_level = -1;
-    ctx->settings.screen_off = false;
-    ctx->settings.off_time = -1;
-    ctx->settings.calibration_prompt_enabled = true;
-
+    init_default_configs();
     persist_brightness_to_nvs();
     persist_rotation_to_nvs();
     persist_screensaver_to_nvs();
     persist_calibration_prompt_to_nvs();
     init_settings();
+
+    nvs_handle_t cal_nvs;
+    if (nvs_open(TOUCH_CAL_NVS_NS, NVS_READWRITE, &cal_nvs) == ESP_OK) {
+        nvs_erase_key(cal_nvs, TOUCH_CAL_NVS_KEY);
+        nvs_commit(cal_nvs);
+        nvs_close(cal_nvs);
+    }
+
     settings_clear_time_in_nvs();
     s_settings_ctx.settings.time_valid = false;
     settings_notify_time_reset();

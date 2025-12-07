@@ -29,7 +29,7 @@ esp_err_t settings_open_settings(lv_obj_t *return_screen);
 /**
  * @brief Show the Set Date/Time dialog.
  *
- * Builds the date/time picker overlay on the top layer. Caller provides the
+ * Builds the date&time picker overlay on the top layer. Caller provides the
  * screen to return focus to (used for context). The dialog uses the shared
  * settings context/state.
  *
@@ -41,7 +41,7 @@ esp_err_t settings_show_date_time_dialog(lv_obj_t *return_screen);
 /**
  * @brief Register callbacks for time set/reset events.
  *
- * @param on_time_set   Called after a successful Apply in the date/time dialog.
+ * @param on_time_set   Called after a successful Apply in the date&time dialog.
  * @param on_time_reset Called when settings are reset (to clear clock UI).
  */
 void settings_register_time_callbacks(void (*on_time_set)(void),
