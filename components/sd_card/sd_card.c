@@ -275,7 +275,7 @@ static void sdspi_retry_wait_for_confirmation(void)
 
     lv_obj_t *layer = lv_layer_top();
     lv_obj_t *mbox = lv_msgbox_create(layer);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_set_style_max_width(mbox, lv_pct(80), 0);
     lv_obj_center(mbox);
 
@@ -287,7 +287,7 @@ static void sdspi_retry_wait_for_confirmation(void)
     lv_obj_set_width(label, lv_pct(100));
 
     lv_obj_t *btn = lv_msgbox_add_footer_button(mbox, "OK");
-    styles_build_button(btn);
+    styles_set_button(btn);
     lv_obj_add_event_cb(btn, sdspi_retry_prompt_event_cb, LV_EVENT_CLICKED, &ctx);
 
     lv_obj_invalidate(mbox);

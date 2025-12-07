@@ -1210,9 +1210,8 @@ esp_err_t file_manager_start(void)
 static void file_manager_build_screen(file_manager_ctx_t *ctx)
 {
     lv_obj_t *scr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(scr, UI_COLOR_BG_DARK, 0);
+    styles_set_screen(scr);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-    lv_obj_set_style_text_color(scr, UI_COLOR_TEXT_DARK, 0);
     lv_obj_set_style_pad_all(scr, 2, 0);
     lv_obj_set_style_pad_gap(scr, 5, 0);
     lv_obj_set_flex_flow(scr, LV_FLEX_FLOW_COLUMN);
@@ -1224,16 +1223,15 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_flex_flow(main_header, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(main_header, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_gap(main_header, 3, 0);
-    lv_obj_set_style_bg_color(main_header, UI_COLOR_CARD_DARK, 0);
+    styles_set_card_color(main_header, 0);
     lv_obj_set_style_bg_opa(main_header, LV_OPA_COVER, 0);
 
     ctx->settings_btn = lv_button_create(main_header);
     lv_obj_set_style_radius(ctx->settings_btn, 6, 0);
     lv_obj_set_style_pad_all(ctx->settings_btn, 6, 0);
-    styles_build_button(ctx->settings_btn);
+    styles_set_button(ctx->settings_btn);
     lv_obj_t *settings_lbl = lv_label_create(ctx->settings_btn);
     lv_label_set_text(settings_lbl, LV_SYMBOL_SETTINGS " Settings");
-    lv_obj_set_style_text_color(settings_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_event_cb(ctx->settings_btn, file_manager_on_settings_click, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_text_align(settings_lbl, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -1247,12 +1245,12 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_style_pad_bottom(tools_dd, 5, 0);
     lv_obj_set_style_border_width(tools_dd, 1, LV_PART_MAIN);
     lv_obj_set_style_radius(tools_dd, 6, LV_PART_MAIN);
-    styles_build_button(tools_dd);
+    styles_set_button(tools_dd);
     lv_obj_add_event_cb(tools_dd, file_manager_on_tools_changed, LV_EVENT_VALUE_CHANGED, ctx);
     ctx->tools_dd = tools_dd;
 
     lv_obj_t *tools_list = lv_dropdown_get_list(ctx->tools_dd);
-    styles_build_dropdown(tools_list);
+    styles_set_dropdown(tools_list);
 
     /* Spacer to consume remaining header width before centering the clock label/button area. */
     lv_obj_t *header_spacer_left = lv_obj_create(main_header);
@@ -1264,10 +1262,9 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     ctx->datetime_btn = lv_button_create(main_header);
     lv_obj_set_style_radius(ctx->datetime_btn, 6, 0);
     lv_obj_set_style_pad_all(ctx->datetime_btn, 6, 0);
-    styles_build_button(ctx->datetime_btn);
+    styles_set_button(ctx->datetime_btn);
     lv_obj_t *datetime_btn_lbl = lv_label_create(ctx->datetime_btn);
     lv_label_set_text(datetime_btn_lbl, "Set Date/Time");
-    lv_obj_set_style_text_color(datetime_btn_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(datetime_btn_lbl);
     lv_obj_add_event_cb(ctx->datetime_btn, file_manager_on_datetime_click, LV_EVENT_CLICKED, ctx);
 
@@ -1276,7 +1273,7 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_label_set_text(ctx->datetime_label, "00:00 - 01/01/70");
     lv_obj_set_style_text_align(ctx->datetime_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_font(ctx->datetime_label, &Domine_16, 0);
-    lv_obj_set_style_text_color(ctx->datetime_label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(ctx->datetime_label, 0);
     lv_obj_add_flag(ctx->datetime_label, LV_OBJ_FLAG_HIDDEN);
 
     /* Spacer to balance layout so the button stays centered in the remaining space. */
@@ -1296,14 +1293,14 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_t *path_prefix = lv_label_create(path_row);
     lv_label_set_text(path_prefix, "Path: ");
     lv_obj_set_style_text_align(path_prefix, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_set_style_text_color(path_prefix, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(path_prefix, 0);
 
     ctx->path_label = lv_label_create(path_row);
     lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_CLIP);
     lv_obj_set_flex_grow(ctx->path_label, 1);
     lv_obj_set_width(ctx->path_label, LV_PCT(100));
     lv_obj_set_style_text_align(ctx->path_label, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_set_style_text_color(ctx->path_label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(ctx->path_label, 0);
     lv_label_set_text(ctx->path_label, "/");
 
     ctx->second_header = lv_obj_create(scr);
@@ -1317,12 +1314,11 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_size(ctx->parent_btn, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_radius(ctx->parent_btn, 6, 0);
     lv_obj_set_style_pad_all(ctx->parent_btn, 5, 0);
-    styles_build_button(ctx->parent_btn);
+    styles_set_button(ctx->parent_btn);
     lv_obj_add_event_cb(ctx->parent_btn, file_manager_on_parent_click, LV_EVENT_CLICKED, ctx);
     lv_obj_t *parent_lbl = lv_label_create(ctx->parent_btn);
     lv_label_set_text(parent_lbl, LV_SYMBOL_UP " Parent Folder");
     lv_obj_set_style_text_align(parent_lbl, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_set_style_text_color(parent_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(ctx->parent_btn, LV_OBJ_FLAG_HIDDEN);
 
     /* Spacer grows to push paste/cancel to the right edge. */
@@ -1334,22 +1330,20 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     ctx->paste_btn = lv_button_create(ctx->second_header);
     lv_obj_set_style_radius(ctx->paste_btn, 6, 0);
     lv_obj_set_style_pad_all(ctx->paste_btn, 5, 0);
-    styles_build_button(ctx->paste_btn);
+    styles_set_button(ctx->paste_btn);
     lv_obj_add_event_cb(ctx->paste_btn, file_manager_on_paste_click, LV_EVENT_CLICKED, ctx);
     ctx->paste_label = lv_label_create(ctx->paste_btn);
     lv_label_set_text(ctx->paste_label, "Paste");
     lv_obj_set_style_text_align(ctx->paste_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(ctx->paste_label, UI_COLOR_TEXT_DARK, 0);
 
     ctx->cancel_paste_btn = lv_button_create(ctx->second_header);
     lv_obj_set_style_radius(ctx->cancel_paste_btn, 6, 0);
     lv_obj_set_style_pad_all(ctx->cancel_paste_btn, 5, 0);
-    styles_build_button(ctx->cancel_paste_btn);
+    styles_set_button(ctx->cancel_paste_btn);
     lv_obj_add_event_cb(ctx->cancel_paste_btn, file_manager_on_cancel_paste_click, LV_EVENT_CLICKED, ctx);
     ctx->cancel_paste_label = lv_label_create(ctx->cancel_paste_btn);
     lv_label_set_text(ctx->cancel_paste_label, "Cancel");
     lv_obj_set_style_text_align(ctx->cancel_paste_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(ctx->cancel_paste_label, UI_COLOR_TEXT_DARK, 0);
     file_manager_update_second_header(ctx);
 
     lv_obj_t *list_row = lv_obj_create(scr);
@@ -1369,9 +1363,9 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_style_pad_left(ctx->list, 1, 0);
     lv_obj_set_style_pad_right(ctx->list, 1, 0);
     lv_obj_set_style_pad_bottom(ctx->list, 1, 0);
-    lv_obj_set_style_bg_color(ctx->list, UI_COLOR_CARD_DARK, 0);
+    styles_set_card_color(ctx->list, 0);
+    styles_set_border_color(ctx->list, 0);
     lv_obj_set_style_bg_opa(ctx->list, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(ctx->list, UI_COLOR_BORDER_DARK, 0);
     lv_obj_set_style_border_width(ctx->list, 1, 0);
     lv_obj_add_event_cb(ctx->list, file_manager_on_list_scrolled, LV_EVENT_SCROLL, ctx);
 
@@ -1382,15 +1376,12 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_width(list_slider, 14);
     lv_obj_set_height(list_slider, LV_PCT(82));
     lv_obj_set_style_translate_y(list_slider, 1, 0);
-    lv_obj_set_style_bg_color(list_slider, UI_COLOR_BORDER_DARK, 0);
+    styles_set_slider(list_slider);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_60, 0);
     lv_obj_set_style_radius(list_slider, 6, 0);
-    lv_obj_set_style_bg_color(list_slider, UI_COLOR_ACCENT_DARK, LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_COVER, LV_PART_INDICATOR);
     lv_obj_set_style_radius(list_slider, 6, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(list_slider, UI_COLOR_ACCENT_DARK, LV_PART_KNOB);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_COVER, LV_PART_KNOB);
-    lv_obj_set_style_border_color(list_slider, UI_COLOR_BUTTON_BORDER_DARK, LV_PART_KNOB);
     lv_obj_set_style_border_width(list_slider, 1, LV_PART_KNOB);
     lv_obj_set_style_radius(list_slider, 5, LV_PART_KNOB);
     lv_obj_add_event_cb(list_slider, file_manager_on_slider_value_changed, LV_EVENT_PRESSED, ctx);
@@ -1867,7 +1858,7 @@ static void file_manager_populate_list(file_manager_ctx_t *ctx)
     const fs_nav_item_t *items = fs_nav_items(&ctx->nav, &count);
     if (!items || count == 0) {
         lv_obj_t *lbl = lv_label_create(ctx->list);
-        lv_obj_set_style_text_color(lbl, UI_COLOR_TEXT_DARK, 0);
+        styles_set_text_color(lbl, 0);
         lv_label_set_text(lbl, "Empty folder");
         lv_obj_center(lbl);
         lv_obj_set_style_text_opa(lbl, LV_OPA_60, 0);
@@ -1905,12 +1896,9 @@ static void file_manager_populate_list(file_manager_ctx_t *ctx)
         lv_obj_t *btn = lv_list_add_btn(ctx->list, icon, text);
         lv_obj_set_style_pad_all(btn, 3, LV_PART_MAIN);
         lv_obj_set_style_radius(btn, 6, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(btn, UI_COLOR_CARD_DARK, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-        lv_obj_set_style_border_color(btn, UI_COLOR_BORDER_DARK, LV_PART_MAIN);
+        styles_set_list_button(btn);
         lv_obj_set_style_border_width(btn, 1, LV_PART_MAIN);
-        lv_obj_set_style_text_color(btn, UI_COLOR_TEXT_DARK, LV_PART_MAIN);
-        lv_obj_set_style_text_color(btn, UI_COLOR_TEXT_DARK, LV_PART_ITEMS);
         lv_obj_set_user_data(btn, (void *)(uintptr_t)i);
         lv_obj_add_event_cb(btn, file_manager_on_item_click, LV_EVENT_CLICKED, ctx);
         lv_obj_add_event_cb(btn, file_manager_on_item_long_press, LV_EVENT_LONG_PRESSED, ctx);
@@ -2117,76 +2105,76 @@ static esp_err_t file_manager_reload(void)
 static void file_manager_show_unsupported_prompt(void)
 {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text(label, "This file format is not supported.");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
-    styles_build_button(ok_btn);
+    styles_set_button(ok_btn);
     lv_obj_add_event_cb(ok_btn, file_manager_on_unsupported_ok, LV_EVENT_CLICKED, mbox);
 }
 
 static void file_manager_show_image_resolution_too_large_to_display_prompt(void)
 {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text(label, "The image resolution is too large do display.");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
-    styles_build_button(ok_btn);
+    styles_set_button(ok_btn);
     lv_obj_add_event_cb(ok_btn, file_manager_on_unsupported_ok, LV_EVENT_CLICKED, mbox);
 }
 
 static void file_manager_show_not_enough_memory_prompt(void)
 {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text(label, "The image is too large or there is no more internal memory to open it.");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
-    styles_build_button(ok_btn);
+    styles_set_button(ok_btn);
     lv_obj_add_event_cb(ok_btn, file_manager_on_unsupported_ok, LV_EVENT_CLICKED, mbox);
 }
 
 static void file_manager_show_jpeg_unsupported_prompt(void)
 {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text(label, "The image is corrupted or this specific JPG type is not supported by the system.");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
-    styles_build_button(ok_btn);
+    styles_set_button(ok_btn);
     lv_obj_add_event_cb(ok_btn, file_manager_on_unsupported_ok, LV_EVENT_CLICKED, mbox);
 }
 
@@ -2622,16 +2610,16 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_size(dlg, lv_pct(82), lv_pct(70));
     lv_obj_set_flex_flow(dlg, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(dlg, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(dlg, UI_COLOR_CARD_DARK, 0);
+    styles_set_bg_color(dlg, 0);
     lv_obj_set_style_bg_opa(dlg, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(dlg, UI_COLOR_BORDER_DARK, 0);
+    styles_set_border_color(dlg, 0);
     lv_obj_set_style_border_width(dlg, 2, 0);
-    lv_obj_set_style_text_color(dlg, UI_COLOR_TEXT_DARK, 0);    
+    styles_set_text_color(dlg, 0);
     lv_obj_center(dlg);
 
     lv_obj_t *title = lv_label_create(dlg);
     lv_label_set_text(title, "Sort");
-    lv_obj_set_style_text_color(title, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(title, 0);
     lv_obj_set_width(title, LV_PCT(100));
     lv_obj_set_style_text_font(title, &Domine_16, 0);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
@@ -2644,7 +2632,7 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_height(row_crit, LV_SIZE_CONTENT);
     lv_obj_set_flex_align(row_crit, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *crit_lbl = lv_label_create(row_crit);
-    lv_obj_set_style_text_color(crit_lbl, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(crit_lbl, 0);
     lv_obj_set_style_margin_top(row_crit, 3, 0);
     lv_label_set_text(crit_lbl, "Criteria:");
 
@@ -2652,10 +2640,10 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     lv_dropdown_set_options_static(ctx->sort_criteria_dd, "Name\nDate\nSize");
     lv_obj_set_width(ctx->sort_criteria_dd, 120);
     lv_obj_add_event_cb(ctx->sort_criteria_dd, file_manager_on_sort_criteria_changed, LV_EVENT_VALUE_CHANGED, ctx);
-    styles_build_button(ctx->sort_criteria_dd);
+    styles_set_button(ctx->sort_criteria_dd);
 
     lv_obj_t *sort_list = lv_dropdown_get_list(ctx->sort_criteria_dd);
-    styles_build_dropdown(sort_list);
+    styles_set_dropdown(sort_list);
 
     lv_obj_t *row_dir = lv_obj_create(dlg);
     lv_obj_remove_style_all(row_dir);
@@ -2665,17 +2653,17 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_height(row_dir, LV_SIZE_CONTENT);
     lv_obj_set_flex_align(row_dir, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *dir_lbl = lv_label_create(row_dir);
-    lv_obj_set_style_text_color(dir_lbl, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(dir_lbl, 0);
     lv_label_set_text(dir_lbl, "Direction:");
     
     ctx->sort_direction_dd = lv_dropdown_create(row_dir);
     lv_dropdown_set_options_static(ctx->sort_direction_dd, "Ascending\nDescending");
     lv_obj_set_width(ctx->sort_direction_dd, 120);
-    styles_build_button(ctx->sort_direction_dd);
+    styles_set_button(ctx->sort_direction_dd);
     lv_obj_add_event_cb(ctx->sort_direction_dd, file_manager_on_sort_direction_changed, LV_EVENT_VALUE_CHANGED, ctx);
 
     lv_obj_t *direction_list = lv_dropdown_get_list(ctx->sort_direction_dd);
-    styles_build_dropdown(direction_list);
+    styles_set_dropdown(direction_list);
 
     lv_obj_t *actions = lv_obj_create(dlg);
     lv_obj_remove_style_all(actions);
@@ -2688,19 +2676,19 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
 
     lv_obj_t *apply_btn = lv_button_create(actions);
     lv_obj_set_flex_grow(apply_btn, 1);
-    styles_build_button(apply_btn);
+    styles_set_button(apply_btn);
     lv_obj_t *apply_lbl = lv_label_create(apply_btn);
     lv_label_set_text(apply_lbl, "Apply");
-    lv_obj_set_style_text_color(apply_lbl, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(apply_lbl, 0);
     lv_obj_center(apply_lbl);
     lv_obj_add_event_cb(apply_btn, file_manager_on_sort_apply, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_button_create(actions);
     lv_obj_set_flex_grow(cancel_btn, 1);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_t *cancel_lbl = lv_label_create(cancel_btn);
     lv_label_set_text(cancel_lbl, "Cancel");
-    lv_obj_set_style_text_color(cancel_lbl, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(cancel_lbl, 0);
     lv_obj_center(cancel_lbl);
     lv_obj_add_event_cb(cancel_btn, file_manager_on_sort_cancel, LV_EVENT_CLICKED, ctx);
 
@@ -2821,7 +2809,7 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
     ctx->folder_dialog = overlay;
 
     lv_obj_t *dlg = lv_msgbox_create(overlay);
-    styles_build_msgbox(dlg);
+    styles_set_msgbox(dlg);
     lv_obj_add_flag(dlg, LV_OBJ_FLAG_FLOATING);
     lv_obj_set_style_max_width(dlg, LV_PCT(65), 0);
     lv_obj_set_width(dlg, LV_PCT(65));
@@ -2834,7 +2822,7 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
     lv_obj_t *label = lv_label_create(content);
     lv_label_set_text(label, "Folder name");
     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, 0);
 
@@ -2842,12 +2830,12 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
     lv_textarea_set_one_line(ctx->folder_textarea, true);
     lv_textarea_set_max_length(ctx->folder_textarea, FS_NAV_MAX_NAME - 1);
     lv_textarea_set_text(ctx->folder_textarea, "");
-    styles_build_textarea(ctx->folder_textarea );
+    styles_set_textarea(ctx->folder_textarea );
     lv_textarea_set_cursor_pos(ctx->folder_textarea, 0);
     lv_obj_set_width(ctx->folder_textarea, LV_PCT(100));
 
     ctx->folder_keyboard = lv_keyboard_create(overlay);
-    styles_build_keyboard(ctx->folder_keyboard);
+    styles_set_keyboard(ctx->folder_keyboard);
     lv_keyboard_set_textarea(ctx->folder_keyboard, ctx->folder_textarea);
     lv_obj_clear_flag(ctx->folder_keyboard, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_state(ctx->folder_textarea, LV_STATE_FOCUSED);
@@ -2862,7 +2850,7 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_style_pad_top(save_btn, 4, 0);
     lv_obj_set_style_pad_bottom(save_btn, 4, 0);
     lv_obj_set_style_min_height(save_btn, 32, 0);
-    styles_build_button(save_btn);
+    styles_set_button(save_btn);
     lv_obj_add_event_cb(save_btn, file_manager_on_folder_create, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(dlg, "Cancel");
@@ -2871,7 +2859,7 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_style_pad_top(cancel_btn, 4, 0);
     lv_obj_set_style_pad_bottom(cancel_btn, 4, 0);
     lv_obj_set_style_min_height(cancel_btn, 32, 0);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, file_manager_on_folder_cancel, LV_EVENT_CLICKED, ctx);
 
     lv_obj_add_event_cb(ctx->folder_textarea, file_manager_on_folder_create, LV_EVENT_READY, ctx);
@@ -2969,9 +2957,7 @@ static void file_manager_set_folder_status(file_manager_ctx_t *ctx, const char *
     if (!title) {
         return;
     }
-    lv_obj_set_style_text_color(title,
-                                error ? lv_color_hex(0xff6b6b) : UI_COLOR_TEXT_DARK,
-                                0);
+    error ? lv_color_hex(0xff6b6b) : styles_set_text_color(title, 0);
     lv_label_set_text(title, msg);
 }
 
@@ -3149,19 +3135,19 @@ static void file_manager_show_message(const char *msg)
         return;
     }
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text(label, msg);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
-    styles_build_button(ok_btn);
+    styles_set_button(ok_btn);
     lv_obj_add_event_cb(ok_btn, file_manager_on_unsupported_ok, LV_EVENT_CLICKED, mbox);
 }
 
@@ -3398,7 +3384,7 @@ static void file_manager_show_paste_conflict(file_manager_ctx_t *ctx, const char
     strlcpy(ctx->paste_conflict_name, ctx->clipboard.name, sizeof(ctx->paste_conflict_name));
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     ctx->paste_conflict_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
@@ -3406,7 +3392,7 @@ static void file_manager_show_paste_conflict(file_manager_ctx_t *ctx, const char
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text_fmt(label, "\"%s\" already exists. Replace or keep both?", ctx->paste_conflict_name);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -3648,26 +3634,26 @@ static void file_manager_show_copy_confirm(file_manager_ctx_t *ctx, uint64_t byt
     file_manager_format_size64(bytes, size_str, sizeof(size_str));
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     ctx->copy_confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text_fmt(label, "Copy %s?", size_str);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
     lv_obj_set_user_data(ok_btn, (void *)1);
-    styles_build_button(ok_btn);
+    styles_set_button(ok_btn);
     lv_obj_add_event_cb(ok_btn, file_manager_on_copy_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     lv_obj_set_user_data(cancel_btn, (void *)0);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, file_manager_on_copy_confirm, LV_EVENT_CLICKED, ctx);
 }
 
@@ -3738,7 +3724,7 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
     file_manager_close_action_menu(ctx);
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     ctx->action_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
@@ -3746,7 +3732,7 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text(label, ctx->action_item.name);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -3764,20 +3750,20 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
 
     lv_obj_t *rename_btn = lv_button_create(row1);
     lv_obj_set_flex_grow(rename_btn, 1);
-    styles_build_button(rename_btn);
+    styles_set_button(rename_btn);
     lv_obj_t *rename_lbl = lv_label_create(rename_btn);
     lv_label_set_text(rename_lbl, "Rename");
-    lv_obj_set_style_text_color(rename_lbl, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(rename_lbl, 0);
     lv_obj_center(rename_lbl);
     lv_obj_set_user_data(rename_btn, (void *)FILE_BROWSER_ACTION_RENAME);
     lv_obj_add_event_cb(rename_btn, file_manager_on_action_button, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *del_btn = lv_button_create(row1);
     lv_obj_set_flex_grow(del_btn, 1);
-    styles_build_button(del_btn);
+    styles_set_button(del_btn);
     lv_obj_t *del_lbl = lv_label_create(del_btn);
     lv_label_set_text(del_lbl, "Delete");
-    lv_obj_set_style_text_color(del_lbl, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(del_lbl, 0);
     lv_obj_center(del_lbl);
     lv_obj_set_user_data(del_btn, (void *)FILE_BROWSER_ACTION_DELETE);
     lv_obj_add_event_cb(del_btn, file_manager_on_action_button, LV_EVENT_CLICKED, ctx);
@@ -3790,20 +3776,20 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
 
     lv_obj_t *copy_btn = lv_button_create(row2);
     lv_obj_set_flex_grow(copy_btn, 1);
-    styles_build_button(copy_btn);
+    styles_set_button(copy_btn);
     lv_obj_t *copy_lbl = lv_label_create(copy_btn);
     lv_label_set_text(copy_lbl, "Copy");
-    lv_obj_set_style_text_color(copy_lbl, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(del_lbl, 0);
     lv_obj_center(copy_lbl);
     lv_obj_set_user_data(copy_btn, (void *)FILE_BROWSER_ACTION_COPY);
     lv_obj_add_event_cb(copy_btn, file_manager_on_action_button, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cut_btn = lv_button_create(row2);
     lv_obj_set_flex_grow(cut_btn, 1);
-    styles_build_button(cut_btn);
+    styles_set_button(cut_btn);
     lv_obj_t *cut_lbl = lv_label_create(cut_btn);
     lv_label_set_text(cut_lbl, "Cut");
-    lv_obj_set_style_text_color(cut_lbl, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(cut_lbl, 0);
     lv_obj_center(cut_lbl);
     lv_obj_set_user_data(cut_btn, (void *)FILE_BROWSER_ACTION_CUT);
     lv_obj_add_event_cb(cut_btn, file_manager_on_action_button, LV_EVENT_CLICKED, ctx);
@@ -3818,30 +3804,30 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
     if (has_edit) {
         lv_obj_t *edit_btn = lv_button_create(row3);
         lv_obj_set_flex_grow(edit_btn, 1);
-        styles_build_button(edit_btn);
+        styles_set_button(edit_btn);
         lv_obj_t *edit_lbl = lv_label_create(edit_btn);
         lv_label_set_text(edit_lbl, "Edit");
-        lv_obj_set_style_text_color(edit_lbl, UI_COLOR_TEXT_DARK, 0);
+        styles_set_text_color(edit_lbl, 0);
         lv_obj_center(edit_lbl);
         lv_obj_set_user_data(edit_btn, (void *)FILE_BROWSER_ACTION_EDIT);
         lv_obj_add_event_cb(edit_btn, file_manager_on_action_button, LV_EVENT_CLICKED, ctx);
 
         lv_obj_t *cancel_btn = lv_button_create(row3);
         lv_obj_set_flex_grow(cancel_btn, 1);
-        styles_build_button(cancel_btn);
+        styles_set_button(cancel_btn);
         lv_obj_t *cancel_lbl = lv_label_create(cancel_btn);
         lv_label_set_text(cancel_lbl, "Cancel");
-        lv_obj_set_style_text_color(cancel_lbl, UI_COLOR_TEXT_DARK, 0);
+        styles_set_text_color(cancel_lbl, 0);
         lv_obj_center(cancel_lbl);
         lv_obj_set_user_data(cancel_btn, (void *)FILE_BROWSER_ACTION_CANCEL);
         lv_obj_add_event_cb(cancel_btn, file_manager_on_action_button, LV_EVENT_CLICKED, ctx);
     } else {
         lv_obj_t *cancel_btn = lv_button_create(row3);
         lv_obj_set_flex_grow(cancel_btn, 1);
-        styles_build_button(cancel_btn);
+        styles_set_button(cancel_btn);
         lv_obj_t *cancel_lbl = lv_label_create(cancel_btn);
         lv_label_set_text(cancel_lbl, "Cancel");
-        lv_obj_set_style_text_color(cancel_lbl, UI_COLOR_TEXT_DARK, 0);
+        styles_set_text_color(cancel_lbl, 0);
         lv_obj_center(cancel_lbl);
         lv_obj_set_user_data(cancel_btn, (void *)FILE_BROWSER_ACTION_CANCEL);
         lv_obj_add_event_cb(cancel_btn, file_manager_on_action_button, LV_EVENT_CLICKED, ctx);
@@ -3933,7 +3919,7 @@ static void file_manager_show_delete_confirm(file_manager_ctx_t *ctx)
     file_manager_close_delete_confirm(ctx);
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     ctx->confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
@@ -3941,7 +3927,7 @@ static void file_manager_show_delete_confirm(file_manager_ctx_t *ctx)
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text_fmt(label, "Delete \"%s\"?", ctx->action_item.name);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -3977,7 +3963,7 @@ static void file_manager_show_loading(file_manager_ctx_t *ctx)
     }
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     ctx->loading_dialog = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
@@ -3985,7 +3971,7 @@ static void file_manager_show_loading(file_manager_ctx_t *ctx)
     lv_obj_t *label = lv_label_create(mbox);
     lv_label_set_text(label, "Loading");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -4091,9 +4077,7 @@ static void file_manager_set_rename_status(file_manager_ctx_t *ctx, const char *
     if (!title) {
         return;
     }
-    lv_obj_set_style_text_color(title,
-                                error ? lv_color_hex(0xff6b6b) : UI_COLOR_TEXT_DARK,
-                                0);
+    error ? lv_color_hex(0xff6b6b) : styles_set_text_color(title, 0);
     lv_label_set_text(title, msg);
 }
 
@@ -4113,7 +4097,7 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
     ctx->rename_dialog = overlay;
 
     lv_obj_t *dlg = lv_msgbox_create(overlay);
-    styles_build_msgbox(dlg);
+    styles_set_msgbox(dlg);
     lv_obj_add_flag(dlg, LV_OBJ_FLAG_FLOATING);
     lv_obj_set_style_max_width(dlg, LV_PCT(65), 0);
     lv_obj_set_width(dlg, LV_PCT(65));
@@ -4121,7 +4105,7 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
     lv_obj_t *content = lv_msgbox_get_content(dlg);
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_t *label = lv_label_create(content);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(label, 0);
     lv_label_set_text(label, ctx->action_item.is_dir ? "Folder name" : "File name");
     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_width(label, LV_PCT(100));
@@ -4135,10 +4119,10 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
     lv_textarea_set_text(ctx->rename_textarea, ctx->action_item.name);
     lv_textarea_set_cursor_pos(ctx->rename_textarea, LV_TEXTAREA_CURSOR_LAST);
     lv_obj_set_width(ctx->rename_textarea, LV_PCT(100));
-    styles_build_textarea(ctx->rename_textarea);
+    styles_set_textarea(ctx->rename_textarea);
 
     ctx->rename_keyboard = lv_keyboard_create(overlay);
-    styles_build_keyboard(ctx->rename_keyboard);
+    styles_set_keyboard(ctx->rename_keyboard);
     lv_keyboard_set_textarea(ctx->rename_keyboard, ctx->rename_textarea);
     lv_obj_clear_flag(ctx->rename_keyboard, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_state(ctx->rename_textarea, LV_STATE_FOCUSED);
@@ -4150,7 +4134,7 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
     lv_obj_align(ctx->rename_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 
     lv_obj_t *save_btn = lv_msgbox_add_footer_button(dlg, "Save");
-    styles_build_button(save_btn);
+    styles_set_button(save_btn);
     lv_obj_set_user_data(save_btn, (void *)1);
     lv_obj_set_flex_grow(save_btn, 1);
     lv_obj_set_style_pad_top(save_btn, 4, 0);
@@ -4159,7 +4143,7 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
     lv_obj_add_event_cb(save_btn, file_manager_on_rename_accept, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(dlg, "Cancel");
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_set_user_data(cancel_btn, (void *)0);
     lv_obj_set_flex_grow(cancel_btn, 1);
     lv_obj_set_style_pad_top(cancel_btn, 4, 0);

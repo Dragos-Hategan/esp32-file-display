@@ -575,7 +575,7 @@ static bool ui_yes_no_dialog(void)
 
     lv_obj_t *mbox = lv_msgbox_create(stack);
     lv_obj_set_style_radius(mbox, 6, LV_PART_MAIN);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_set_style_max_width(mbox, lv_pct(90), 0);
 
     lv_obj_t *label = lv_label_create(mbox);
@@ -591,10 +591,10 @@ static bool ui_yes_no_dialog(void)
 
     lv_obj_t *btn;
     btn = lv_msgbox_add_footer_button(mbox, "Yes");
-    styles_build_button(btn);
+    styles_set_button(btn);
     lv_obj_add_event_cb(btn, event_cb, LV_EVENT_CLICKED, &msg_box_response);
     btn = lv_msgbox_add_footer_button(mbox, "No");
-    styles_build_button(btn);
+    styles_set_button(btn);
     lv_obj_add_event_cb(btn, event_cb, LV_EVENT_CLICKED, &msg_box_response);
 
     lv_obj_t *loader_wrap = NULL;
@@ -665,7 +665,7 @@ static bool ui_yes_no_dialog(void)
     lv_obj_set_flex_grow(ask_label, 1); /* push switch to the far right */
 
     lv_obj_t *ask_switch = lv_switch_create(toggle_row);
-    styles_build_switch(ask_switch);
+    styles_set_switch(ask_switch);
     bool prompt_enabled = settings_get_calibration_prompt_enabled();
     if (prompt_enabled) {
         lv_obj_add_state(ask_switch, LV_STATE_CHECKED);

@@ -240,7 +240,7 @@ static void jpg_viewer_build_ui(jpg_viewer_ctx_t *ctx)
     lv_obj_set_size(close_btn, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(close_btn, 3, 0);
     lv_obj_align(close_btn, LV_ALIGN_TOP_RIGHT, -10, 10);
-    styles_build_button(close_btn);
+    styles_set_button(close_btn);
     lv_obj_set_style_radius(close_btn, 20, 0); // enough radius to make the button a circle
     lv_obj_add_event_cb(close_btn, jpg_viewer_on_close, LV_EVENT_CLICKED, ctx);
     lv_obj_t *close_lbl = lv_label_create(close_btn);

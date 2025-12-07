@@ -705,7 +705,7 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_obj_t *back_btn = lv_button_create(toolbar);
     lv_obj_set_style_radius(back_btn, 6, 0);
     lv_obj_set_style_pad_all(back_btn, 6, 0);   
-    styles_build_button(back_btn);  
+    styles_set_button(back_btn);  
     lv_obj_add_event_cb(back_btn, text_viewer_on_back, LV_EVENT_CLICKED, ctx);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
     lv_label_set_text(back_lbl, LV_SYMBOL_LEFT " Back");
@@ -715,7 +715,7 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     ctx->save_btn = lv_button_create(toolbar);
     lv_obj_set_style_radius(ctx->save_btn, 6, 0);
     lv_obj_set_style_pad_all(ctx->save_btn, 6, 0);     
-    styles_build_button(ctx->save_btn);   
+    styles_set_button(ctx->save_btn);   
     lv_obj_add_event_cb(ctx->save_btn, text_viewer_on_save, LV_EVENT_CLICKED, ctx);
     lv_obj_t *save_lbl = lv_label_create(ctx->save_btn);
     lv_label_set_text(save_lbl, LV_SYMBOL_SAVE " Save");
@@ -785,7 +785,7 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_textarea_set_cursor_click_pos(ctx->text_area, false);
     lv_obj_set_scrollbar_mode(ctx->text_area, LV_SCROLLBAR_MODE_AUTO);
     //lv_obj_set_width(ctx->text_area, LV_PCT(100));
-    styles_build_textarea(ctx->text_area);
+    styles_set_textarea(ctx->text_area);
     lv_obj_add_event_cb(ctx->text_area, text_viewer_on_text_changed, LV_EVENT_VALUE_CHANGED, ctx);
     lv_obj_add_event_cb(ctx->text_area, text_viewer_on_text_area_clicked, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(ctx->text_area, text_viewer_on_text_scrolled, LV_EVENT_SCROLL, ctx);
@@ -822,7 +822,7 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     ctx->chunk_slider = list_slider;
     
     ctx->keyboard = lv_keyboard_create(scr);
-    styles_build_keyboard(ctx->keyboard);
+    styles_set_keyboard(ctx->keyboard);
     lv_keyboard_set_textarea(ctx->keyboard, ctx->text_area);
     lv_obj_add_flag(ctx->keyboard, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_event_cb(ctx->keyboard, text_viewer_on_keyboard_cancel, LV_EVENT_CANCEL, ctx);
@@ -1625,7 +1625,7 @@ static void text_viewer_show_chunk_prompt(text_viewer_ctx_t *ctx)
         return;
     }
     lv_obj_t *mbox = lv_msgbox_create(ctx->screen);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_add_flag(mbox, LV_OBJ_FLAG_FLOATING);
     ctx->chunk_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
@@ -1922,7 +1922,7 @@ static void text_viewer_show_name_dialog(text_viewer_ctx_t *ctx)
         return;
     }
     lv_obj_t *dlg = lv_msgbox_create(ctx->screen);
-    styles_build_msgbox(dlg);
+    styles_set_msgbox(dlg);
     ctx->name_dialog = dlg;
     lv_obj_add_flag(dlg, LV_OBJ_FLAG_FLOATING);
     lv_obj_set_style_max_width(dlg, LV_PCT(65), 0);
@@ -1944,18 +1944,18 @@ static void text_viewer_show_name_dialog(text_viewer_ctx_t *ctx)
     lv_obj_add_state(ctx->name_textarea, LV_STATE_FOCUSED);
     lv_obj_clear_state(ctx->text_area, LV_STATE_FOCUSED);
     lv_obj_add_state(ctx->text_area, LV_STATE_DISABLED);
-    styles_build_textarea(ctx->name_textarea);
+    styles_set_textarea(ctx->name_textarea);
     lv_obj_set_width(ctx->name_textarea, LV_PCT(100));
     lv_textarea_set_cursor_click_pos(ctx->text_area, false);
 
     lv_obj_t *save_btn = lv_msgbox_add_footer_button(dlg, "Save");
     lv_obj_set_user_data(save_btn, (void *)1);
-    styles_build_button(save_btn);
+    styles_set_button(save_btn);
     lv_obj_add_event_cb(save_btn, text_viewer_on_name_dialog, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(dlg, "Cancel");
     lv_obj_set_user_data(cancel_btn, (void *)0);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, text_viewer_on_name_dialog, LV_EVENT_CLICKED, ctx);
 
     text_viewer_show_keyboard(ctx, ctx->name_textarea);
@@ -2049,7 +2049,7 @@ static void text_viewer_show_confirm(text_viewer_ctx_t *ctx)
         return;
     }
     lv_obj_t *mbox = lv_msgbox_create(ctx->screen);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_add_flag(mbox, LV_OBJ_FLAG_FLOATING);
     ctx->confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
@@ -2065,19 +2065,19 @@ static void text_viewer_show_confirm(text_viewer_ctx_t *ctx)
     lv_obj_t *save_btn = lv_msgbox_add_footer_button(mbox, "Save");
     lv_obj_set_user_data(save_btn, (void *)TEXT_VIEWER_CONFIRM_SAVE);
     lv_obj_set_flex_grow(save_btn, 1);
-    styles_build_button(save_btn);
+    styles_set_button(save_btn);
     lv_obj_add_event_cb(save_btn, text_viewer_on_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *discard_btn = lv_msgbox_add_footer_button(mbox, "Discard");
     lv_obj_set_user_data(discard_btn, (void *)TEXT_VIEWER_CONFIRM_DISCARD);
     lv_obj_set_flex_grow(discard_btn, 1);
-    styles_build_button(discard_btn);
+    styles_set_button(discard_btn);
     lv_obj_add_event_cb(discard_btn, text_viewer_on_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     lv_obj_set_user_data(cancel_btn, NULL);
     lv_obj_set_flex_grow(cancel_btn, 1);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, text_viewer_on_confirm, LV_EVENT_CLICKED, ctx);
 }
 

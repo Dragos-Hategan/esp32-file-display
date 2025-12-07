@@ -895,7 +895,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_t *back_btn = lv_button_create(toolbar);
     lv_obj_set_style_radius(back_btn, 6, 0);
     lv_obj_set_style_pad_all(back_btn, 6, 0);    
-    styles_build_button(back_btn);
+    styles_set_button(back_btn);
     lv_obj_add_event_cb(back_btn, settings_on_back, LV_EVENT_CLICKED, ctx);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
     lv_obj_set_style_text_color(back_lbl, UI_COLOR_TEXT_DARK, 0);
@@ -905,7 +905,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_t *about_btn = lv_button_create(toolbar);
     lv_obj_set_style_radius(about_btn, 6, 0);
     lv_obj_set_style_pad_all(about_btn, 6, 0);   
-    styles_build_button(about_btn); 
+    styles_set_button(about_btn); 
     lv_obj_add_event_cb(about_btn, settings_on_about, LV_EVENT_CLICKED, ctx);
     lv_obj_t *about_lbl = lv_label_create(about_btn);
     lv_label_set_text(about_lbl, "About");
@@ -991,7 +991,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_flex_grow(screen_saver_button, 1);
     lv_obj_set_style_radius(screen_saver_button, 8, 0);
     lv_obj_set_style_pad_all(screen_saver_button, 10, 0); 
-    styles_build_button(screen_saver_button);
+    styles_set_button(screen_saver_button);
     lv_obj_add_event_cb(screen_saver_button, settings_screensaver, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(screen_saver_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *screen_saver_lbl = lv_label_create(screen_saver_button);
@@ -1003,7 +1003,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_flex_grow(set_date_time_button, 1);
     lv_obj_set_style_radius(set_date_time_button, 8, 0);
     lv_obj_set_style_pad_all(set_date_time_button, 10, 0);  
-    styles_build_button(set_date_time_button);  
+    styles_set_button(set_date_time_button);  
     lv_obj_add_event_cb(set_date_time_button, settings_set_date_time, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(set_date_time_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *set_date_time_lbl = lv_label_create(set_date_time_button);
@@ -1024,7 +1024,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_flex_grow(rotate_button, 1);
     lv_obj_set_style_radius(rotate_button, 8, 0);
     lv_obj_set_style_pad_all(rotate_button, 10, 0);    
-    styles_build_button(rotate_button);
+    styles_set_button(rotate_button);
     lv_obj_add_event_cb(rotate_button, settings_rotate_screen, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(rotate_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *rotate_lbl = lv_label_create(rotate_button);
@@ -1035,7 +1035,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_flex_grow(calibration_button, 1);
     lv_obj_set_style_radius(calibration_button, 8, 0);
     lv_obj_set_style_pad_all(calibration_button, 10, 0); 
-    styles_build_button(calibration_button);
+    styles_set_button(calibration_button);
     lv_obj_add_event_cb(calibration_button, settings_run_calibration, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(calibration_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *calibration_lbl = lv_label_create(calibration_button);
@@ -1055,7 +1055,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_flex_grow(restart_button, 1);
     lv_obj_set_style_radius(restart_button, 8, 0);
     lv_obj_set_style_pad_all(restart_button, 10, 0);  
-    styles_build_button(restart_button);  
+    styles_set_button(restart_button);  
     lv_obj_add_event_cb(restart_button, settings_restart, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(restart_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *restart_lbl = lv_label_create(restart_button);
@@ -1066,7 +1066,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_flex_grow(reset_button, 1);
     lv_obj_set_style_radius(reset_button, 8, 0);
     lv_obj_set_style_pad_all(reset_button, 10, 0);
-    styles_build_button(reset_button);    
+    styles_set_button(reset_button);    
     lv_obj_add_event_cb(reset_button, settings_reset, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(reset_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *reset_lbl = lv_label_create(reset_button);
@@ -1136,7 +1136,7 @@ static void settings_on_about(lv_event_t *e)
     lv_obj_set_width(close_btn, LV_PCT(55));
     lv_obj_set_style_radius(close_btn, 8, 0);
     lv_obj_set_style_pad_all(close_btn, 8, 0);
-    styles_build_button(close_btn);
+    styles_set_button(close_btn);
     lv_obj_set_style_align(close_btn, LV_ALIGN_CENTER, 0);
     lv_obj_t *close_lbl = lv_label_create(close_btn);
     lv_label_set_text(close_lbl, "Close");
@@ -1667,7 +1667,7 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_one_line(ctx->dt_month_ta, true);
     lv_textarea_set_max_length(ctx->dt_month_ta, 2);
     lv_textarea_set_text(ctx->dt_month_ta, "MM");
-    styles_build_textarea(ctx->dt_month_ta);
+    styles_set_textarea(ctx->dt_month_ta);
     lv_obj_add_event_cb(ctx->dt_month_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
     lv_obj_add_event_cb(ctx->dt_month_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(ctx->dt_month_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
@@ -1682,7 +1682,7 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_one_line(ctx->dt_day_ta, true);
     lv_textarea_set_max_length(ctx->dt_day_ta, 2);
     lv_textarea_set_text(ctx->dt_day_ta, "DD");
-    styles_build_textarea(ctx->dt_day_ta);
+    styles_set_textarea(ctx->dt_day_ta);
     lv_obj_add_event_cb(ctx->dt_day_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
     lv_obj_add_event_cb(ctx->dt_day_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(ctx->dt_day_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
@@ -1697,7 +1697,7 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_one_line(ctx->dt_year_ta, true);
     lv_textarea_set_max_length(ctx->dt_year_ta, 2);
     lv_textarea_set_text(ctx->dt_year_ta, "YY");
-    styles_build_textarea(ctx->dt_year_ta);
+    styles_set_textarea(ctx->dt_year_ta);
     lv_obj_add_event_cb(ctx->dt_year_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
     lv_obj_add_event_cb(ctx->dt_year_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(ctx->dt_year_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
@@ -1724,7 +1724,7 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_one_line(ctx->dt_hour_ta, true);
     lv_textarea_set_max_length(ctx->dt_hour_ta, 2);
     lv_textarea_set_text(ctx->dt_hour_ta, "HH");
-    styles_build_textarea(ctx->dt_hour_ta);
+    styles_set_textarea(ctx->dt_hour_ta);
     lv_obj_add_event_cb(ctx->dt_hour_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
     lv_obj_add_event_cb(ctx->dt_hour_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(ctx->dt_hour_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
@@ -1739,7 +1739,7 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_one_line(ctx->dt_min_ta, true);
     lv_textarea_set_max_length(ctx->dt_min_ta, 2);
     lv_textarea_set_text(ctx->dt_min_ta, "MM");
-    styles_build_textarea(ctx->dt_min_ta);
+    styles_set_textarea(ctx->dt_min_ta);
     lv_obj_add_event_cb(ctx->dt_min_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
     lv_obj_add_event_cb(ctx->dt_min_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(ctx->dt_min_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
@@ -1762,7 +1762,7 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_label_set_text(apply_lbl, "Apply");
     lv_obj_center(apply_lbl);
     lv_obj_add_flag(apply_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    styles_build_button(apply_btn);
+    styles_set_button(apply_btn);
     lv_obj_add_event_cb(apply_btn, settings_apply_date_time, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_button_create(row_actions);
@@ -1772,12 +1772,12 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_label_set_text(cancel_lbl, "Cancel");
     lv_obj_center(cancel_lbl);
     lv_obj_add_flag(cancel_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, settings_close_set_date_time, LV_EVENT_CLICKED, ctx);
 
     /* Keyboard anchored to bottom of overlay */
     ctx->dt_keyboard = lv_keyboard_create(overlay);
-    styles_build_keyboard(ctx->dt_keyboard);
+    styles_set_keyboard(ctx->dt_keyboard);
     lv_keyboard_set_mode(ctx->dt_keyboard, LV_KEYBOARD_MODE_NUMBER);
     lv_keyboard_set_textarea(ctx->dt_keyboard, NULL);
     lv_obj_add_flag(ctx->dt_keyboard, LV_OBJ_FLAG_FLOATING);
@@ -1913,7 +1913,7 @@ static void settings_invalid_ok(lv_event_t *e)
 static void settings_show_invalid_input(void)
 {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     lv_obj_set_style_max_width(mbox, LV_PCT(70), 0);
     lv_obj_center(mbox);
 
@@ -1925,7 +1925,7 @@ static void settings_show_invalid_input(void)
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
-    styles_build_button(ok_btn);
+    styles_set_button(ok_btn);
     lv_obj_add_event_cb(ok_btn, settings_invalid_ok, LV_EVENT_CLICKED, mbox);
 }
 
@@ -2546,7 +2546,7 @@ static void settings_restart(lv_event_t *e)
     }
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     ctx->restart_confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
@@ -2560,12 +2560,12 @@ static void settings_restart(lv_event_t *e)
 
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
     lv_obj_set_user_data(yes_btn, (void *)1);
-    styles_build_button(yes_btn);
+    styles_set_button(yes_btn);
     lv_obj_add_event_cb(yes_btn, settings_restart_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     lv_obj_set_user_data(cancel_btn, (void *)0);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, settings_close_restart, LV_EVENT_CLICKED, ctx);
 }
 
@@ -2613,7 +2613,7 @@ static void settings_reset(lv_event_t *e)
     }
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
-    styles_build_msgbox(mbox);
+    styles_set_msgbox(mbox);
     ctx->reset_confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
@@ -2627,12 +2627,12 @@ static void settings_reset(lv_event_t *e)
 
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
     lv_obj_set_user_data(yes_btn, (void *)1);
-    styles_build_button(yes_btn);
+    styles_set_button(yes_btn);
     lv_obj_add_event_cb(yes_btn, settings_reset_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     lv_obj_set_user_data(cancel_btn, (void *)0);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, settings_close_reset, LV_EVENT_CLICKED, ctx);
 }
 
@@ -2896,7 +2896,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *dim_switch = lv_switch_create(row_dim);
     lv_obj_set_style_pad_all(dim_switch, 4, 0);
-    styles_build_switch(dim_switch);
+    styles_set_switch(dim_switch);
     lv_obj_add_event_cb(dim_switch, settings_on_dim_switch_changed, LV_EVENT_VALUE_CHANGED, ctx);
     ctx->ss_dim_switch = dim_switch;
 
@@ -2920,7 +2920,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     ctx->ss_dim_after_ta = lv_textarea_create(row_dim_cfg);
     lv_obj_set_width(ctx->ss_dim_after_ta, 35);
     lv_obj_clear_flag(ctx->ss_dim_after_ta, LV_OBJ_FLAG_SCROLLABLE);
-    styles_build_textarea(ctx->ss_dim_after_ta);
+    styles_set_textarea(ctx->ss_dim_after_ta);
     lv_textarea_set_one_line(ctx->ss_dim_after_ta, true);
     lv_textarea_set_max_length(ctx->ss_dim_after_ta, 3);
     if (ctx->settings.dim_time >= 0) {
@@ -2955,7 +2955,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_clear_flag(ctx->ss_dim_pct_ta, LV_OBJ_FLAG_SCROLLABLE);
     lv_textarea_set_one_line(ctx->ss_dim_pct_ta, true);
     lv_textarea_set_max_length(ctx->ss_dim_pct_ta, 3);
-    styles_build_textarea(ctx->ss_dim_pct_ta); 
+    styles_set_textarea(ctx->ss_dim_pct_ta); 
     if (ctx->settings.dim_level >= 0) {
         char buf[8];
         lv_snprintf(buf, sizeof(buf), "%d", ctx->settings.dim_level);
@@ -3011,7 +3011,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *off_switch = lv_switch_create(row_off);
     lv_obj_set_style_pad_all(off_switch, 4, 0);
-    styles_build_switch(off_switch);  
+    styles_set_switch(off_switch);  
     lv_obj_add_event_cb(off_switch, settings_on_off_switch_changed, LV_EVENT_VALUE_CHANGED, ctx);
     ctx->ss_off_switch = off_switch;
 
@@ -3035,7 +3035,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     ctx->ss_off_after_ta = lv_textarea_create(row_off_cfg);
     lv_obj_set_width(ctx->ss_off_after_ta, 50);
     lv_obj_clear_flag(ctx->ss_off_after_ta, LV_OBJ_FLAG_SCROLLABLE);
-    styles_build_textarea(ctx->ss_off_after_ta); 
+    styles_set_textarea(ctx->ss_off_after_ta); 
     lv_textarea_set_one_line(ctx->ss_off_after_ta, true);
     lv_textarea_set_max_length(ctx->ss_off_after_ta, 4);
     if (ctx->settings.off_time >= 0) {
@@ -3078,7 +3078,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_label_set_text(apply_lbl, "Apply");
     lv_obj_center(apply_lbl);
     lv_obj_add_flag(apply_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    styles_build_button(apply_btn);
+    styles_set_button(apply_btn);
     lv_obj_add_event_cb(apply_btn, settings_apply_screensaver, LV_EVENT_CLICKED, ctx);
     
     lv_obj_t *cancel_btn = lv_button_create(row_actions);
@@ -3088,12 +3088,12 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_label_set_text(cancel_lbl, "Cancel");
     lv_obj_center(cancel_lbl);
     lv_obj_add_flag(cancel_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    styles_build_button(cancel_btn);
+    styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, settings_close_screensaver, LV_EVENT_CLICKED, ctx);
     
     /* Keyboard anchored to bottom of overlay */
     ctx->ss_keyboard = lv_keyboard_create(overlay);
-    styles_build_keyboard(ctx->ss_keyboard);
+    styles_set_keyboard(ctx->ss_keyboard);
     lv_keyboard_set_mode(ctx->ss_keyboard, LV_KEYBOARD_MODE_NUMBER);
     lv_keyboard_set_textarea(ctx->ss_keyboard, NULL);
     lv_obj_add_flag(ctx->ss_keyboard, LV_OBJ_FLAG_FLOATING);
