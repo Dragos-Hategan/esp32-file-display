@@ -12,12 +12,20 @@ extern "C" {
 #define UI_COLOR_BUTTON_BORDER_DARK  lv_color_hex(0xBBAAFF)
 #define UI_COLOR_INDICATOR_OFF_DARK  lv_color_hex(0x00055F)
 #define UI_COLOR_TEXT_DARK           lv_color_hex(0xDCDCDC)
-#define UI_COLOR_ACCENT_BLUE_DARK    lv_color_hex(0x7D5FFF)
-#define UI_COLOR_ACCENT_BLUE_DARK_2  lv_color_hex(0x347AFF)
-#define UI_COLOR_ACCENT_GREEN_DARK   lv_color_hex(0x37B24D)
+#define UI_COLOR_ACCENT_DARK         lv_color_hex(0x7D5FFF)
 
+#define UI_COLOR_BG_LIGHT             lv_color_hex(0xF2F2F7)
+#define UI_COLOR_CARD_LIGHT           lv_color_hex(0xFFFFFF)
+#define UI_COLOR_BORDER_LIGHT         lv_color_hex(0xC6C6C8)
+#define UI_COLOR_BUTTON_BORDER_LIGHT  lv_color_hex(0x30D158)   
+#define UI_COLOR_INDICATOR_OFF_LIGHT  lv_color_hex(0xA3A7AD)
+#define UI_COLOR_TEXT_LIGHT           lv_color_hex(0x1C1C1E)
+#define UI_COLOR_ACCENT_LIGHT         lv_color_hex(0x34C759)   
 
+void styles_init_colors(void);
+void styles_set_bg_color(lv_obj_t *obj);
 
+void styles_build_screen(lv_obj_t *screen);
 void styles_build_button(lv_obj_t *button);
 void styles_build_switch(lv_obj_t *switch_button);
 void styles_build_textarea(lv_obj_t *textarea);
