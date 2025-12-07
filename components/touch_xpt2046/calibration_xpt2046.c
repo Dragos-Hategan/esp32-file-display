@@ -609,7 +609,6 @@ static bool ui_yes_no_dialog(void)
         styles_set_bg_color(loader_wrap, 0);
         lv_obj_set_style_bg_opa(loader_wrap, LV_OPA_COVER, 0);         
         lv_obj_set_style_pad_all(loader_wrap, 4, 0);
-        lv_obj_set_style_border_width(loader_wrap, 0, 0);
         lv_obj_set_style_pad_gap(loader_wrap, 10, 0);
         lv_obj_set_flex_flow(loader_wrap, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(loader_wrap, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);

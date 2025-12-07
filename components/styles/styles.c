@@ -159,6 +159,7 @@ void styles_set_switch(lv_obj_t *switch_button)
     style_colors_t colors = get_theme(settings_get_dark_theme_flag());
 
     lv_obj_set_style_bg_color(switch_button, colors.color_indicator_off, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(switch_button, lv_color_lighten(colors.color_accent, 50), LV_PART_INDICATOR | LV_STATE_CHECKED);
     lv_obj_set_style_border_color(switch_button, colors.color_button_border, LV_PART_KNOB);
     lv_obj_set_style_bg_color(switch_button, colors.color_accent, LV_PART_KNOB);
     lv_obj_set_style_bg_color(switch_button, colors.color_card, LV_PART_MAIN);
