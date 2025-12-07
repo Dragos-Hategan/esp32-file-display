@@ -218,12 +218,24 @@ static void settings_reset(lv_event_t *e);
 static void settings_reset_confirm(lv_event_t *e);
 
 /**
- * @brief Toggle theme (light/dark) and rebuild settings UI.
+ * @brief Toggle theme (light/dark) and restart system.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
 static void settings_toggle_theme(lv_event_t *e);
+
+/**
+ * @brief Saves theme and other the rest of the custom flags to NVS and restarts.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
 static void settings_theme_confirm_yes(lv_event_t *e);
+
+/**
+ * @brief Closes the theme change dialog.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
 static void settings_theme_confirm_no(lv_event_t *e);
 
 /**
