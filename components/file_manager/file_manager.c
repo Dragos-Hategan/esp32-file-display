@@ -1450,6 +1450,7 @@ static void file_manager_apply_window(file_manager_ctx_t *ctx, size_t start_inde
     esp_err_t werr = fs_nav_set_window(&ctx->nav, start_index, ctx->list_window_size);
     if (werr != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set window: %s", esp_err_to_name(werr));
+        sdspi_schedule_sd_retry();
         return;
     }
 

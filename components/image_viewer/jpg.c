@@ -226,9 +226,8 @@ static void jpg_viewer_destroy_active(jpg_viewer_ctx_t *ctx)
 static void jpg_viewer_build_ui(jpg_viewer_ctx_t *ctx)
 {
     ctx->screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(ctx->screen, UI_COLOR_BG_DARK, 0);
+    styles_set_screen(ctx->screen);
     lv_obj_set_style_bg_opa(ctx->screen, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_text_color(ctx->screen, UI_COLOR_TEXT_DARK, 0);
     lv_obj_set_style_pad_all(ctx->screen, 0, 0);
 
     ctx->image = lv_image_create(ctx->screen);
@@ -245,7 +244,6 @@ static void jpg_viewer_build_ui(jpg_viewer_ctx_t *ctx)
     lv_obj_add_event_cb(close_btn, jpg_viewer_on_close, LV_EVENT_CLICKED, ctx);
     lv_obj_t *close_lbl = lv_label_create(close_btn);
     lv_label_set_text(close_lbl, LV_SYMBOL_CLOSE);
-    lv_obj_set_style_text_color(close_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(close_lbl);
 }
 

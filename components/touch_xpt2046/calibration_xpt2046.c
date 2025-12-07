@@ -559,7 +559,7 @@ static bool ui_yes_no_dialog(void)
     lv_obj_t *overlay = lv_obj_create(lv_layer_top());
     lv_obj_remove_style_all(overlay);
     lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(overlay, UI_COLOR_BG_DARK, 0);
+    styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
 
@@ -582,7 +582,6 @@ static bool ui_yes_no_dialog(void)
     lv_label_set_text(label, "Run Touch Screen Calibration?");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
     lv_obj_set_width(label, lv_pct(100));
 
     msg_box_response_t msg_box_response = {
@@ -606,8 +605,8 @@ static bool ui_yes_no_dialog(void)
         lv_obj_remove_style_all(loader_wrap);
         lv_obj_set_style_radius(loader_wrap, 6, LV_PART_MAIN);
         lv_obj_set_style_border_width(loader_wrap, 1, LV_PART_MAIN);
-        lv_obj_set_style_border_color(loader_wrap, UI_COLOR_BORDER_DARK, LV_PART_MAIN);
-        lv_obj_set_style_bg_color(loader_wrap, UI_COLOR_CARD_DARK, 0);
+        styles_set_border_color(loader_wrap, LV_PART_MAIN);
+        styles_set_bg_color(loader_wrap, 0);
         lv_obj_set_style_bg_opa(loader_wrap, LV_OPA_COVER, 0);         
         lv_obj_set_style_pad_all(loader_wrap, 4, 0);
         lv_obj_set_style_border_width(loader_wrap, 0, 0);
@@ -620,7 +619,7 @@ static bool ui_yes_no_dialog(void)
         lv_obj_t *performing_label = lv_label_create(loader_wrap);
         lv_label_set_text(performing_label, "Performing Calibration In:");
         lv_obj_set_style_text_align(performing_label, LV_TEXT_ALIGN_LEFT, 0);
-        lv_obj_set_style_text_color(performing_label, UI_COLOR_TEXT_DARK, 0);
+        styles_set_text_color(performing_label, 0);
         lv_obj_set_width(performing_label, LV_SIZE_CONTENT);
         lv_obj_set_flex_grow(performing_label, 1);
 
@@ -631,13 +630,12 @@ static bool ui_yes_no_dialog(void)
         lv_arc_set_rotation(loading_arc, 270);
         lv_arc_set_value(loading_arc, 100);
         lv_obj_remove_style(loading_arc, NULL, LV_PART_KNOB);
-        lv_obj_set_style_arc_color(loading_arc, UI_COLOR_ACCENT_DARK, LV_PART_INDICATOR);
-        lv_obj_set_style_arc_color(loading_arc, UI_COLOR_BORDER_DARK, LV_PART_MAIN);
+        styles_set_arc(loading_arc);
 
         countdown_label = lv_label_create(loading_arc);
         lv_obj_set_style_text_font(countdown_label, LV_FONT_DEFAULT, 0);
         lv_label_set_text(countdown_label, "10");
-        lv_obj_set_style_text_color(countdown_label, UI_COLOR_TEXT_DARK, 0);
+        styles_set_text_color(countdown_label, 0);
         lv_obj_center(countdown_label);
     }
 
@@ -645,9 +643,9 @@ static bool ui_yes_no_dialog(void)
     lv_obj_t *toggle_row = lv_obj_create(stack);
     lv_obj_remove_style_all(toggle_row);
     lv_obj_set_style_radius(toggle_row, 6, LV_PART_MAIN);
+    styles_set_border_color(toggle_row, LV_PART_MAIN);
     lv_obj_set_style_border_width(toggle_row, 1, LV_PART_MAIN);
-    lv_obj_set_style_border_color(toggle_row, UI_COLOR_BORDER_DARK, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(toggle_row, UI_COLOR_CARD_DARK, 0);
+    styles_set_bg_color(toggle_row, 0);
     lv_obj_set_style_bg_opa(toggle_row, LV_OPA_COVER, 0);    
     lv_obj_set_style_pad_all(toggle_row, 6, 0);
     lv_obj_set_style_pad_gap(toggle_row, 12, 0);
@@ -661,7 +659,7 @@ static bool ui_yes_no_dialog(void)
     lv_obj_set_style_text_align(ask_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(ask_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(ask_label, LV_PCT(100));
-    lv_obj_set_style_text_color(ask_label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(ask_label, 0);
     lv_obj_set_flex_grow(ask_label, 1); /* push switch to the far right */
 
     lv_obj_t *ask_switch = lv_switch_create(toggle_row);

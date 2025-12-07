@@ -34,6 +34,7 @@ void styles_set_button(lv_obj_t *button);
 void styles_set_list_button(lv_obj_t *list_button);
 void styles_set_switch(lv_obj_t *switch_button);
 void styles_set_slider(lv_obj_t *slider);
+void styles_set_arc(lv_obj_t *arc);
 void styles_set_textarea(lv_obj_t *textarea);
 void styles_set_dropdown(lv_obj_t *dropdown);
 void styles_set_msgbox(lv_obj_t *mbox);

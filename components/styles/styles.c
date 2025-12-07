@@ -179,6 +179,17 @@ void styles_set_slider(lv_obj_t *slider)
     lv_obj_set_style_border_color(slider, colors.color_button_border, LV_PART_KNOB);
 }
 
+void styles_set_arc(lv_obj_t *arc)
+{
+    if (!arc) {
+        return;
+    }
+    style_colors_t colors = get_theme(settings_get_dark_theme_flag());
+
+    lv_obj_set_style_arc_color(arc, colors.color_accent, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(arc, colors.color_border, LV_PART_MAIN);
+}
+
 void styles_set_textarea(lv_obj_t *textarea)
 {
     if (!textarea) {

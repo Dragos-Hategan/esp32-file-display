@@ -681,9 +681,8 @@ esp_err_t text_viewer_open(const text_viewer_open_opts_t *opts)
 static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
 {
     lv_obj_t *scr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(scr, UI_COLOR_BG_DARK, 0);
+    styles_set_screen(scr);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-    lv_obj_set_style_text_color(scr, UI_COLOR_TEXT_DARK, 0);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_pad_all(scr, 2, 0);
     lv_obj_set_style_pad_gap(scr, 5, 0);
@@ -698,7 +697,7 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_obj_set_flex_flow(toolbar, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_gap(toolbar, 3, 0);
     lv_obj_set_flex_align(toolbar, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(toolbar, UI_COLOR_CARD_DARK, 0);
+    styles_set_card_color(toolbar, 0);
     lv_obj_set_style_bg_opa(toolbar, LV_OPA_COVER, 0);
     ctx->toolbar = toolbar;
 
@@ -709,7 +708,6 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_obj_add_event_cb(back_btn, text_viewer_on_back, LV_EVENT_CLICKED, ctx);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
     lv_label_set_text(back_lbl, LV_SYMBOL_LEFT " Back");
-    lv_obj_set_style_text_color(back_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(back_lbl);
 
     ctx->save_btn = lv_button_create(toolbar);
@@ -719,7 +717,6 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_obj_add_event_cb(ctx->save_btn, text_viewer_on_save, LV_EVENT_CLICKED, ctx);
     lv_obj_t *save_lbl = lv_label_create(ctx->save_btn);
     lv_label_set_text(save_lbl, LV_SYMBOL_SAVE " Save");
-    lv_obj_set_style_text_color(save_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(save_lbl);
 
     lv_obj_t *status_spacer_left = lv_obj_create(toolbar);
@@ -731,7 +728,7 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_label_set_text(ctx->status_label, "");
     lv_label_set_long_mode(ctx->status_label, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_align(ctx->status_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(ctx->status_label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(ctx->status_label, 0);
     lv_obj_set_style_text_font(ctx->status_label, &Domine_16, 0);
     const lv_font_t *status_font = lv_obj_get_style_text_font(ctx->status_label, LV_PART_MAIN);
     lv_coord_t status_height = status_font ? status_font->line_height : 18;
@@ -752,14 +749,12 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_obj_t *path_prefix = lv_label_create(path_row);
     lv_label_set_text(path_prefix, "Path: ");
     lv_obj_set_style_text_align(path_prefix, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_set_style_text_color(path_prefix, UI_COLOR_TEXT_DARK, 0);
 
     ctx->path_label = lv_label_create(path_row);
     lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_set_flex_grow(ctx->path_label, 1);
     lv_obj_set_width(ctx->path_label, LV_PCT(100));
     lv_obj_set_style_text_align(ctx->path_label, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_set_style_text_color(ctx->path_label, UI_COLOR_TEXT_DARK, 0);
     lv_label_set_text(ctx->path_label, "");
 
     lv_coord_t slider_gap = 6;
@@ -777,14 +772,9 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_obj_set_flex_grow(ctx->text_area, 1);
     lv_obj_set_height(ctx->text_area, LV_PCT(100));
     lv_obj_set_style_pad_all(ctx->text_area, 0, 0);
-    lv_obj_set_style_bg_color(ctx->text_area, UI_COLOR_CARD_DARK, 0);
-    lv_obj_set_style_bg_opa(ctx->text_area, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(ctx->text_area, UI_COLOR_BORDER_DARK, 0);
-    lv_obj_set_style_border_width(ctx->text_area, 1, 0);
-    lv_obj_set_style_text_color(ctx->text_area, UI_COLOR_TEXT_DARK, 0);
+    styles_set_textarea(ctx->text_area);
     lv_textarea_set_cursor_click_pos(ctx->text_area, false);
     lv_obj_set_scrollbar_mode(ctx->text_area, LV_SCROLLBAR_MODE_AUTO);
-    //lv_obj_set_width(ctx->text_area, LV_PCT(100));
     styles_set_textarea(ctx->text_area);
     lv_obj_add_event_cb(ctx->text_area, text_viewer_on_text_changed, LV_EVENT_VALUE_CHANGED, ctx);
     lv_obj_add_event_cb(ctx->text_area, text_viewer_on_text_area_clicked, LV_EVENT_CLICKED, ctx);
@@ -801,15 +791,12 @@ static void text_viewer_build_screen(text_viewer_ctx_t *ctx)
     lv_obj_set_style_pad_left(list_slider, 0, 0);
     lv_obj_set_style_pad_right(list_slider, 0, 0);
     lv_obj_set_style_translate_y(list_slider, 2, 0);
-    lv_obj_set_style_bg_color(list_slider, UI_COLOR_BORDER_DARK, 0);
+    styles_set_slider(list_slider);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_60, 0);
     lv_obj_set_style_radius(list_slider, 8, 0);
-    lv_obj_set_style_bg_color(list_slider, UI_COLOR_ACCENT_DARK, LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_COVER, LV_PART_INDICATOR);
     lv_obj_set_style_radius(list_slider, 8, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(list_slider, UI_COLOR_ACCENT_DARK, LV_PART_KNOB);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_COVER, LV_PART_KNOB);
-    lv_obj_set_style_border_color(list_slider, UI_COLOR_BUTTON_BORDER_DARK, LV_PART_KNOB);
     lv_obj_set_style_border_width(list_slider, 1, LV_PART_KNOB);
     lv_obj_set_style_radius(list_slider, 6, LV_PART_KNOB);
     lv_obj_set_style_width(list_slider, 12, LV_PART_KNOB);
