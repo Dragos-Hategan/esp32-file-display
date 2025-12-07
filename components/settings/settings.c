@@ -674,12 +674,11 @@ static void build_splash_screen(void)
     lv_obj_t *scr = lv_screen_active();
     lv_obj_remove_style_all(scr);
     lv_obj_clean(scr);
-    lv_obj_set_style_bg_color(scr, UI_COLOR_BG_DARK, 0);
+    styles_set_screen(scr);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
 
     lv_obj_t *label = lv_label_create(scr);
     lv_label_set_text(label, "File Manager");
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(label);
 
     lv_screen_load(scr);
@@ -873,8 +872,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
 {
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_color(scr, UI_COLOR_BG_DARK, 0);
-    lv_obj_set_style_text_color(scr, UI_COLOR_TEXT_DARK, 0);
+    styles_set_screen(scr);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(scr, 2, 0);
     lv_obj_set_style_pad_gap(scr, 5, 0);
@@ -884,7 +882,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
 
     lv_obj_t *toolbar = lv_obj_create(scr);
     lv_obj_remove_style_all(toolbar);
-    lv_obj_set_style_bg_color(toolbar, UI_COLOR_CARD_DARK, 0);
+    styles_set_card_color(toolbar, 0);
     lv_obj_set_size(toolbar, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(toolbar, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_gap(toolbar, 3, 0);
@@ -898,7 +896,6 @@ static void settings_build_screen(settings_ctx_t *ctx)
     styles_set_button(back_btn);
     lv_obj_add_event_cb(back_btn, settings_on_back, LV_EVENT_CLICKED, ctx);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
-    lv_obj_set_style_text_color(back_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_label_set_text(back_lbl, LV_SYMBOL_LEFT " Back");
     lv_obj_center(back_lbl);
 
@@ -909,7 +906,6 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_add_event_cb(about_btn, settings_on_about, LV_EVENT_CLICKED, ctx);
     lv_obj_t *about_lbl = lv_label_create(about_btn);
     lv_label_set_text(about_lbl, "About");
-    lv_obj_set_style_text_color(about_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(about_lbl);    
 
     /* Scrollable settings list */
@@ -930,7 +926,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_pad_left(settings_list, 12, 0);
     lv_obj_set_style_pad_right(settings_list, 12, 0);
     lv_obj_set_style_pad_row(settings_list, 6, 0);  
-    lv_obj_set_style_bg_color(settings_list, UI_COLOR_BG_DARK, 0);
+    styles_set_bg_color(settings_list, 0);
     lv_obj_set_style_bg_opa(settings_list, LV_OPA_TRANSP, 0);
 
     lv_obj_t *brightness_card = lv_button_create(settings_list);
@@ -939,8 +935,8 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_pad_all(brightness_card, 10, 0);
     lv_obj_set_style_pad_row(brightness_card, 6, 0);
     lv_obj_set_style_radius(brightness_card, 8, 0);
-    lv_obj_set_style_bg_color(brightness_card, UI_COLOR_CARD_DARK, 0);
-    lv_obj_set_style_border_color(brightness_card, UI_COLOR_BORDER_DARK, 0);
+    styles_set_bg_color(brightness_card, 0);
+    styles_set_border_color(brightness_card, 0);
     lv_obj_set_style_bg_opa(brightness_card, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(brightness_card, 1, 0);
     lv_obj_set_flex_flow(brightness_card, LV_FLEX_FLOW_COLUMN);
@@ -954,20 +950,17 @@ static void settings_build_screen(settings_ctx_t *ctx)
     ctx->brightness_label = lv_label_create(brightness_card);
     lv_obj_set_width(ctx->brightness_label, LV_PCT(100));
     lv_obj_set_style_text_align(ctx->brightness_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(ctx->brightness_label, UI_COLOR_TEXT_DARK, 0);
+    styles_set_text_color(ctx->brightness_label, 0);
 
     ctx->brightness_slider = lv_slider_create(brightness_card);
     lv_obj_set_width(ctx->brightness_slider, LV_PCT(90));
     lv_slider_set_range(ctx->brightness_slider, SETTINGS_MINIMUM_BRIGHTNESS, 100);
     lv_slider_set_value(ctx->brightness_slider, ctx->settings.brightness, LV_ANIM_OFF);
     lv_obj_add_event_cb(ctx->brightness_slider, settings_on_brightness_changed, LV_EVENT_VALUE_CHANGED, ctx);
-    lv_obj_set_style_bg_color(ctx->brightness_slider, UI_COLOR_BORDER_DARK, LV_PART_MAIN);
+    styles_set_slider(ctx->brightness_slider);
     lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_60, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(ctx->brightness_slider, UI_COLOR_ACCENT_DARK, LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(ctx->brightness_slider, UI_COLOR_ACCENT_DARK, LV_PART_KNOB);
     lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_COVER, LV_PART_KNOB);
-    lv_obj_set_style_border_color(ctx->brightness_slider, UI_COLOR_BUTTON_BORDER_DARK, LV_PART_KNOB);
     lv_obj_set_style_border_width(ctx->brightness_slider, 1, LV_PART_KNOB);
     lv_obj_set_style_radius(ctx->brightness_slider, 6, 0);
     lv_obj_set_style_radius(ctx->brightness_slider, 6, LV_PART_INDICATOR);
@@ -996,7 +989,6 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_align(screen_saver_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *screen_saver_lbl = lv_label_create(screen_saver_button);
     lv_label_set_text(screen_saver_lbl, "Screensaver");
-    lv_obj_set_style_text_color(screen_saver_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(screen_saver_lbl);  
 
     lv_obj_t *set_date_time_button = lv_button_create(row_actions0);
@@ -1008,7 +1000,6 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_align(set_date_time_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *set_date_time_lbl = lv_label_create(set_date_time_button);
     lv_label_set_text(set_date_time_lbl, "Set Date/Time");
-    lv_obj_set_style_text_color(set_date_time_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(set_date_time_lbl);          
     
     /* Row: Rotate + Set Date/Time */
@@ -1085,17 +1076,16 @@ static void settings_on_about(lv_event_t *e)
     lv_obj_t *overlay = lv_obj_create(lv_layer_top());
     lv_obj_remove_style_all(overlay);
     lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(overlay, UI_COLOR_BG_DARK, 0);
+    styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
 
     lv_obj_t *dlg = lv_obj_create(overlay);
     lv_obj_set_style_radius(dlg, 12, 0);
     lv_obj_set_style_pad_all(dlg, 8, 0);
-    lv_obj_set_style_bg_color(dlg, UI_COLOR_CARD_DARK, 0);
+    styles_set_dialog(dlg);
     lv_obj_set_style_bg_opa(dlg, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(dlg, 2, 0);
-    lv_obj_set_style_border_color(dlg, UI_COLOR_BORDER_DARK, 0);
     lv_obj_set_width(dlg, LV_PCT(80));
     lv_obj_set_height(dlg, LV_PCT(90));
     lv_obj_set_flex_flow(dlg, LV_FLEX_FLOW_COLUMN);
@@ -1129,7 +1119,7 @@ static void settings_on_about(lv_event_t *e)
         lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
         lv_obj_set_width(lbl, LV_PCT(100));
         lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_style_text_color(lbl, UI_COLOR_TEXT_DARK, 0);
+        styles_set_text_color(lbl, 0);
     }
 
     lv_obj_t *close_btn = lv_button_create(dlg);
@@ -1610,7 +1600,7 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_t *overlay = lv_obj_create(lv_layer_top());
     lv_obj_remove_style_all(overlay);
     lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(overlay, UI_COLOR_BG_DARK, 0);
+    styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_add_event_cb(overlay, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
@@ -1620,7 +1610,6 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_set_style_radius(dlg, 12, 0);
     lv_obj_set_style_pad_all(dlg, 6, 0);
     lv_obj_set_style_pad_gap(dlg, 6, 0);
-    //lv_obj_set_style_pad_bottom(dlg, 90, 0); /* leave room when keyboard appears */
     lv_obj_set_size(dlg, lv_pct(82), lv_pct(69));
     lv_obj_set_flex_flow(dlg, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(dlg, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -1629,18 +1618,15 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_set_scroll_dir(dlg, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
-    lv_obj_set_style_bg_color(dlg, UI_COLOR_CARD_DARK, 0);
     lv_obj_set_style_bg_opa(dlg, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(dlg, UI_COLOR_BORDER_DARK, 0);
+    styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
-    lv_obj_set_style_text_color(dlg, UI_COLOR_TEXT_DARK, 0);
     lv_obj_center(dlg);
     ctx->dt_dialog = dlg;
 
     lv_obj_t *title = lv_label_create(dlg);
     lv_label_set_text(title, "Set Date/Time");
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(title, UI_COLOR_TEXT_DARK, 0);
     lv_obj_set_width(title, LV_PCT(100));
     lv_obj_set_style_text_font(title, &Domine_16, 0);
     lv_obj_add_flag(title, LV_OBJ_FLAG_EVENT_BUBBLE);
@@ -1659,7 +1645,6 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *date_lbl = lv_label_create(row_date);
     lv_label_set_text(date_lbl, "Date:");
-    lv_obj_set_style_text_color(date_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(date_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     ctx->dt_month_ta = lv_textarea_create(row_date);
@@ -1674,7 +1659,6 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *slash1 = lv_label_create(row_date);
     lv_label_set_text(slash1, "/");
-    lv_obj_set_style_text_color(slash1, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(slash1, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     ctx->dt_day_ta = lv_textarea_create(row_date);
@@ -1689,7 +1673,6 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *slash2 = lv_label_create(row_date);
     lv_label_set_text(slash2, "/");
-    lv_obj_set_style_text_color(slash2, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(slash2, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     ctx->dt_year_ta = lv_textarea_create(row_date);
@@ -1716,7 +1699,6 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *time_lbl = lv_label_create(row_time);
     lv_label_set_text(time_lbl, "Time:");
-    lv_obj_set_style_text_color(time_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(time_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     ctx->dt_hour_ta = lv_textarea_create(row_time);
@@ -1731,7 +1713,6 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *colon = lv_label_create(row_time);
     lv_label_set_text(colon, ":");
-    lv_obj_set_style_text_color(colon, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(colon, LV_OBJ_FLAG_EVENT_BUBBLE);
 
     ctx->dt_min_ta = lv_textarea_create(row_time);
@@ -1921,7 +1902,6 @@ static void settings_show_invalid_input(void)
     lv_label_set_text(label, "Incorrect Input");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(label, LV_PCT(100));
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
@@ -2555,7 +2535,6 @@ static void settings_restart(lv_event_t *e)
     lv_label_set_text_fmt(label, "Are you sure you want to restart?");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(label, LV_PCT(100));
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
@@ -2622,7 +2601,6 @@ static void settings_reset(lv_event_t *e)
     lv_label_set_text_fmt(label, "Are you sure you want to reset?");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(label, LV_PCT(100));
-    lv_obj_set_style_text_color(label, UI_COLOR_TEXT_DARK, 0);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
@@ -2843,7 +2821,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_t *overlay = lv_obj_create(lv_layer_top());
     lv_obj_remove_style_all(overlay);
     lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(overlay, UI_COLOR_BG_DARK, 0);
+    styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_add_event_cb(overlay, settings_on_ss_background_tap, LV_EVENT_CLICKED, ctx);
@@ -2853,7 +2831,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_set_style_radius(dlg, 12, 0);
     lv_obj_set_style_pad_all(dlg, 6, 0);
     lv_obj_set_style_pad_gap(dlg, 4, 0);
-    //lv_obj_set_style_pad_bottom(dlg, 90, 0); /* leave room when keyboard appears */
     lv_obj_set_size(dlg, lv_pct(85), lv_pct(95));
     lv_obj_set_flex_flow(dlg, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(dlg, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -2861,10 +2838,8 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_add_flag(dlg, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_scroll_dir(dlg, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_set_style_bg_color(dlg, UI_COLOR_CARD_DARK, 0);
-    lv_obj_set_style_border_color(dlg, UI_COLOR_BORDER_DARK, 0);
+    styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
-    lv_obj_set_style_text_color(dlg, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
     lv_obj_center(dlg);
     ctx->screensaver_dialog = dlg;
@@ -2873,7 +2848,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_label_set_text(title, "Screensaver");
     lv_obj_set_style_text_font(title, &Domine_16, 0);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(title, UI_COLOR_TEXT_DARK, 0);
     lv_obj_set_width(title, LV_PCT(100));
     lv_obj_add_flag(title, LV_OBJ_FLAG_EVENT_BUBBLE);
 
@@ -2890,7 +2864,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *dim_lbl = lv_label_create(row_dim);
     lv_label_set_text(dim_lbl, "Dimming");
-    lv_obj_set_style_text_color(dim_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(dim_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     ctx->ss_dim_lbl = dim_lbl;
 
@@ -2913,7 +2886,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *dim_after_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(dim_after_lbl, "Dim after");
-    lv_obj_set_style_text_color(dim_after_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(dim_after_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     ctx->ss_dim_after_lbl = dim_after_lbl;
 
@@ -2946,7 +2918,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *at_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(at_lbl, "to");
-    lv_obj_set_style_text_color(at_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(at_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     ctx->ss_at_lbl = at_lbl;
 
@@ -2974,7 +2945,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *pct_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(pct_lbl, "%");
-    lv_obj_set_style_text_color(pct_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(pct_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     ctx->ss_pct_lbl = pct_lbl;
 
@@ -3005,7 +2975,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *time_lbl = lv_label_create(row_off);
     lv_label_set_text(time_lbl, "Screen OFF");
-    lv_obj_set_style_text_color(time_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(time_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     ctx->ss_off_lbl = time_lbl;
 
@@ -3028,7 +2997,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *off_after_lbl = lv_label_create(row_off_cfg);
     lv_label_set_text(off_after_lbl, "Turn off after");
-    lv_obj_set_style_text_color(off_after_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(off_after_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     ctx->ss_off_after_lbl = off_after_lbl;
 
@@ -3056,7 +3024,6 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *off_seconds_lbl = lv_label_create(row_off_cfg);
     lv_label_set_text(off_seconds_lbl, "seconds.");
-    lv_obj_set_style_text_color(off_seconds_lbl, UI_COLOR_TEXT_DARK, 0);
     lv_obj_add_flag(off_seconds_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     ctx->ss_off_seconds_lbl = off_seconds_lbl;
 

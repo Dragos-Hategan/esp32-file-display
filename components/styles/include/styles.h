@@ -37,6 +37,7 @@ void styles_set_slider(lv_obj_t *slider);
 void styles_set_textarea(lv_obj_t *textarea);
 void styles_set_dropdown(lv_obj_t *dropdown);
 void styles_set_msgbox(lv_obj_t *mbox);
+void styles_set_dialog(lv_obj_t *dialog);
 void styles_set_keyboard(lv_obj_t *kbd);
 
 

@@ -208,6 +208,18 @@ void styles_set_msgbox(lv_obj_t *mbox)
     lv_obj_set_style_text_color(mbox, colors.color_text, LV_PART_ITEMS);
 }
 
+void styles_set_dialog(lv_obj_t *dialog)
+{
+    if (!dialog) {
+        return;
+    }
+    style_colors_t colors = get_theme(settings_get_dark_theme_flag()); 
+
+    lv_obj_set_style_border_color(dialog, colors.color_border, 0);
+    lv_obj_set_style_bg_color(dialog, colors.color_card, 0);
+    lv_obj_set_style_text_color(dialog, colors.color_text, 0);
+}
+
 void styles_set_keyboard(lv_obj_t *kbd)
 {
     if (!kbd) {
