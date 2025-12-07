@@ -3933,10 +3933,12 @@ static void file_manager_show_delete_confirm(file_manager_ctx_t *ctx)
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
+    styles_set_button(yes_btn);
     lv_obj_set_user_data(yes_btn, (void *)1);
     lv_obj_add_event_cb(yes_btn, file_manager_on_delete_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *no_btn = lv_msgbox_add_footer_button(mbox, "No");
+    styles_set_button(no_btn);
     lv_obj_set_user_data(no_btn, (void *)0);
     lv_obj_add_event_cb(no_btn, file_manager_on_delete_confirm, LV_EVENT_CLICKED, ctx);
 }
