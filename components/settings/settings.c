@@ -32,6 +32,7 @@
 #define SETTINGS_NVS_OFF_EN_KEY         "off_en"
 #define SETTINGS_NVS_OFF_TIME_KEY       "off_time"
 #define SETTINGS_NVS_CALIB_PROMPT_KEY   "calib_prompt"
+#define SETTINGS_NVS_THEME_KEY          "theme"
 
 #define SETTINGS_ROTATION_STEPS          4
 #define SETTINGS_DEFAULT_ROTATION_STEP   3
@@ -65,6 +66,7 @@ typedef struct{
     int off_time;
     bool calibration_prompt_enabled;    /**< True to ask for calibration at startup */
     bool running_calibration;
+    bool dark_theme;
 }settings_t;
 
 typedef struct{
@@ -653,6 +655,16 @@ static void settings_persist_time_to_nvs(time_t epoch);
  */
 static void settings_clear_time_in_nvs(void);
 
+/**
+ * @brief Persist the theme preference to NVS.
+ */
+static void persist_theme_to_nvs(void);
+
+/**
+ * @brief Load the theme preference from NVS.
+ */
+static void load_theme_from_nvs(void);
+
 /* Callbacks registered by other modules to react to time set/reset events. */
 static void (*s_time_set_cb)(void) = NULL;
 static void (*s_time_reset_cb)(void) = NULL;
@@ -697,6 +709,7 @@ void starting_routine(void)
     ESP_ERROR_CHECK(bsp_display_start_result());
     bsp_display_backlight_off();
     apply_default_font_theme(true);
+    styles_init_colors();
 
     /* ----- Configurations ----- */
     ESP_LOGI(TAG, "Loading configurations");
@@ -846,13 +859,23 @@ void settings_set_running_calibration(bool enable)
     s_settings_ctx.settings.running_calibration = enable;
 }
 
+bool settings_get_dark_theme_flag(void)
+{
+    return s_settings_ctx.settings.dark_theme;
+}
+
+void settings_set_dark_theme_flag(bool is_dark)
+{
+    s_settings_ctx.settings.dark_theme = is_dark;
+}
+
 static void settings_build_screen(settings_ctx_t *ctx)
 {
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_color(scr, UI_COLOR_BG_DARK, 0);
-    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_set_style_text_color(scr, UI_COLOR_TEXT_DARK, 0);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(scr, 2, 0);
     lv_obj_set_style_pad_gap(scr, 5, 0);
     lv_obj_set_flex_flow(scr, LV_FLEX_FLOW_COLUMN);
@@ -861,11 +884,11 @@ static void settings_build_screen(settings_ctx_t *ctx)
 
     lv_obj_t *toolbar = lv_obj_create(scr);
     lv_obj_remove_style_all(toolbar);
+    lv_obj_set_style_bg_color(toolbar, UI_COLOR_CARD_DARK, 0);
     lv_obj_set_size(toolbar, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(toolbar, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_gap(toolbar, 3, 0);
     lv_obj_set_flex_align(toolbar, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(toolbar, UI_COLOR_CARD_DARK, 0);
     lv_obj_set_style_bg_opa(toolbar, LV_OPA_COVER, 0);
     ctx->toolbar = toolbar;    
 
@@ -875,8 +898,8 @@ static void settings_build_screen(settings_ctx_t *ctx)
     styles_build_button(back_btn);
     lv_obj_add_event_cb(back_btn, settings_on_back, LV_EVENT_CLICKED, ctx);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
-    lv_label_set_text(back_lbl, LV_SYMBOL_LEFT " Back");
     lv_obj_set_style_text_color(back_lbl, UI_COLOR_TEXT_DARK, 0);
+    lv_label_set_text(back_lbl, LV_SYMBOL_LEFT " Back");
     lv_obj_center(back_lbl);
 
     lv_obj_t *about_btn = lv_button_create(toolbar);
@@ -917,9 +940,9 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_pad_row(brightness_card, 6, 0);
     lv_obj_set_style_radius(brightness_card, 8, 0);
     lv_obj_set_style_bg_color(brightness_card, UI_COLOR_CARD_DARK, 0);
+    lv_obj_set_style_border_color(brightness_card, UI_COLOR_BORDER_DARK, 0);
     lv_obj_set_style_bg_opa(brightness_card, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(brightness_card, 1, 0);
-    lv_obj_set_style_border_color(brightness_card, UI_COLOR_BORDER_DARK, 0);
     lv_obj_set_flex_flow(brightness_card, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(brightness_card,
                           LV_FLEX_ALIGN_START,   /* keep vertical stacking */
@@ -940,9 +963,9 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_add_event_cb(ctx->brightness_slider, settings_on_brightness_changed, LV_EVENT_VALUE_CHANGED, ctx);
     lv_obj_set_style_bg_color(ctx->brightness_slider, UI_COLOR_BORDER_DARK, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_60, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(ctx->brightness_slider, UI_COLOR_ACCENT_BLUE_DARK, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(ctx->brightness_slider, UI_COLOR_ACCENT_DARK, LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(ctx->brightness_slider, UI_COLOR_ACCENT_BLUE_DARK, LV_PART_KNOB);
+    lv_obj_set_style_bg_color(ctx->brightness_slider, UI_COLOR_ACCENT_DARK, LV_PART_KNOB);
     lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_COVER, LV_PART_KNOB);
     lv_obj_set_style_border_color(ctx->brightness_slider, UI_COLOR_BUTTON_BORDER_DARK, LV_PART_KNOB);
     lv_obj_set_style_border_width(ctx->brightness_slider, 1, LV_PART_KNOB);
@@ -1486,6 +1509,44 @@ static void persist_calibration_prompt_to_nvs(void)
     }
 }
 
+static void persist_theme_to_nvs(void)
+{
+    /* Default: enabled */
+    s_settings_ctx.settings.dark_theme = true;
+
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h) != ESP_OK) {
+        return;
+    }
+
+    int8_t raw = -1;
+    if (nvs_get_i8(h, SETTINGS_NVS_THEME_KEY, &raw) == ESP_OK) {
+        s_settings_ctx.settings.dark_theme = (raw != 0);
+    }
+
+    nvs_close(h);
+}
+
+static void load_theme_from_nvs(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open NVS for themes: (%s)", esp_err_to_name(err));
+        return;
+    }
+
+    esp_err_t res = nvs_set_i8(h, SETTINGS_NVS_THEME_KEY, s_settings_ctx.settings.dark_theme ? 1 : 0);
+    if (res == ESP_OK) {
+        res = nvs_commit(h);
+    }
+    nvs_close(h);
+
+    if (res != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save theme preference: (%s)", esp_err_to_name(res));
+    }
+}
+
 static void init_settings(void)
 {
     // Initializing Defaults
@@ -1502,12 +1563,14 @@ static void init_settings(void)
     s_settings_ctx.settings.off_time = -1;
     s_settings_ctx.settings.calibration_prompt_enabled = true;
     s_settings_ctx.settings.running_calibration = false;
+    s_settings_ctx.settings.dark_theme = true;
 
     // Loading Saved Data
     load_brightness_from_nvs();
     load_rotation_from_nvs();
     load_screensaver_from_nvs();
     load_calibration_prompt_from_nvs();
+    load_theme_from_nvs();
     apply_rotation_to_display(true);
     settings_restore_time_from_nvs();
 }

@@ -115,6 +115,18 @@ bool settings_get_running_calibration(void);
  */
 void settings_set_running_calibration(bool enable);
 
+/**
+ * @brief Get the dark theme flag.
+ * 
+ * @return true if the dark theme is on, false otherwise.* 
+ */
+bool settings_get_dark_theme_flag(void);
+
+/**
+ * @brief Set the dark theme flag. 
+ */
+void settings_set_dark_theme_flag(bool is_dark);
+
 #ifdef __cplusplus
 }
 #endif
