@@ -523,21 +523,21 @@ static void ui_show_calibration_message(bool calibration_found)
     lv_obj_remove_style_all(scr);
     lv_obj_clean(scr);
 
-    lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(scr, LV_DIR_NONE);
     lv_obj_set_scrollbar_mode(scr, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+    lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+    lv_obj_set_scroll_dir(scr, LV_DIR_NONE);
+    styles_set_bg_color(scr, 0);
 
     lv_obj_t *lbl = lv_label_create(scr);
-    lv_obj_set_style_text_color(lbl, lv_color_white(), 0);
+    styles_set_text_color(lbl, 0);
     if (!calibration_found){
         lv_label_set_text(lbl, "No Previous Calibration Found\n\nGet Ready For Touch Screen Calibration\n\nClick Inside The Pointing Arrows");
     }else{
         lv_label_set_text(lbl, "Get Ready For Touch Screen Calibration\n\nClick Inside The Pointing Arrows");
     }
-    lv_obj_set_width(lbl, LV_PCT(100));
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(lbl, LV_PCT(100));
     lv_obj_center(lbl);
 
     lv_obj_update_layout(scr);
@@ -757,7 +757,9 @@ static void draw_cross(int x, int y)
     {
         lv_style_init(&st);
         lv_style_set_line_width(&st, 3);
-        lv_style_set_line_color(&st, lv_color_white());
+        bool dark_theme = settings_get_dark_theme_flag();
+        lv_color_t line_color = dark_theme ? UI_COLOR_TEXT_DARK : UI_COLOR_TEXT_LIGHT;
+        lv_style_set_line_color(&st, line_color);
         lv_style_set_line_rounded(&st, false);
         inited = true;
     }

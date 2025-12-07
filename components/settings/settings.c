@@ -79,6 +79,7 @@ typedef struct{
     lv_obj_t *brightness_slider;        /**< Slider to pick brightness percent */
     lv_obj_t *restart_confirm_mbox;     /**< Active restart confirmation dialog (NULL when closed) */
     lv_obj_t *reset_confirm_mbox;       /**< Active reset confirmation dialog (NULL when closed) */
+    lv_obj_t *theme_confirm_mbox;       /**< Active theme change confirmation dialog (NULL when closed) */
     lv_obj_t *datetime_overlay;         /**< Active date/time overlay (NULL when closed) */
     lv_obj_t *screensaver_overlay;      /**< Active screensaver overlay (NULL when closed) */
     lv_obj_t *dt_month_ta;              /**< Month input (MM) */
@@ -215,6 +216,15 @@ static void settings_reset(lv_event_t *e);
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
 static void settings_reset_confirm(lv_event_t *e);
+
+/**
+ * @brief Toggle theme (light/dark) and rebuild settings UI.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_toggle_theme(lv_event_t *e);
+static void settings_theme_confirm_yes(lv_event_t *e);
+static void settings_theme_confirm_no(lv_event_t *e);
 
 /**
  * @brief Close the reset confirmation overlay without applying changes.
@@ -721,12 +731,12 @@ void starting_routine(void)
     ESP_LOGI(TAG, "Starting bsp for ILI9341 display");
     ESP_ERROR_CHECK(bsp_display_start_result());
     bsp_display_backlight_off();
-    apply_default_font_theme(true);
     styles_init_colors();
 
     /* ----- Configurations ----- */
     ESP_LOGI(TAG, "Loading configurations");
     init_settings();
+    apply_default_font_theme(true);
 
     /* ----- XPT2046 Driver Init ----- */
     ESP_LOGI(TAG, "Initializing XPT2046 touch driver");
@@ -1061,7 +1071,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(theme_button, 8, 0);
     lv_obj_set_style_pad_all(theme_button, 10, 0);  
     styles_set_button(theme_button);  
-    lv_obj_add_event_cb(theme_button, settings_restart, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(theme_button, settings_toggle_theme, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(theme_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *theme_lbl = lv_label_create(theme_button);
     lv_label_set_text(theme_lbl, "Change Theme");
@@ -1264,7 +1274,7 @@ static void apply_default_font_theme(bool lock_display)
         disp,
         lv_palette_main(LV_PALETTE_BLUE),
         lv_palette_main(LV_PALETTE_RED),
-        false,
+        s_settings_ctx.settings.dark_theme,
         &Domine_14);
 
     if (!theme) {
@@ -1546,28 +1556,10 @@ static void persist_calibration_prompt_to_nvs(void)
 
 static void persist_theme_to_nvs(void)
 {
-    /* Default: enabled */
-    s_settings_ctx.settings.dark_theme = true;
-
-    nvs_handle_t h;
-    if (nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h) != ESP_OK) {
-        return;
-    }
-
-    int8_t raw = -1;
-    if (nvs_get_i8(h, SETTINGS_NVS_THEME_KEY, &raw) == ESP_OK) {
-        s_settings_ctx.settings.dark_theme = (raw != 0);
-    }
-
-    nvs_close(h);
-}
-
-static void load_theme_from_nvs(void)
-{
     nvs_handle_t h;
     esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to open NVS for themes: (%s)", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to open NVS for theme: (%s)", esp_err_to_name(err));
         return;
     }
 
@@ -1580,6 +1572,23 @@ static void load_theme_from_nvs(void)
     if (res != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save theme preference: (%s)", esp_err_to_name(res));
     }
+}
+
+static void load_theme_from_nvs(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to open NVS for themes: (%s)", esp_err_to_name(err));
+        return;
+    }
+
+    int8_t raw = -1;
+    if (nvs_get_i8(h, SETTINGS_NVS_THEME_KEY, &raw) == ESP_OK) {
+        s_settings_ctx.settings.dark_theme = (raw != 0);
+    }
+
+    nvs_close(h);
 }
 
 static void init_settings(void)
@@ -1605,7 +1614,7 @@ static void init_settings(void)
     load_rotation_from_nvs();
     load_screensaver_from_nvs();
     load_calibration_prompt_from_nvs();
-    //load_theme_from_nvs();
+    load_theme_from_nvs();
     apply_rotation_to_display(true);
     settings_restore_time_from_nvs();
 }
@@ -2785,6 +2794,64 @@ static void settings_close_reset(lv_event_t *e)
     }    
 }
 
+static void settings_toggle_theme(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx) {
+        return;
+    }
+
+    if (ctx->theme_confirm_mbox) {
+        lv_msgbox_close(ctx->theme_confirm_mbox);
+        ctx->theme_confirm_mbox = NULL;
+    }
+
+    lv_obj_t *mbox = lv_msgbox_create(NULL);
+    styles_set_msgbox(mbox);
+    ctx->theme_confirm_mbox = mbox;
+    lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
+    lv_obj_center(mbox);
+
+    lv_obj_t *label = lv_label_create(mbox);
+    lv_label_set_text(label, "Restart required to change theme");
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(label, LV_PCT(100));
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+
+    lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
+    styles_set_button(yes_btn);
+    lv_obj_add_event_cb(yes_btn, settings_theme_confirm_yes, LV_EVENT_CLICKED, ctx);
+
+    lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
+    styles_set_button(cancel_btn);
+    lv_obj_add_event_cb(cancel_btn, settings_theme_confirm_no, LV_EVENT_CLICKED, ctx);
+}
+
+static void settings_theme_confirm_yes(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx) {
+        return;
+    }
+
+    /* Toggle theme and persist */
+    bool new_dark = !settings_get_dark_theme_flag();
+    settings_set_dark_theme_flag(new_dark);
+    persist_theme_to_nvs();
+
+    settings_restart_confirm(e);
+}
+
+static void settings_theme_confirm_no(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->theme_confirm_mbox) {
+        return;
+    }
+    lv_msgbox_close(ctx->theme_confirm_mbox);
+    ctx->theme_confirm_mbox = NULL;
+}
+
 static void settings_run_calibration(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
@@ -2879,6 +2946,7 @@ static void settings_clear_ui_refs(settings_ctx_t *ctx)
     ctx->brightness_slider = NULL;
     ctx->restart_confirm_mbox = NULL;
     ctx->reset_confirm_mbox = NULL;
+    ctx->theme_confirm_mbox = NULL;
     ctx->datetime_overlay = NULL;
     ctx->screensaver_overlay = NULL;
     ctx->dt_month_ta = NULL;
