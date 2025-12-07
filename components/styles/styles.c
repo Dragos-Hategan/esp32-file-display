@@ -158,11 +158,11 @@ void styles_set_switch(lv_obj_t *switch_button)
     }
     style_colors_t colors = get_theme(settings_get_dark_theme_flag());
 
+    lv_obj_set_style_bg_color(switch_button, colors.color_indicator_off, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(switch_button, colors.color_button_border, LV_PART_KNOB);
+    lv_obj_set_style_bg_color(switch_button, colors.color_accent, LV_PART_KNOB);
     lv_obj_set_style_bg_color(switch_button, colors.color_card, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(switch_button, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(switch_button, colors.color_accent, LV_PART_KNOB);
-    lv_obj_set_style_border_color(switch_button, colors.color_button_border, LV_PART_KNOB);
-    lv_obj_set_style_bg_color(switch_button, colors.color_indicator_off, LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(switch_button, 2, LV_PART_KNOB);  
 }
 

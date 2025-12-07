@@ -499,6 +499,13 @@ static void settings_scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta);
 static void settings_hide_dt_keyboard(settings_ctx_t *ctx);
 
 /**
+ * @brief Re-align the date/time dialog based on which textarea is active.
+ * @param ctx Settings context.
+ * @param ta  Active textarea (NULL to reset to default position).
+ */
+static void settings_realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
+
+/**
  * @brief Focus/click handler for screensaver numeric fields (dim delay/percent).
  * @param e LVGL event with user data = settings_ctx_t*.
  */
@@ -522,6 +529,13 @@ static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabl
  * @param ctx Settings context.
  */
 static void settings_hide_ss_keyboard(settings_ctx_t *ctx);
+
+/**
+ * @brief Re-align the screensaver dialog based on which textarea is active.
+ * @param ctx Settings context.
+ * @param ta  Active textarea (NULL to reset to default position).
+ */
+static void settings_realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
 
 /**
  * @brief Overlay/dialog tap handler for screensaver dialog.
@@ -1553,14 +1567,14 @@ static void init_settings(void)
     s_settings_ctx.settings.off_time = -1;
     s_settings_ctx.settings.calibration_prompt_enabled = true;
     s_settings_ctx.settings.running_calibration = false;
-    s_settings_ctx.settings.dark_theme = true;
+    s_settings_ctx.settings.dark_theme = false;
 
     // Loading Saved Data
     load_brightness_from_nvs();
     load_rotation_from_nvs();
     load_screensaver_from_nvs();
     load_calibration_prompt_from_nvs();
-    load_theme_from_nvs();
+    //load_theme_from_nvs();
     apply_rotation_to_display(true);
     settings_restore_time_from_nvs();
 }
@@ -1923,6 +1937,7 @@ static void settings_on_dt_textarea_focus(lv_event_t *e)
     }
     lv_keyboard_set_textarea(ctx->dt_keyboard, ta);
     lv_obj_clear_flag(ctx->dt_keyboard, LV_OBJ_FLAG_HIDDEN);
+    settings_realign_dt_dialog(ctx, ta);
     settings_scroll_field_into_view(ctx, ta);
 }
 
@@ -1955,6 +1970,42 @@ static void settings_hide_dt_keyboard(settings_ctx_t *ctx)
     }
     lv_keyboard_set_textarea(ctx->dt_keyboard, NULL);
     lv_obj_add_flag(ctx->dt_keyboard, LV_OBJ_FLAG_HIDDEN);
+    settings_realign_dt_dialog(ctx, NULL);
+}
+
+static void settings_realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
+{
+    if (!ctx || !ctx->dt_dialog || !lv_obj_is_valid(ctx->dt_dialog)) {
+        return;
+    }
+
+    int16_t kb_h = (ctx->dt_keyboard && lv_obj_is_valid(ctx->dt_keyboard)) ? lv_obj_get_height(ctx->dt_keyboard) : 0;
+    if (kb_h <= 0) {
+        kb_h = lv_obj_get_height(ctx->dt_dialog) / 3;
+    }
+    if (kb_h <= 0) {
+        kb_h = 120; /* fallback */
+    }
+
+    int16_t date_row_lift = -(kb_h / 3);
+    int16_t time_row_lift = -(kb_h / 2) - 20;
+    if (date_row_lift == 0) {
+        date_row_lift = -30;
+    }
+    if (time_row_lift == 0) {
+        time_row_lift = -70;
+    }
+
+    int16_t offset = 0;
+    if (ta) {
+        if (ta == ctx->dt_month_ta || ta == ctx->dt_day_ta || ta == ctx->dt_year_ta) {
+            offset = date_row_lift;
+        } else {
+            offset = time_row_lift;
+        }
+    }
+
+    lv_obj_align(ctx->dt_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
 static void settings_hide_ss_keyboard(settings_ctx_t *ctx)
@@ -1964,6 +2015,42 @@ static void settings_hide_ss_keyboard(settings_ctx_t *ctx)
     }
     lv_keyboard_set_textarea(ctx->ss_keyboard, NULL);
     lv_obj_add_flag(ctx->ss_keyboard, LV_OBJ_FLAG_HIDDEN);
+    settings_realign_screensaver_dialog(ctx, NULL);
+}
+
+static void settings_realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
+{
+    if (!ctx || !ctx->screensaver_dialog || !lv_obj_is_valid(ctx->screensaver_dialog)) {
+        return;
+    }
+
+    int16_t kb_h = (ctx->ss_keyboard && lv_obj_is_valid(ctx->ss_keyboard)) ? lv_obj_get_height(ctx->ss_keyboard) : 0;
+    if (kb_h <= 0 && ctx->screensaver_dialog) {
+        kb_h = lv_obj_get_height(ctx->screensaver_dialog) / 3;
+    }
+    if (kb_h <= 0) {
+        kb_h = 120; /* reasonable fallback */
+    }
+
+    int16_t dim_row_lift = -(kb_h / 2);
+    int16_t off_row_lift = -(kb_h * 2 / 3) - 25;
+    if (dim_row_lift == 0) {
+        dim_row_lift = -40;
+    }
+    if (off_row_lift == 0) {
+        off_row_lift = -95;
+    }
+
+    int16_t offset = 0;
+    if (ta) {
+        if (ta == ctx->ss_dim_after_ta || ta == ctx->ss_dim_pct_ta) {
+            offset = dim_row_lift;
+        } else {
+            offset = off_row_lift;
+        }
+    }
+
+    lv_obj_align(ctx->screensaver_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
 static void settings_on_dt_keyboard_event(lv_event_t *e)
@@ -2007,7 +2094,13 @@ static void settings_on_ss_keyboard_event(lv_event_t *e)
 static void settings_on_ss_textarea_focus(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
+
     if (!ctx || !ctx->ss_keyboard) {
+        return;
+    }
+
+    if (code != LV_EVENT_FOCUSED && code != LV_EVENT_CLICKED) {
         return;
     }
 
@@ -2017,6 +2110,7 @@ static void settings_on_ss_textarea_focus(lv_event_t *e)
     }
     lv_keyboard_set_textarea(ctx->ss_keyboard, ta);
     lv_obj_clear_flag(ctx->ss_keyboard, LV_OBJ_FLAG_HIDDEN);
+    settings_realign_screensaver_dialog(ctx, ta);
     lv_obj_scroll_to_view(ta, LV_ANIM_ON);
 }
 
