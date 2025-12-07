@@ -631,7 +631,7 @@ static bool ui_yes_no_dialog(void)
         lv_arc_set_rotation(loading_arc, 270);
         lv_arc_set_value(loading_arc, 100);
         lv_obj_remove_style(loading_arc, NULL, LV_PART_KNOB);
-        lv_obj_set_style_arc_color(loading_arc, UI_COLOR_ACCENT_BLUE_DARK, LV_PART_INDICATOR);
+        lv_obj_set_style_arc_color(loading_arc, UI_COLOR_ACCENT_DARK, LV_PART_INDICATOR);
         lv_obj_set_style_arc_color(loading_arc, UI_COLOR_BORDER_DARK, LV_PART_MAIN);
 
         countdown_label = lv_label_create(loading_arc);

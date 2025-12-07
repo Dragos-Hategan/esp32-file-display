@@ -1385,10 +1385,10 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_style_bg_color(list_slider, UI_COLOR_BORDER_DARK, 0);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_60, 0);
     lv_obj_set_style_radius(list_slider, 6, 0);
-    lv_obj_set_style_bg_color(list_slider, UI_COLOR_ACCENT_BLUE_DARK, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(list_slider, UI_COLOR_ACCENT_DARK, LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_COVER, LV_PART_INDICATOR);
     lv_obj_set_style_radius(list_slider, 6, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(list_slider, UI_COLOR_ACCENT_BLUE_DARK, LV_PART_KNOB);
+    lv_obj_set_style_bg_color(list_slider, UI_COLOR_ACCENT_DARK, LV_PART_KNOB);
     lv_obj_set_style_bg_opa(list_slider, LV_OPA_COVER, LV_PART_KNOB);
     lv_obj_set_style_border_color(list_slider, UI_COLOR_BUTTON_BORDER_DARK, LV_PART_KNOB);
     lv_obj_set_style_border_width(list_slider, 1, LV_PART_KNOB);
