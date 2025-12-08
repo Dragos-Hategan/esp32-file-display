@@ -24,17 +24,20 @@
 #include "touch_xpt2046.h"
 #include "styles.h"
 
-#define SETTINGS_NVS_NS                 "settings"
-#define SETTINGS_NVS_ROT_KEY            "rotation_step"
-#define SETTINGS_NVS_BRIGHTNESS_KEY     "brightness_pct"
-#define SETTINGS_NVS_TIME_KEY           "time_epoch"
-#define SETTINGS_NVS_DIM_EN_KEY         "dim_en"
-#define SETTINGS_NVS_DIM_TIME_KEY       "dim_time"
-#define SETTINGS_NVS_DIM_LEVEL_KEY      "dim_level"
-#define SETTINGS_NVS_OFF_EN_KEY         "off_en"
-#define SETTINGS_NVS_OFF_TIME_KEY       "off_time"
-#define SETTINGS_NVS_CALIB_PROMPT_KEY   "calib_prompt"
-#define SETTINGS_NVS_THEME_KEY          "theme"
+#define SETTINGS_NVS_NS                     "settings"
+#define SETTINGS_NVS_ROT_KEY                "rotation_step"
+#define SETTINGS_NVS_BRIGHTNESS_KEY         "brightness_pct"
+#define SETTINGS_NVS_MANUAL_RESTART_KEY     "manual_restart"
+#define SETTINGS_NVS_SNTP_RESULT_KEY        "sntp_result"
+#define SETTINGS_NVS_TIME_KEY               "time_epoch"
+#define SETTINGS_NVS_VALID_TIME_FLAG_KEY    "is_time_valid"
+#define SETTINGS_NVS_DIM_EN_KEY             "dim_en"
+#define SETTINGS_NVS_DIM_TIME_KEY           "dim_time"
+#define SETTINGS_NVS_DIM_LEVEL_KEY          "dim_level"
+#define SETTINGS_NVS_OFF_EN_KEY             "off_en"
+#define SETTINGS_NVS_OFF_TIME_KEY           "off_time"
+#define SETTINGS_NVS_CALIB_PROMPT_KEY       "calib_prompt"
+#define SETTINGS_NVS_THEME_KEY              "theme"
 
 #define SETTINGS_ROTATION_STEPS          4
 #define SETTINGS_MINIMUM_BRIGHTNESS      1   /**< Lowest brightness percentage to avoid black screen */
@@ -69,6 +72,7 @@ typedef struct{
     int dt_year;
     int dt_hour;
     int dt_minute;
+    int dt_second;
     bool time_valid;                    /**< True if a valid time was set/restored */
     bool screen_dim;
     int dim_time;
@@ -78,6 +82,8 @@ typedef struct{
     bool calibration_prompt_enabled;    /**< True to ask for calibration at startup */
     bool running_calibration;
     bool dark_theme;
+    bool sntp_success;
+    bool manual_restart;
 }settings_t;
 
 typedef struct{
@@ -465,6 +471,45 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx);
 static void settings_set_date_time(lv_event_t *e);
 
 /**
+ * @brief Build the splash screen shown at startup.
+ */
+static void build_splash_screen(void);
+
+/**
+ * @brief Build the connection result screen after Wi-Fi/SNTP attempt.
+ *
+ * @param result ESP_OK when the time set succesfully; other codes indicate failure.
+ */
+static void build_connection_result_message(esp_err_t result);
+
+/**
+ * @brief Build the screen shown while connecting to Wi-Fi/SNTP.
+ */
+static void build_connecting_screen(void);
+
+/**
+ * @brief Display the splash screen with backlight fade timing.
+ */
+static void show_splash_screen(void);
+
+/**
+ * @brief Display the "connecting" message.
+ */
+static void show_connecting_message(void);
+
+/**
+ * @brief Display the connection result message.
+ *
+ * @param result ESP_OK when Wi-Fi/SNTP succeeded; other codes for failure.
+ */
+static void show_connection_result_message(esp_err_t result);
+
+/**
+ * @brief Capture current system time into settings and persist to NVS.
+ */
+static void save_time_data();
+
+/**
  * @brief Apply handler for the date&time dialog.
  *
  * Parses and validates all fields, writes them into ctx->settings, and closes the dialog.
@@ -721,6 +766,42 @@ static void settings_persist_time_to_nvs(time_t epoch);
 static void settings_clear_time_in_nvs(void);
 
 /**
+ * @brief Remove the stored "time valid" flag from NVS.
+ */
+static void settings_clear_valid_time_flag_in_nvs(void);
+
+/**
+ * @brief Persist the "time valid" flag to NVS.
+ *
+ * @param is_valid True if system time is considered valid; false otherwise.
+ */
+static void settings_persist_valid_time_flag_to_nvs(bool is_valid);
+
+/**
+ * @brief Persist the last SNTP synchronization result to NVS.
+ *
+ * @param is_successful True if SNTP succeeded; false otherwise.
+ */
+static void settings_persist_sntp_result(bool is_successful);
+
+/**
+ * @brief Load the last SNTP synchronization result from NVS.
+ */
+static void load_sntp_result_from_nvs(void);
+
+/**
+ * @brief Persist the manual restart flag to NVS.
+ *
+ * @param manual_restart True if the last restart was user-initiated.
+ */
+static void settings_persist_manual_restart(bool manual_restart);
+
+/**
+ * @brief Load the manual restart flag from NVS.
+ */
+static void load_manual_restart_from_nvs(void);
+
+/**
  * @brief Persist the theme preference to NVS.
  */
 static void persist_theme_to_nvs(void);
@@ -734,99 +815,29 @@ static void load_theme_from_nvs(void);
 static void (*s_time_set_cb)(void) = NULL;
 static void (*s_time_reset_cb)(void) = NULL;
 
-static void build_splash_screen(void)
+static void get_sntp_time()
 {
-    lv_obj_t *scr = lv_screen_active();
-    lv_obj_remove_style_all(scr);
-    lv_obj_clean(scr);
-    styles_set_screen(scr);
-    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-
-    lv_obj_t *label = lv_label_create(scr);
-    lv_label_set_text(label, "File Manager");
-    lv_obj_center(label);
-
-    lv_screen_load(scr);
-}
-
-static void build_connection_result_message(esp_err_t result)
-{
-    lv_obj_t *scr = lv_screen_active();
-    lv_obj_remove_style_all(scr);
-    lv_obj_clean(scr);
-    styles_set_screen(scr);
-    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-
-    lv_obj_t *label = lv_label_create(scr);
-    if (result == ESP_OK){
-        lv_label_set_text(label, "Automatic time set succeeded!");
-    }else{
-        lv_label_set_text(label, "Automatic time set failed.");
+    show_connecting_message();
+    bsp_display_stop();
+    esp_err_t err = wifi_init_sta();
+    if (err == ESP_OK){
+        err = init_sntp();    
     }
-    lv_obj_center(label);
-
-    lv_screen_load(scr);
+    if (err == ESP_OK){
+        ESP_LOGW("-DebuG-", "Success on sntp, persisting data");
+        settings_persist_sntp_result(true);
+        save_time_data();
+    }else{
+        ESP_LOGW("-DebuG-", "Failure on sntp");
+        settings_persist_sntp_result(false);
+    }
+    settings_persist_manual_restart(false);
+    esp_restart();
 }
-
-static void build_connecting_screen(void)
-{
-    lv_obj_t *scr = lv_screen_active();
-    lv_obj_clean(scr);
-
-    lv_obj_t *label = lv_label_create(scr);
-    lv_label_set_text(label, "Connecting to Wi-Fi and SNTP server");
-    lv_obj_center(label);
-}
-
-static void show_splash_screen(void) {
-
-    bsp_display_lock(0);
-    build_splash_screen();
-    bsp_display_unlock();
-    
-    // Small delay before turning on the screen to avoid wipe effect
-    vTaskDelay(pdMS_TO_TICKS(150));
-    bsp_display_backlight_on();
-    vTaskDelay(pdMS_TO_TICKS(1350));
-}
-
-static void show_connecting_message(void) {
-
-    bsp_display_lock(0);
-    build_connecting_screen();
-    bsp_display_unlock();
-}
-
-static void show_connection_result_message(esp_err_t result) {
-
-    bsp_display_lock(0);
-    build_connection_result_message(result);
-    bsp_display_unlock();
-}
-
-static void deinit_video()
-{
-
-}
-
-static void save_time_data()
-{
-    
-}
-
-static void deinit_wifi()
-{
-
-}
-
-static void reinit_video()
-{
-
-}
-
 
 void starting_routine(void)
 {
+    esp_reset_reason_t reason = esp_reset_reason();
     /* ----- NSV ----- */
     ESP_LOGI(TAG, "Initializing NVS");
     ESP_ERROR_CHECK(init_nvs());
@@ -834,7 +845,12 @@ void starting_routine(void)
     /* ----- Display and LVGL ----- */
     ESP_LOGI(TAG, "Starting bsp for ILI9341 display");
     ESP_ERROR_CHECK(bsp_display_start_result());
-    bsp_display_backlight_off();
+    if (reason != ESP_RST_SW) {
+        ESP_LOGW("-DebuG-", "Hard Reset");
+        bsp_display_backlight_off();
+    }else{
+        ESP_LOGW("-DebuG-", "Soft Reset");
+    }
     styles_init_colors();
 
     /* ----- Configurations ----- */
@@ -842,23 +858,40 @@ void starting_routine(void)
     init_settings();
     apply_default_font_theme(true); // Mostly used to apply the font
 
-    /* ----- Splash Screen ----- */
-    ESP_LOGI(TAG, "Showing splash & connection screens");
-    show_splash_screen();
-    
-    /* ----- Initialize Wi-Fi & Get Time ----- */
-    show_connecting_message();
-    deinit_video(); // needed to save memory for wifi
-    esp_err_t err = wifi_init_sta();
-    if (err == ESP_OK){
-        err = init_sntp();    
+    if (reason == ESP_RST_SW){
+        load_manual_restart_from_nvs();
+        if (!s_settings_ctx.settings.manual_restart){
+            ESP_LOGW("-DebuG-", "Was NOT manually restarted");
+            load_sntp_result_from_nvs();            
+            if (s_settings_ctx.settings.sntp_success){
+                ESP_LOGW("-DebuG-", "SUCCESS on previous SNTP");
+                show_connection_result_message(ESP_OK);
+            }else{
+                ESP_LOGW("-DebuG-", "FAILURE on previous SNTP");
+                show_connection_result_message(ESP_FAIL);
+            }
+            vTaskDelay(pdMS_TO_TICKS(150));
+            bsp_display_backlight_on();            
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }else{
+            ESP_LOGW("-DebuG-", "WAS manually restarted, time valid: %d", s_settings_ctx.settings.time_valid ? 1 : 0);
+            if(!s_settings_ctx.settings.time_valid){
+                bsp_display_backlight_on(); 
+                get_sntp_time();
+            }else{
+                vTaskDelay(pdMS_TO_TICKS(150));
+                bsp_display_backlight_on(); 
+            }
+        }
+    }else{
+        /* ----- Splash Screen ----- */
+        ESP_LOGI(TAG, "Showing splash & connection screens");
+        show_splash_screen();
+        ESP_LOGW("-DebuG-", "HARD RESET, INITAILIZING SNTP");
+        /* ----- Initialize Wi-Fi & Get Time ----- */
+        get_sntp_time();
     }
-    save_time_data();
-    deinit_wifi(); // needed to save memory for video
-    reinit_video();
-    show_connection_result_message(err);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
+    
     /* ----- XPT2046 Driver Init ----- */
     ESP_LOGI(TAG, "Initializing XPT2046 touch driver");
     ESP_ERROR_CHECK(init_touch()); 
@@ -1732,18 +1765,21 @@ static void init_default_configs(void)
     s_settings_ctx.settings.dark_theme = SETTINGS_DEFAULT_DARK_THEME;
     s_settings_ctx.settings.time_valid = SETTINGS_DEFAULT_TIME_VALID;
     s_settings_ctx.settings.running_calibration = false;
+    s_settings_ctx.settings.manual_restart = false;
+    s_settings_ctx.settings.sntp_success = false;
     s_settings_ctx.changing_brightness = false; 
 }
 
 static void load_last_saved_configs()
 {
+    load_calibration_prompt_from_nvs();
+    load_manual_restart_from_nvs();
     load_brightness_from_nvs();
     load_rotation_from_nvs();
+    apply_rotation_to_display(true);
     load_screensaver_from_nvs();
-    load_calibration_prompt_from_nvs();
     load_theme_from_nvs();
     load_time_from_nvs();
-    apply_rotation_to_display(true);
 }
 
 static void settings_rotate_screen(lv_event_t *e)
@@ -2011,6 +2047,7 @@ static void settings_apply_date_time(lv_event_t *e)
     ctx->settings.dt_hour = hour;
     ctx->settings.dt_minute = minute;
     ctx->settings.time_valid = true;
+    settings_persist_valid_time_flag_to_nvs(true);
     settings_notify_time_set();
 
     /* Set system time from the provided fields (no persistence). */
@@ -2045,6 +2082,105 @@ static void settings_apply_date_time(lv_event_t *e)
     ctx->dt_keyboard = NULL;
     ctx->dt_dialog = NULL;
     ctx->dt_row_time = NULL;
+}
+
+static void build_splash_screen(void)
+{
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_remove_style_all(scr);
+    lv_obj_clean(scr);
+    styles_set_screen(scr);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+
+    lv_obj_t *label = lv_label_create(scr);
+    lv_label_set_text(label, "File Manager");
+    lv_obj_center(label);
+
+    lv_screen_load(scr);
+}
+
+static void build_connection_result_message(esp_err_t result)
+{
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_remove_style_all(scr);
+    lv_obj_clean(scr);
+    styles_set_screen(scr);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+
+    lv_obj_t *label = lv_label_create(scr);
+    if (result == ESP_OK){
+        lv_label_set_text(label, "Time set succesfully!");
+    }else{
+        lv_label_set_text(label, "Time setting failed.");
+    }
+    lv_obj_center(label);
+
+    lv_screen_load(scr);
+}
+
+static void build_connecting_screen(void)
+{
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_clean(scr);
+
+    lv_obj_t *label = lv_label_create(scr);
+    lv_label_set_text(label, "Connecting to Wi-Fi and SNTP server");
+    lv_obj_center(label);
+
+    lv_screen_load(scr);
+}
+
+static void show_splash_screen(void)
+{
+
+    bsp_display_lock(0);
+    build_splash_screen();
+    bsp_display_unlock();
+    
+    // Small delay before turning on the screen to avoid wipe effect
+    vTaskDelay(pdMS_TO_TICKS(150));
+    bsp_display_backlight_on();
+    vTaskDelay(pdMS_TO_TICKS(1350));
+}
+
+static void show_connecting_message(void)
+{
+
+    bsp_display_lock(0);
+    build_connecting_screen();
+    bsp_display_unlock();
+}
+
+static void show_connection_result_message(esp_err_t result)
+{
+
+    bsp_display_lock(0);
+    build_connection_result_message(result);
+    bsp_display_unlock();
+}
+
+static void save_time_data()
+{
+    time_t now = 0;
+    time(&now);
+
+    struct tm tm_info = {0};
+    localtime_r(&now, &tm_info);
+
+    if (now <= 0 || tm_info.tm_year < (2016 - 1900)) {
+        ESP_LOGW(TAG, "SNTP time not valid; keeping previous time settings");
+        return;
+    }
+
+    s_settings_ctx.settings.dt_month  = tm_info.tm_mon + 1;
+    s_settings_ctx.settings.dt_day    = tm_info.tm_mday;
+    s_settings_ctx.settings.dt_year   = tm_info.tm_year % 100; /* YY */
+    s_settings_ctx.settings.dt_hour   = tm_info.tm_hour;
+    s_settings_ctx.settings.dt_minute = tm_info.tm_min;
+    s_settings_ctx.settings.dt_second = tm_info.tm_sec;
+    s_settings_ctx.settings.time_valid = true;
+
+    settings_persist_time_to_nvs(now);
 }
 
 static bool settings_parse_int_range(const char *txt, int min, int max, int *out_val)
@@ -2719,12 +2855,91 @@ static void settings_clear_time_in_nvs(void)
     nvs_close(h);
 }
 
+static void settings_persist_valid_time_flag_to_nvs(bool is_valid)
+{
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
+        return;
+    }
+    nvs_set_i8(h, SETTINGS_NVS_VALID_TIME_FLAG_KEY, is_valid);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void settings_clear_valid_time_flag_in_nvs(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
+        return;
+    }
+    nvs_erase_key(h, SETTINGS_NVS_VALID_TIME_FLAG_KEY);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void settings_persist_sntp_result(bool is_successful)
+{
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
+        return;
+    }
+    nvs_set_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, is_successful);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void load_sntp_result_from_nvs(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to open NVS for previous sntp result: (%s)", esp_err_to_name(err));
+        return;
+    }
+
+    int8_t raw = -1;
+    if (nvs_get_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, &raw) == ESP_OK) {
+        s_settings_ctx.settings.sntp_success = (raw != 0);
+    }
+
+    nvs_close(h);
+}
+
+static void settings_persist_manual_restart(bool manual_restart)
+{
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
+        return;
+    }
+    nvs_set_i8(h, SETTINGS_NVS_MANUAL_RESTART_KEY, manual_restart);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void load_manual_restart_from_nvs(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to open NVS for manual restart flag: (%s)", esp_err_to_name(err));
+        return;
+    }
+
+    int8_t raw = -1;
+    if (nvs_get_i8(h, SETTINGS_NVS_MANUAL_RESTART_KEY, &raw) == ESP_OK) {
+        s_settings_ctx.settings.manual_restart = (raw != 0);
+    }
+
+    nvs_close(h);
+}
+
 static void load_time_from_nvs(void)
 {
     esp_reset_reason_t reason = esp_reset_reason();
     if (reason != ESP_RST_SW) {
         settings_clear_time_in_nvs();
         s_settings_ctx.settings.time_valid = false;
+        settings_clear_valid_time_flag_in_nvs();
         settings_notify_time_reset();
         return;
     }
@@ -2746,6 +2961,7 @@ static void load_time_from_nvs(void)
     };
     settimeofday(&tv, NULL);
     s_settings_ctx.settings.time_valid = true;
+    settings_persist_valid_time_flag_to_nvs(true);
     settings_notify_time_set();
 }
 
@@ -2828,6 +3044,7 @@ static void settings_restart_confirm(lv_event_t *e)
     if (settings_is_time_valid()){
         settings_shutdown_save_time();
     }
+    settings_persist_manual_restart(true);
     esp_restart();
 }
 
@@ -2888,8 +3105,9 @@ static void settings_reset_confirm(lv_event_t *e)
     persist_rotation_to_nvs();
     persist_screensaver_to_nvs();
     persist_calibration_prompt_to_nvs();
+    settings_persist_manual_restart(false);
     init_settings();
-
+    
     nvs_handle_t cal_nvs;
     if (nvs_open(TOUCH_CAL_NVS_NS, NVS_READWRITE, &cal_nvs) == ESP_OK) {
         nvs_erase_key(cal_nvs, TOUCH_CAL_NVS_KEY);
@@ -2899,6 +3117,7 @@ static void settings_reset_confirm(lv_event_t *e)
 
     settings_clear_time_in_nvs();
     s_settings_ctx.settings.time_valid = false;
+    settings_persist_valid_time_flag_to_nvs(false);
     settings_notify_time_reset();
 
     lv_msgbox_close(ctx->reset_confirm_mbox);
