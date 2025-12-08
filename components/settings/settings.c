@@ -361,6 +361,25 @@ static esp_err_t bsp_display_start_result(void);
 static void apply_default_font_theme(bool lock_display);
 
 /**
+ * @brief Show connection result message after a software restart.
+ *
+ * Uses the persisted SNTP result to decide whether to display success/failure.
+ */
+static void sntp_restart_flow(void);
+
+/**
+ * @brief Show the SNTP connection message when a manual restart is requested.
+ */
+static void manual_restart_flow(void);
+
+/**
+ * @brief Handle SNTP startup flow depending on reset reason.
+ *
+ * @param reason Current reset reason (hard vs software/manual restart).
+ */
+static void sntp_startup(esp_reset_reason_t reason);
+
+/**
  * @brief Apply the current rotation step to the active LVGL display.
  *
  * Maps @ref s_settings_ctx.settings.screen_rotation_step to an LVGL display rotation and sets it,
@@ -507,7 +526,7 @@ static void show_connection_result_message(esp_err_t result);
 /**
  * @brief Capture current system time into settings and persist to NVS.
  */
-static void save_time_data();
+static void save_time_data(void);
 
 /**
  * @brief Apply handler for the date&time dialog.
@@ -818,7 +837,13 @@ static void (*s_time_reset_cb)(void) = NULL;
 static void get_sntp_time()
 {
     show_connecting_message();
+    lv_timer_handler();
+    if (!s_settings_ctx.settings.time_valid && s_settings_ctx.settings.manual_restart){
+        vTaskDelay(150);
+        bsp_display_backlight_on(); 
+    }
     bsp_display_stop();
+
     esp_err_t err = wifi_init_sta();
     if (err == ESP_OK){
         err = init_sntp();    
@@ -858,40 +883,9 @@ void starting_routine(void)
     init_settings();
     apply_default_font_theme(true); // Mostly used to apply the font
 
-    if (reason == ESP_RST_SW){
-        load_manual_restart_from_nvs();
-        if (!s_settings_ctx.settings.manual_restart){
-            ESP_LOGW("-DebuG-", "Was NOT manually restarted");
-            load_sntp_result_from_nvs();            
-            if (s_settings_ctx.settings.sntp_success){
-                ESP_LOGW("-DebuG-", "SUCCESS on previous SNTP");
-                show_connection_result_message(ESP_OK);
-            }else{
-                ESP_LOGW("-DebuG-", "FAILURE on previous SNTP");
-                show_connection_result_message(ESP_FAIL);
-            }
-            vTaskDelay(pdMS_TO_TICKS(150));
-            bsp_display_backlight_on();            
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }else{
-            ESP_LOGW("-DebuG-", "WAS manually restarted, time valid: %d", s_settings_ctx.settings.time_valid ? 1 : 0);
-            if(!s_settings_ctx.settings.time_valid){
-                bsp_display_backlight_on(); 
-                get_sntp_time();
-            }else{
-                vTaskDelay(pdMS_TO_TICKS(150));
-                bsp_display_backlight_on(); 
-            }
-        }
-    }else{
-        /* ----- Splash Screen ----- */
-        ESP_LOGI(TAG, "Showing splash & connection screens");
-        show_splash_screen();
-        ESP_LOGW("-DebuG-", "HARD RESET, INITAILIZING SNTP");
-        /* ----- Initialize Wi-Fi & Get Time ----- */
-        get_sntp_time();
-    }
-    
+    /* ----- Wi-Fi & SNTP ----- */
+    sntp_startup(reason);
+
     /* ----- XPT2046 Driver Init ----- */
     ESP_LOGI(TAG, "Initializing XPT2046 touch driver");
     ESP_ERROR_CHECK(init_touch()); 
@@ -1451,6 +1445,51 @@ static void apply_default_font_theme(bool lock_display)
     if (lock_display){
         bsp_display_unlock();
     }
+}
+
+static void sntp_restart_flow(void)
+{
+    ESP_LOGW("-DebuG-", "Was NOT manually restarted");
+    load_sntp_result_from_nvs();            
+    if (s_settings_ctx.settings.sntp_success){
+        ESP_LOGW("-DebuG-", "SUCCESS on previous SNTP");
+        show_connection_result_message(ESP_OK);
+    }else{
+        ESP_LOGW("-DebuG-", "FAILURE on previous SNTP");
+        show_connection_result_message(ESP_FAIL);
+    }
+    vTaskDelay(pdMS_TO_TICKS(150));
+    bsp_display_backlight_on();            
+    vTaskDelay(pdMS_TO_TICKS(1000));
+}
+
+static void manual_restart_flow(void)
+{
+    ESP_LOGW("-DebuG-", "WAS manually restarted, time valid: %d", s_settings_ctx.settings.time_valid ? 1 : 0);
+    if(!s_settings_ctx.settings.time_valid){
+        get_sntp_time();
+    }else{
+        vTaskDelay(pdMS_TO_TICKS(150));
+        bsp_display_backlight_on(); 
+    }
+}
+
+static void sntp_startup(esp_reset_reason_t reason)
+{
+    if (reason == ESP_RST_SW){
+        load_manual_restart_from_nvs();
+        if (!s_settings_ctx.settings.manual_restart){
+            sntp_restart_flow();
+        }else{
+            manual_restart_flow();
+        }
+    }else{
+        ESP_LOGI(TAG, "Showing splash & connection screens");
+        show_splash_screen();
+        ESP_LOGW("-DebuG-", "HARD RESET, INITAILIZING SNTP");
+        get_sntp_time();
+    }
+    
 }
 
 static void apply_rotation_to_display(bool lock_display)
@@ -2159,7 +2198,7 @@ static void show_connection_result_message(esp_err_t result)
     bsp_display_unlock();
 }
 
-static void save_time_data()
+static void save_time_data(void)
 {
     time_t now = 0;
     time(&now);
@@ -3685,9 +3724,7 @@ static void settings_apply_screensaver(lv_event_t *e)
 
     /* Persist */
     persist_screensaver_to_nvs();
-
     settings_start_screensaver_timers();
-
     settings_close_screensaver(e);
 }
 
