@@ -854,11 +854,9 @@ static void get_sntp_time()
         err = init_sntp();    
     }
     if (err == ESP_OK){
-        ESP_LOGW("-DebuG-", "Success on sntp, persisting data");
         settings_persist_sntp_result(true);
         save_time_data();
     }else{
-        ESP_LOGW("-DebuG-", "Failure on sntp");
         settings_persist_sntp_result(false);
     }
     settings_persist_manual_restart(false);
@@ -876,10 +874,7 @@ void starting_routine(void)
     ESP_LOGI(TAG, "Starting bsp for ILI9341 display");
     ESP_ERROR_CHECK(bsp_display_start_result());
     if (reason != ESP_RST_SW) {
-        ESP_LOGW("-DebuG-", "Hard Reset");
         bsp_display_backlight_off();
-    }else{
-        ESP_LOGW("-DebuG-", "Soft Reset");
     }
     styles_init_colors();
 
@@ -1454,13 +1449,10 @@ static void apply_default_font_theme(bool lock_display)
 
 static void sntp_restart_flow(void)
 {
-    ESP_LOGW("-DebuG-", "Was NOT manually restarted");
     load_sntp_result_from_nvs();            
     if (s_settings_ctx.settings.sntp_success){
-        ESP_LOGW("-DebuG-", "SUCCESS on previous SNTP");
         show_connection_result_message(ESP_OK);
     }else{
-        ESP_LOGW("-DebuG-", "FAILURE on previous SNTP");
         show_connection_result_message(ESP_FAIL);
     }
     vTaskDelay(pdMS_TO_TICKS(150));
@@ -1470,7 +1462,6 @@ static void sntp_restart_flow(void)
 
 static void manual_restart_flow(void)
 {
-    ESP_LOGW("-DebuG-", "WAS manually restarted, time valid: %d", s_settings_ctx.settings.time_valid ? 1 : 0);
     if(!s_settings_ctx.settings.time_valid){
         get_sntp_time();
     }else{
@@ -1491,7 +1482,6 @@ static void sntp_startup(esp_reset_reason_t reason)
     }else{
         ESP_LOGI(TAG, "Showing splash & connection screens");
         show_splash_screen();
-        ESP_LOGW("-DebuG-", "HARD RESET, INITAILIZING SNTP");
         get_sntp_time();
     }
     
@@ -2608,7 +2598,6 @@ static void settings_update_off_controls_enabled(settings_ctx_t *ctx, bool enabl
 
 static void screensaver_dim_start(int seconds, int level_pct)
 {
-    ESP_LOGD(TAG, "Start dim timer: %ds -> %d%%", seconds, level_pct);
     if (s_ss_dim_timer == NULL) {
         const esp_timer_create_args_t args = {
             .callback = settings_dim_timer_cb,
