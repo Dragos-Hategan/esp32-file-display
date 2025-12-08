@@ -55,6 +55,8 @@ static const char *TAG = "BSP-Gen";
 #if CONFIG_BSP_DISPLAY_ENABLED
 static lv_display_t *disp;
 static lv_indev_t *disp_indev = NULL;
+static esp_lcd_panel_io_handle_t s_panel_io_handle = NULL;
+
 #endif
 
 #if CONFIG_BSP_TOUCH_ENABLED
@@ -571,6 +573,7 @@ static lv_display_t *bsp_display_lcd_init(void)
         .max_transfer_sz = (BSP_LCD_H_RES * CONFIG_BSP_LCD_DRAW_BUF_HEIGHT) * sizeof(uint16_t),
     };
     BSP_ERROR_CHECK_RETURN_NULL(bsp_display_new(&bsp_disp_cfg, &s_panel_handle, &io_handle));
+    s_panel_io_handle = io_handle;
 
     esp_lcd_panel_disp_on_off(s_panel_handle, true);
 
@@ -717,6 +720,26 @@ lv_display_t *bsp_display_start_with_config(const bsp_display_cfg_t *cfg)
 lv_indev_t *bsp_display_get_input_dev(void)
 {
     return disp_indev;
+}
+
+esp_err_t bsp_display_stop(void)
+{
+#if CONFIG_BSP_DISPLAY_ENABLED
+    if (disp) {
+        lvgl_port_remove_disp(disp);
+        disp = NULL;
+    }
+    if (s_panel_handle) {
+        esp_lcd_panel_del(s_panel_handle);
+        s_panel_handle = NULL;
+    }
+    if (s_panel_io_handle) {
+        esp_lcd_panel_io_del(s_panel_io_handle);
+        s_panel_io_handle = NULL;
+    }
+    spi_bus_free(BSP_LCD_SPI_NUM);
+#endif
+    return ESP_OK;
 }
 
 void bsp_display_rotate(lv_display_t *disp, lv_disp_rotation_t rotation)
