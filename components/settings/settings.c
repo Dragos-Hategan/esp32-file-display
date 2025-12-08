@@ -380,6 +380,11 @@ static void manual_restart_flow(void);
 static void sntp_startup(esp_reset_reason_t reason);
 
 /**
+ * @brief Apply the desired timezone to the C library clock.
+ */
+static void apply_timezone(void);
+
+/**
  * @brief Apply the current rotation step to the active LVGL display.
  *
  * Maps @ref s_settings_ctx.settings.screen_rotation_step to an LVGL display rotation and sets it,
@@ -1786,6 +1791,7 @@ static void load_theme_from_nvs(void)
 static void init_settings(void)
 {
     init_default_configs();
+    apply_timezone();
     load_last_saved_configs();
 }
 
@@ -2220,6 +2226,12 @@ static void save_time_data(void)
     s_settings_ctx.settings.time_valid = true;
 
     settings_persist_time_to_nvs(now);
+}
+
+static void apply_timezone(void)
+{
+    setenv("TZ", SNTP_DEFAULT_TIMEZONE, 1);
+    tzset();
 }
 
 static bool settings_parse_int_range(const char *txt, int min, int max, int *out_val)

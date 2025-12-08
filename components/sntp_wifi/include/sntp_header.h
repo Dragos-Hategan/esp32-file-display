@@ -1,6 +1,9 @@
 #ifndef SNTP_H
 #define SNTP_H
 
+#define TZ_EUROPE_BUCHAREST "EET-2EEST,M3.5.0/3,M10.5.0/4"
+#define SNTP_DEFAULT_TIMEZONE TZ_EUROPE_BUCHAREST
+
 /**
  * @brief Block until time is synchronized or a timeout occurs.
  *

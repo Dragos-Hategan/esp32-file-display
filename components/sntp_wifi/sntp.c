@@ -11,10 +11,6 @@
 static const char *TAG_SNTP = "SNTP";
 static const char *TAG_GETT = "GET_TIME";
 
-static const char *EUROPE_ROMANIA_BUCHAREST = "EET-2EEST,M3.5.0/3,M10.5.0/4";
-
-#define SNTP_DEFAULT_TIMEZONE EUROPE_ROMANIA_BUCHAREST
-
 /**
  * @brief Start the SNTP client with a static NTP server.
  *
