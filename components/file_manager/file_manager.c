@@ -1241,8 +1241,8 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_dropdown_set_text(tools_dd, "Tools");
     lv_obj_set_width(tools_dd, 70);
     lv_obj_set_style_pad_all(tools_dd, 4, 0);
-    lv_obj_set_style_pad_top(tools_dd, 5, 0);
-    lv_obj_set_style_pad_bottom(tools_dd, 5, 0);
+    lv_obj_set_style_pad_top(tools_dd, 6, 0);
+    lv_obj_set_style_pad_bottom(tools_dd, 6, 0);
     lv_obj_set_style_border_width(tools_dd, 1, LV_PART_MAIN);
     lv_obj_set_style_radius(tools_dd, 6, LV_PART_MAIN);
     styles_set_button(tools_dd);
