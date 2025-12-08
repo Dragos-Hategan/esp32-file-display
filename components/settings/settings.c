@@ -984,11 +984,11 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_flex_grow(settings_list, 1);
     lv_obj_set_scroll_dir(settings_list, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(settings_list, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_set_style_pad_top(settings_list, 10, 0);
-    lv_obj_set_style_pad_bottom(settings_list, 10, 0);
-    lv_obj_set_style_pad_left(settings_list, 12, 0);
-    lv_obj_set_style_pad_right(settings_list, 12, 0);
-    lv_obj_set_style_pad_row(settings_list, 6, 0);  
+    lv_obj_set_style_pad_top(settings_list, 4, 0);
+    lv_obj_set_style_pad_bottom(settings_list, 4, 0);
+    lv_obj_set_style_pad_left(settings_list, 8, 0);
+    lv_obj_set_style_pad_right(settings_list, 8, 0);
+    lv_obj_set_style_pad_row(settings_list, 4, 0);  
     styles_set_bg_color(settings_list, 0);
     lv_obj_set_style_bg_opa(settings_list, LV_OPA_TRANSP, 0);
 
@@ -1039,14 +1039,14 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_remove_style_all(row_actions0);
     lv_obj_set_flex_flow(row_actions0, LV_FLEX_FLOW_ROW);
     lv_obj_set_width(row_actions0, LV_PCT(100));
-    lv_obj_set_style_pad_gap(row_actions0, 6, 0);
+    lv_obj_set_style_pad_gap(row_actions0, 2, 0);
     lv_obj_set_style_pad_all(row_actions0, 0, 0);
     lv_obj_set_height(row_actions0, LV_SIZE_CONTENT);    
 
     lv_obj_t *screen_saver_button = lv_button_create(row_actions0);
     lv_obj_set_flex_grow(screen_saver_button, 1);
     lv_obj_set_style_radius(screen_saver_button, 8, 0);
-    lv_obj_set_style_pad_all(screen_saver_button, 10, 0); 
+    lv_obj_set_style_pad_all(screen_saver_button, 6, 0); 
     styles_set_button(screen_saver_button);
     lv_obj_add_event_cb(screen_saver_button, settings_screensaver, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(screen_saver_button, LV_ALIGN_CENTER, 0);
@@ -1057,7 +1057,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_t *set_date_time_button = lv_button_create(row_actions0);
     lv_obj_set_flex_grow(set_date_time_button, 1);
     lv_obj_set_style_radius(set_date_time_button, 8, 0);
-    lv_obj_set_style_pad_all(set_date_time_button, 10, 0);  
+    lv_obj_set_style_pad_all(set_date_time_button, 6, 0);  
     styles_set_button(set_date_time_button);  
     lv_obj_add_event_cb(set_date_time_button, settings_set_date_time, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(set_date_time_button, LV_ALIGN_CENTER, 0);
@@ -1070,14 +1070,14 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_remove_style_all(row_actions1);
     lv_obj_set_flex_flow(row_actions1, LV_FLEX_FLOW_ROW);
     lv_obj_set_width(row_actions1, LV_PCT(100));
-    lv_obj_set_style_pad_gap(row_actions1, 6, 0);
+    lv_obj_set_style_pad_gap(row_actions1, 2, 0);
     lv_obj_set_style_pad_all(row_actions1, 0, 0);
     lv_obj_set_height(row_actions1, LV_SIZE_CONTENT);
 
     lv_obj_t *rotate_button = lv_button_create(row_actions1);
     lv_obj_set_flex_grow(rotate_button, 1);
     lv_obj_set_style_radius(rotate_button, 8, 0);
-    lv_obj_set_style_pad_all(rotate_button, 10, 0);    
+    lv_obj_set_style_pad_all(rotate_button, 6, 0);    
     styles_set_button(rotate_button);
     lv_obj_add_event_cb(rotate_button, settings_rotate_screen, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(rotate_button, LV_ALIGN_CENTER, 0);
@@ -1088,7 +1088,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_t *calibration_button = lv_button_create(row_actions1);
     lv_obj_set_flex_grow(calibration_button, 1);
     lv_obj_set_style_radius(calibration_button, 8, 0);
-    lv_obj_set_style_pad_all(calibration_button, 10, 0); 
+    lv_obj_set_style_pad_all(calibration_button, 6, 0); 
     styles_set_button(calibration_button);
     lv_obj_add_event_cb(calibration_button, settings_run_calibration, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(calibration_button, LV_ALIGN_CENTER, 0);
@@ -1101,14 +1101,14 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_remove_style_all(row_actions2);
     lv_obj_set_flex_flow(row_actions2, LV_FLEX_FLOW_ROW);
     lv_obj_set_width(row_actions2, LV_PCT(100));
-    lv_obj_set_style_pad_gap(row_actions2, 6, 0);
+    lv_obj_set_style_pad_gap(row_actions2, 2, 0);
     lv_obj_set_style_pad_all(row_actions2, 0, 0);
     lv_obj_set_height(row_actions2, LV_SIZE_CONTENT);
 
     lv_obj_t *theme_button = lv_button_create(row_actions2);
     lv_obj_set_flex_grow(theme_button, 1);
     lv_obj_set_style_radius(theme_button, 8, 0);
-    lv_obj_set_style_pad_all(theme_button, 10, 0);  
+    lv_obj_set_style_pad_all(theme_button, 6, 0);  
     styles_set_button(theme_button);  
     lv_obj_add_event_cb(theme_button, settings_toggle_theme, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(theme_button, LV_ALIGN_CENTER, 0);
@@ -1119,7 +1119,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_t *connection_button = lv_button_create(row_actions2);
     lv_obj_set_flex_grow(connection_button, 1);
     lv_obj_set_style_radius(connection_button, 8, 0);
-    lv_obj_set_style_pad_all(connection_button, 10, 0);
+    lv_obj_set_style_pad_all(connection_button, 6, 0);
     styles_set_button(connection_button);    
     lv_obj_add_event_cb(connection_button, settings_reset, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(connection_button, LV_ALIGN_CENTER, 0);
@@ -1132,14 +1132,14 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_remove_style_all(row_actions3);
     lv_obj_set_flex_flow(row_actions3, LV_FLEX_FLOW_ROW);
     lv_obj_set_width(row_actions3, LV_PCT(100));
-    lv_obj_set_style_pad_gap(row_actions3, 6, 0);
+    lv_obj_set_style_pad_gap(row_actions3, 2, 0);
     lv_obj_set_style_pad_all(row_actions3, 0, 0);
     lv_obj_set_height(row_actions3, LV_SIZE_CONTENT);
 
     lv_obj_t *restart_button = lv_button_create(row_actions3);
     lv_obj_set_flex_grow(restart_button, 1);
     lv_obj_set_style_radius(restart_button, 8, 0);
-    lv_obj_set_style_pad_all(restart_button, 10, 0);  
+    lv_obj_set_style_pad_all(restart_button, 6, 0);  
     styles_set_button(restart_button);  
     lv_obj_add_event_cb(restart_button, settings_restart, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(restart_button, LV_ALIGN_CENTER, 0);
@@ -1150,7 +1150,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_t *reset_button = lv_button_create(row_actions3);
     lv_obj_set_flex_grow(reset_button, 1);
     lv_obj_set_style_radius(reset_button, 8, 0);
-    lv_obj_set_style_pad_all(reset_button, 10, 0);
+    lv_obj_set_style_pad_all(reset_button, 6, 0);
     styles_set_button(reset_button);    
     lv_obj_add_event_cb(reset_button, settings_reset, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(reset_button, LV_ALIGN_CENTER, 0);
