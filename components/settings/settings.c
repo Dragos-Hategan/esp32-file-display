@@ -16,6 +16,8 @@
 #include "Domine_16.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
+#include "wifi.h"
+#include "sntp_header.h"
 #include "nvs.h"
 
 #include "calibration_xpt2046.h"
@@ -747,6 +749,35 @@ static void build_splash_screen(void)
     lv_screen_load(scr);
 }
 
+static void build_connection_result_message(esp_err_t result)
+{
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_remove_style_all(scr);
+    lv_obj_clean(scr);
+    styles_set_screen(scr);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+
+    lv_obj_t *label = lv_label_create(scr);
+    if (result == ESP_OK){
+        lv_label_set_text(label, "Automatic time set succeeded!");
+    }else{
+        lv_label_set_text(label, "Automatic time set failed.");
+    }
+    lv_obj_center(label);
+
+    lv_screen_load(scr);
+}
+
+static void build_connecting_screen(void)
+{
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_clean(scr);
+
+    lv_obj_t *label = lv_label_create(scr);
+    lv_label_set_text(label, "Connecting to Wi-Fi and SNTP server");
+    lv_obj_center(label);
+}
+
 static void show_splash_screen(void) {
 
     bsp_display_lock(0);
@@ -757,6 +788,40 @@ static void show_splash_screen(void) {
     vTaskDelay(pdMS_TO_TICKS(150));
     bsp_display_backlight_on();
     vTaskDelay(pdMS_TO_TICKS(1350));
+}
+
+static void show_connecting_message(void) {
+
+    bsp_display_lock(0);
+    build_connecting_screen();
+    bsp_display_unlock();
+}
+
+static void show_connection_result_message(esp_err_t result) {
+
+    bsp_display_lock(0);
+    build_connection_result_message(result);
+    bsp_display_unlock();
+}
+
+static void deinit_video()
+{
+
+}
+
+static void save_time_data()
+{
+    
+}
+
+static void deinit_wifi()
+{
+
+}
+
+static void reinit_video()
+{
+
 }
 
 
@@ -775,7 +840,24 @@ void starting_routine(void)
     /* ----- Configurations ----- */
     ESP_LOGI(TAG, "Loading configurations");
     init_settings();
-    apply_default_font_theme(true);
+    apply_default_font_theme(true); // Mostly used to apply the font
+
+    /* ----- Splash Screen ----- */
+    ESP_LOGI(TAG, "Showing splash & connection screens");
+    show_splash_screen();
+    
+    /* ----- Initialize Wi-Fi & Get Time ----- */
+    show_connecting_message();
+    deinit_video(); // needed to save memory for wifi
+    esp_err_t err = wifi_init_sta();
+    if (err == ESP_OK){
+        err = init_sntp();    
+    }
+    save_time_data();
+    deinit_wifi(); // needed to save memory for video
+    reinit_video();
+    show_connection_result_message(err);
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     /* ----- XPT2046 Driver Init ----- */
     ESP_LOGI(TAG, "Initializing XPT2046 touch driver");
@@ -785,9 +867,6 @@ void starting_routine(void)
     ESP_LOGI(TAG, "Load touch driver calibration data");
     bool calibration_found;
     load_nvs_calibration(&calibration_found);
-
-    ESP_LOGI(TAG, "Showing splash screen");
-    show_splash_screen();
 
     /* ----- XPT2046 Calibration ----- */
     if (s_settings_ctx.settings.calibration_prompt_enabled){ // Default is true

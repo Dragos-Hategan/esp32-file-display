@@ -7,6 +7,7 @@ idf_component_register(
     PRIV_REQUIRES
         esp_bsp_generic
         touch_xpt2046
+        sntp_wifi
         nvs_flash
         esp_timer
         sd_card
