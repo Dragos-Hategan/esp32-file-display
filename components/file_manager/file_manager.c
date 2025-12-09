@@ -182,7 +182,7 @@ static void file_manager_wait_for_reconnection_task(void* arg);
 static void file_manager_build_screen(file_manager_ctx_t *ctx);
 
 /**
- * @brief Click handler for the header "Set Date/Time" button.
+ * @brief Click handler for the header "Set Date&Time" button.
  *
  * Delegates to the shared settings dialog to pick a date&time.
  *
@@ -1258,17 +1258,17 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_flex_grow(header_spacer_left, 1);
     lv_obj_set_height(header_spacer_left, 1);
 
-    /* Date/Time placeholder button (visible by default). */
+    /* Date&Time placeholder button (visible by default). */
     ctx->datetime_btn = lv_button_create(main_header);
     lv_obj_set_style_radius(ctx->datetime_btn, 6, 0);
     lv_obj_set_style_pad_all(ctx->datetime_btn, 6, 0);
     styles_set_button(ctx->datetime_btn);
     lv_obj_t *datetime_btn_lbl = lv_label_create(ctx->datetime_btn);
-    lv_label_set_text(datetime_btn_lbl, "Set Date/Time");
+    lv_label_set_text(datetime_btn_lbl, "Set Date&Time");
     lv_obj_center(datetime_btn_lbl);
     lv_obj_add_event_cb(ctx->datetime_btn, file_manager_on_datetime_click, LV_EVENT_CLICKED, ctx);
 
-    /* Date/Time label (hidden until a time is set). */
+    /* Date&Time label (hidden until a time is set). */
     ctx->datetime_label = lv_label_create(main_header);
     lv_label_set_text(ctx->datetime_label, "00:00 - 01/01/70");
     lv_obj_set_style_text_align(ctx->datetime_label, LV_TEXT_ALIGN_CENTER, 0);

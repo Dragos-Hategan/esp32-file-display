@@ -27,7 +27,7 @@ void starting_routine(void);
 esp_err_t settings_open_settings(lv_obj_t *return_screen);
 
 /**
- * @brief Show the Set Date/Time dialog.
+ * @brief Show the Set Date&Time dialog.
  *
  * Builds the date&time picker overlay on the top layer. Caller provides the
  * screen to return focus to (used for context). The dialog uses the shared
