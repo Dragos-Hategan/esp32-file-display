@@ -137,7 +137,7 @@ esp_err_t wifi_init_sta(void)
         return err;
     }       
 
-    /* 7) Block until IP is acquired or too many retries happen */
+    /* 7) Block until IP is acquired or after max retries */
     ESP_LOGI(TAG, "Connecting to WiFi...");
     if (xSemaphoreTake(s_ip_ready, portMAX_DELAY) != pdTRUE){
         ESP_LOGE(TAG, "xSemaphoreTake failed: (%s)", esp_err_to_name(ESP_FAIL));

@@ -16,7 +16,7 @@ extern "C" {
 #define TOUCH_CAL_NVS_KEY   "affine_v1"
 
 /**
- * @brief Initialize the SPI bus and create the XPT2046 touch driver.
+ * @brief Initialize the SPI bus and the XPT2046 touch driver.
  *
  * This function sets up the SPI bus used by the XPT2046 touch controller,
  * creates the `esp_lcd_panel_io` handle, and initializes the XPT2046 touch driver

@@ -38,6 +38,7 @@
 #define SETTINGS_NVS_OFF_TIME_KEY           "off_time"
 #define SETTINGS_NVS_CALIB_PROMPT_KEY       "calib_prompt"
 #define SETTINGS_NVS_THEME_KEY              "theme"
+#define SETTINGS_NVS_AUTO_CONNECT_KEY       "auto_connect"
 
 #define SETTINGS_ROTATION_STEPS          4
 #define SETTINGS_MINIMUM_BRIGHTNESS      1   /**< Lowest brightness percentage to avoid black screen */
@@ -50,8 +51,12 @@
 #define SETTINGS_DEFAULT_SCREEN_OFF             false
 #define SETTINGS_DEFAULT_SCREEN_OFF_TIME        -1
 #define SETTINGS_DEFAULT_CALI_PROMPT_ENABLE     true
+#define SETTINGS_DEFAULT_STARTUP_AUTO_CONNECT   false
 #define SETTINGS_DEFAULT_DARK_THEME             true
 #define SETTINGS_DEFAULT_TIME_VALID             false
+#define SETTINGS_DEFAULT_SNTP_SUCCESS           false 
+#define SETTINGS_DEFAULT_MANUAL_RESTART         false
+#define SETTINGS_DEFAULT_RUNNING_CALIBRATION    false
 
 #define SETTINGS_CALIBRATION_TASK_STACK  (10 * 1024)
 #define SETTINGS_CALIBRATION_TASK_PRIO   (5)
@@ -80,6 +85,7 @@ typedef struct{
     bool screen_off;
     int off_time;
     bool calibration_prompt_enabled;    /**< True to ask for calibration at startup */
+    bool startup_auto_connect;
     bool running_calibration;
     bool dark_theme;
     bool sntp_success;
@@ -99,6 +105,7 @@ typedef struct{
     lv_obj_t *theme_confirm_mbox;       /**< Active theme change confirmation dialog (NULL when closed) */
     lv_obj_t *datetime_overlay;         /**< Active date&time overlay (NULL when closed) */
     lv_obj_t *screensaver_overlay;      /**< Active screensaver overlay (NULL when closed) */
+    lv_obj_t *wifi_sntp_overlay;        /**< Active Wi-Fi & SNTP overlay (NULL when closed) */
     lv_obj_t *dt_month_ta;              /**< Month input (MM) */
     lv_obj_t *dt_day_ta;                /**< Day input (DD) */
     lv_obj_t *dt_year_ta;               /**< Year input (YY) */
@@ -106,7 +113,9 @@ typedef struct{
     lv_obj_t *dt_min_ta;                /**< Minute input (MM) */
     lv_obj_t *dt_keyboard;              /**< On-screen keyboard for date&time dialog */
     lv_obj_t *dt_dialog;                /**< Date&time dialog container */
-    lv_obj_t *screensaver_dialog;       /**< Date&time dialog container */
+    lv_obj_t *screensaver_dialog;       /**< Screensaver dialog container */
+    lv_obj_t *wifi_sntp_dialog;         /**< Wi-Fi & SNTP dialog container */
+    lv_obj_t *access_point_dialog;         /**< Wi-Fi & SNTP dialog container */
     lv_obj_t *dt_row_time;              /**< Time row container */
     lv_obj_t *ss_dim_lbl;               /**< Screensaver dimming label */
     lv_obj_t *ss_dim_switch;            /**< Screensaver dimming on/off switch */
@@ -242,6 +251,52 @@ static void settings_reset_confirm(lv_event_t *e);
 static void settings_toggle_theme(lv_event_t *e);
 
 /**
+ * @brief Open the Wi-Fi & SNTP dialog from the settings screen.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_wifi_sntp_dialog(lv_event_t *e);
+
+/**
+ * @brief Returns whether Wi-Fi auto-connect at startup is enabled.
+ *
+ * @return true if auto-connect is persisted as enabled; false otherwise.
+ */
+bool settings_get_auto_connect_enabled(void);
+
+/**
+ * @brief Persist the Wi-Fi auto-connect preference.
+ *
+ * @param enable True to enable auto-connect on boot, false to disable.
+ */
+static void set_auto_connect_enabled(bool enable);
+
+/**
+ * @brief Event handler for the startup auto-connect switch.
+ *
+ * Reads the switch state and updates the stored preference.
+ *
+ * @param e LVGL event (VALUE_CHANGED) with target = switch.
+ */
+static void ui_on_startup_switch_changed(lv_event_t *e);
+
+/**
+ * @brief Build the Wi-Fi & SNTP overlay dialog UI.
+ *
+ * Destroys any previous dialog and recreates the overlay with AP, refresh, and auto-connect controls.
+ *
+ * @param ctx Active settings context.
+ */
+static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx);
+
+/**
+ * @brief Build the Access Point configuration dialog inside the Wi-Fi overlay.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_build_wifi_connection_dialog(lv_event_t *e);
+
+/**
  * @brief Saves theme and other the rest of the custom flags to NVS and restarts.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
@@ -304,6 +359,9 @@ static void settings_apply_screensaver(lv_event_t *e);
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
 static void settings_close_screensaver(lv_event_t *e);
+
+static void settings_close_connection_dialog(lv_event_t *e);
+static void settings_close_access_point_dialog(lv_event_t *e);
 
 /**
  * @brief Background task to run touch calibration and restore UI state.
@@ -782,7 +840,7 @@ static void load_time_from_nvs(void);
  *
  * @param epoch Epoch seconds to store.
  */
-static void settings_persist_time_to_nvs(time_t epoch);
+static void persist_time_to_nvs(time_t epoch);
 
 /**
  * @brief Erase the stored time key from NVS.
@@ -796,17 +854,13 @@ static void settings_clear_valid_time_flag_in_nvs(void);
 
 /**
  * @brief Persist the "time valid" flag to NVS.
- *
- * @param is_valid True if system time is considered valid; false otherwise.
  */
-static void settings_persist_valid_time_flag_to_nvs(bool is_valid);
+static void persist_valid_time_flag_to_nvs(void);
 
 /**
  * @brief Persist the last SNTP synchronization result to NVS.
- *
- * @param is_successful True if SNTP succeeded; false otherwise.
  */
-static void settings_persist_sntp_result(bool is_successful);
+static void persist_sntp_result(void);
 
 /**
  * @brief Load the last SNTP synchronization result from NVS.
@@ -815,10 +869,8 @@ static void load_sntp_result_from_nvs(void);
 
 /**
  * @brief Persist the manual restart flag to NVS.
- *
- * @param manual_restart True if the last restart was user-initiated.
  */
-static void settings_persist_manual_restart(bool manual_restart);
+static void persist_manual_restart(void);
 
 /**
  * @brief Load the manual restart flag from NVS.
@@ -854,18 +906,21 @@ static void get_sntp_time()
         err = init_sntp();    
     }
     if (err == ESP_OK){
-        settings_persist_sntp_result(true);
+        s_settings_ctx.settings.sntp_success = true;
         save_time_data();
     }else{
-        settings_persist_sntp_result(false);
+        s_settings_ctx.settings.sntp_success = false;
     }
-    settings_persist_manual_restart(false);
+    persist_sntp_result();
+    s_settings_ctx.settings.manual_restart = false;
+    persist_manual_restart();
     esp_restart();
 }
 
 void starting_routine(void)
 {
     esp_reset_reason_t reason = esp_reset_reason();
+    
     /* ----- NSV ----- */
     ESP_LOGI(TAG, "Initializing NVS");
     ESP_ERROR_CHECK(init_nvs());
@@ -884,7 +939,9 @@ void starting_routine(void)
     apply_default_font_theme(true); // Mostly used to apply the font
 
     /* ----- Wi-Fi & SNTP ----- */
-    sntp_startup(reason);
+    if (s_settings_ctx.settings.startup_auto_connect){
+        sntp_startup(reason);
+    }
 
     /* ----- XPT2046 Driver Init ----- */
     ESP_LOGI(TAG, "Initializing XPT2046 touch driver");
@@ -896,7 +953,7 @@ void starting_routine(void)
     load_nvs_calibration(&calibration_found);
 
     /* ----- XPT2046 Calibration ----- */
-    if (s_settings_ctx.settings.calibration_prompt_enabled){ // Default is true
+    if (s_settings_ctx.settings.calibration_prompt_enabled){
         ESP_LOGI(TAG, "Start calibration dialog");
         calibration_set_show_loader(true);
         settings_set_running_calibration(true);
@@ -951,7 +1008,7 @@ void settings_shutdown_save_time(void)
 {
     time_t now = time(NULL);
     if (now > 0) {
-        settings_persist_time_to_nvs(now);
+        persist_time_to_nvs(now);
     }
 }
 
@@ -1227,7 +1284,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(connection_button, 8, 0);
     lv_obj_set_style_pad_all(connection_button, 6, 0);
     styles_set_button(connection_button);    
-    lv_obj_add_event_cb(connection_button, settings_reset, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(connection_button, settings_wifi_sntp_dialog, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(connection_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *connection_lbl = lv_label_create(connection_button);
     lv_label_set_text(connection_lbl, "SNTP & Wi-Fi");
@@ -1473,11 +1530,10 @@ static void manual_restart_flow(void)
 static void sntp_startup(esp_reset_reason_t reason)
 {
     if (reason == ESP_RST_SW){
-        load_manual_restart_from_nvs();
-        if (!s_settings_ctx.settings.manual_restart){
-            sntp_restart_flow();
-        }else{
+        if (s_settings_ctx.settings.manual_restart){
             manual_restart_flow();
+        }else{
+            sntp_restart_flow();
         }
     }else{
         ESP_LOGI(TAG, "Showing splash & connection screens");
@@ -1741,6 +1797,45 @@ static void persist_calibration_prompt_to_nvs(void)
     }
 }
 
+static void persist_auto_connect_to_nvs(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open NVS for auto-connect: (%s)", esp_err_to_name(err));
+        return;
+    }
+
+    esp_err_t res = nvs_set_i8(h, SETTINGS_NVS_AUTO_CONNECT_KEY, s_settings_ctx.settings.startup_auto_connect ? 1 : 0);
+    if (res == ESP_OK) {
+        res = nvs_commit(h);
+    }
+    nvs_close(h);
+
+    if (res != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save auto-connect preference: (%s)", esp_err_to_name(res));
+    }
+}
+
+static void load_auto_connect_from_nvs(void)
+{
+    /* Default: disabled */
+    s_settings_ctx.settings.startup_auto_connect = SETTINGS_DEFAULT_STARTUP_AUTO_CONNECT;
+
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h) != ESP_OK) {
+        return;
+    }
+
+    int8_t raw = -1;
+    if (nvs_get_i8(h, SETTINGS_NVS_AUTO_CONNECT_KEY, &raw) == ESP_OK) {
+        s_settings_ctx.settings.startup_auto_connect = (raw != 0);
+    }
+
+    nvs_close(h);
+}
+
+
 static void persist_theme_to_nvs(void)
 {
     nvs_handle_t h;
@@ -1788,6 +1883,7 @@ static void init_settings(void)
 static void init_default_configs(void)
 {
     s_settings_ctx.settings.calibration_prompt_enabled = SETTINGS_DEFAULT_CALI_PROMPT_ENABLE;
+    s_settings_ctx.settings.startup_auto_connect = SETTINGS_DEFAULT_STARTUP_AUTO_CONNECT;
     s_settings_ctx.settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.saved_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
@@ -1798,10 +1894,10 @@ static void init_default_configs(void)
     s_settings_ctx.settings.off_time = SETTINGS_DEFAULT_SCREEN_OFF_TIME;
     s_settings_ctx.settings.screen_off = SETTINGS_DEFAULT_SCREEN_OFF;
     s_settings_ctx.settings.dark_theme = SETTINGS_DEFAULT_DARK_THEME;
-    s_settings_ctx.settings.time_valid = SETTINGS_DEFAULT_TIME_VALID;
-    s_settings_ctx.settings.running_calibration = false;
-    s_settings_ctx.settings.manual_restart = false;
-    s_settings_ctx.settings.sntp_success = false;
+    s_settings_ctx.settings.time_valid = SETTINGS_DEFAULT_TIME_VALID; 
+    s_settings_ctx.settings.running_calibration = SETTINGS_DEFAULT_RUNNING_CALIBRATION;    
+    s_settings_ctx.settings.manual_restart = SETTINGS_DEFAULT_MANUAL_RESTART; 
+    s_settings_ctx.settings.sntp_success = SETTINGS_DEFAULT_SNTP_SUCCESS; 
     s_settings_ctx.changing_brightness = false; 
 }
 
@@ -1809,6 +1905,7 @@ static void load_last_saved_configs()
 {
     load_calibration_prompt_from_nvs();
     load_manual_restart_from_nvs();
+    load_auto_connect_from_nvs();
     load_brightness_from_nvs();
     load_rotation_from_nvs();
     apply_rotation_to_display(true);
@@ -2076,13 +2173,13 @@ static void settings_apply_date_time(lv_event_t *e)
         return;
     }
 
-    ctx->settings.dt_month = month;
+    ctx->settings.time_valid = true;
+    persist_valid_time_flag_to_nvs();
     ctx->settings.dt_day = day;
     ctx->settings.dt_year = year;
     ctx->settings.dt_hour = hour;
+    ctx->settings.dt_month = month;
     ctx->settings.dt_minute = minute;
-    ctx->settings.time_valid = true;
-    settings_persist_valid_time_flag_to_nvs(true);
     settings_notify_time_set();
 
     /* Set system time from the provided fields (no persistence). */
@@ -2103,7 +2200,7 @@ static void settings_apply_date_time(lv_event_t *e)
         settimeofday(&tv, NULL);
     }
 
-    settings_persist_time_to_nvs(t);
+    persist_time_to_nvs(t);
 
     if (ctx->datetime_overlay) {
         lv_obj_del(ctx->datetime_overlay);
@@ -2207,15 +2304,14 @@ static void save_time_data(void)
         return;
     }
 
+    s_settings_ctx.settings.dt_year   = tm_info.tm_year % 100; /* YY */
     s_settings_ctx.settings.dt_month  = tm_info.tm_mon + 1;
     s_settings_ctx.settings.dt_day    = tm_info.tm_mday;
-    s_settings_ctx.settings.dt_year   = tm_info.tm_year % 100; /* YY */
     s_settings_ctx.settings.dt_hour   = tm_info.tm_hour;
     s_settings_ctx.settings.dt_minute = tm_info.tm_min;
     s_settings_ctx.settings.dt_second = tm_info.tm_sec;
     s_settings_ctx.settings.time_valid = true;
-
-    settings_persist_time_to_nvs(now);
+    persist_time_to_nvs(now);
 }
 
 static void apply_timezone(void)
@@ -2873,7 +2969,7 @@ static void settings_notify_time_reset(void)
     }
 }
 
-static void settings_persist_time_to_nvs(time_t epoch)
+static void persist_time_to_nvs(time_t epoch)
 {
     nvs_handle_t h;
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
@@ -2895,13 +2991,13 @@ static void settings_clear_time_in_nvs(void)
     nvs_close(h);
 }
 
-static void settings_persist_valid_time_flag_to_nvs(bool is_valid)
+static void persist_valid_time_flag_to_nvs(void)
 {
     nvs_handle_t h;
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
         return;
     }
-    nvs_set_i8(h, SETTINGS_NVS_VALID_TIME_FLAG_KEY, is_valid);
+    nvs_set_i8(h, SETTINGS_NVS_VALID_TIME_FLAG_KEY, s_settings_ctx.settings.time_valid ? 1 : 0);
     nvs_commit(h);
     nvs_close(h);
 }
@@ -2917,13 +3013,13 @@ static void settings_clear_valid_time_flag_in_nvs(void)
     nvs_close(h);
 }
 
-static void settings_persist_sntp_result(bool is_successful)
+static void persist_sntp_result(void)
 {
     nvs_handle_t h;
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
         return;
     }
-    nvs_set_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, is_successful);
+    nvs_set_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, s_settings_ctx.settings.sntp_success ? 1 : 0);
     nvs_commit(h);
     nvs_close(h);
 }
@@ -2945,13 +3041,13 @@ static void load_sntp_result_from_nvs(void)
     nvs_close(h);
 }
 
-static void settings_persist_manual_restart(bool manual_restart)
+static void persist_manual_restart(void)
 {
     nvs_handle_t h;
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
         return;
     }
-    nvs_set_i8(h, SETTINGS_NVS_MANUAL_RESTART_KEY, manual_restart);
+    nvs_set_i8(h, SETTINGS_NVS_MANUAL_RESTART_KEY, s_settings_ctx.settings.manual_restart ? 1 : 0);
     nvs_commit(h);
     nvs_close(h);
 }
@@ -3001,7 +3097,7 @@ static void load_time_from_nvs(void)
     };
     settimeofday(&tv, NULL);
     s_settings_ctx.settings.time_valid = true;
-    settings_persist_valid_time_flag_to_nvs(true);
+    persist_valid_time_flag_to_nvs();
     settings_notify_time_set();
 }
 
@@ -3084,7 +3180,8 @@ static void settings_restart_confirm(lv_event_t *e)
     if (settings_is_time_valid()){
         settings_shutdown_save_time();
     }
-    settings_persist_manual_restart(true);
+    s_settings_ctx.settings.manual_restart = true;
+    persist_manual_restart();
     esp_restart();
 }
 
@@ -3141,12 +3238,13 @@ static void settings_reset_confirm(lv_event_t *e)
     }  
 
     init_default_configs();
-    persist_brightness_to_nvs();
+    persist_manual_restart();
     persist_rotation_to_nvs();
+    persist_brightness_to_nvs();
     persist_screensaver_to_nvs();
+    persist_auto_connect_to_nvs();
     persist_calibration_prompt_to_nvs();
-    settings_persist_manual_restart(false);
-    init_settings();
+    load_last_saved_configs();
     
     nvs_handle_t cal_nvs;
     if (nvs_open(TOUCH_CAL_NVS_NS, NVS_READWRITE, &cal_nvs) == ESP_OK) {
@@ -3157,7 +3255,7 @@ static void settings_reset_confirm(lv_event_t *e)
 
     settings_clear_time_in_nvs();
     s_settings_ctx.settings.time_valid = false;
-    settings_persist_valid_time_flag_to_nvs(false);
+    persist_valid_time_flag_to_nvs();
     settings_notify_time_reset();
 
     lv_msgbox_close(ctx->reset_confirm_mbox);
@@ -3204,6 +3302,299 @@ static void settings_toggle_theme(lv_event_t *e)
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, settings_theme_confirm_no, LV_EVENT_CLICKED, ctx);
+}
+
+static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
+{
+    if (ctx->wifi_sntp_dialog){
+        lv_obj_delete(ctx->wifi_sntp_dialog);
+        ctx->wifi_sntp_dialog = NULL;
+    }
+
+    lv_obj_t *overlay = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(overlay);
+    lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
+    styles_set_bg_color(overlay, 0);
+    lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
+    lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
+    //lv_obj_add_event_cb(overlay, settings_on_ss_background_tap, LV_EVENT_CLICKED, ctx);
+    ctx->wifi_sntp_overlay = overlay;
+
+    lv_obj_t *dlg = lv_obj_create(overlay);
+    lv_obj_set_style_radius(dlg, 12, 0);
+    lv_obj_set_style_pad_all(dlg, 6, 0);
+    lv_obj_set_style_pad_gap(dlg, 4, 0);
+    lv_obj_set_size(dlg, lv_pct(85), lv_pct(90));
+    lv_obj_set_flex_flow(dlg, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(dlg, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(dlg, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_add_flag(dlg, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scroll_dir(dlg, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
+    styles_set_dialog(dlg);
+    lv_obj_set_style_border_width(dlg, 2, 0);
+    //lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_center(dlg);
+    ctx->wifi_sntp_dialog = dlg;
+
+    lv_obj_t *title = lv_label_create(dlg);
+    lv_label_set_text(title, "Wi-Fi & SNTP");
+    lv_obj_set_style_text_font(title, &Domine_16, 0);
+    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(title, LV_PCT(100));
+    lv_obj_add_flag(title, LV_OBJ_FLAG_EVENT_BUBBLE);    
+
+    /* Access Point data row */
+    lv_obj_t *row_ap_data = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_ap_data);
+    lv_obj_set_flex_flow(row_ap_data, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_ap_data, 6, 0);
+    lv_obj_set_style_pad_all(row_ap_data, 0, 0);
+    lv_obj_set_width(row_ap_data, LV_PCT(90));
+    lv_obj_set_height(row_ap_data, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(row_ap_data, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_margin_top(row_ap_data, 10, 0);
+    lv_obj_add_flag(row_ap_data, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t *ap_data_button = lv_button_create(row_ap_data);
+    lv_obj_set_flex_grow(ap_data_button, 1);
+    lv_obj_set_style_radius(ap_data_button, 8, 0);
+    lv_obj_set_style_pad_all(ap_data_button, 6, 0); 
+    styles_set_button(ap_data_button);
+    lv_obj_add_event_cb(ap_data_button, settings_build_wifi_connection_dialog, LV_EVENT_CLICKED, ctx);
+    lv_obj_set_style_align(ap_data_button, LV_ALIGN_CENTER, 0);
+    lv_obj_t *ap_data_lbl = lv_label_create(ap_data_button);
+    lv_label_set_text(ap_data_lbl, "Access Point");
+    lv_obj_center(ap_data_lbl);      
+
+    /* Refresh time row */
+    lv_obj_t *row_refresh_time = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_refresh_time);
+    lv_obj_set_flex_flow(row_refresh_time, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_refresh_time, 6, 0);
+    lv_obj_set_style_pad_all(row_refresh_time, 0, 0);
+    lv_obj_set_width(row_refresh_time, LV_PCT(90));
+    lv_obj_set_height(row_refresh_time, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(row_refresh_time, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_margin_top(row_refresh_time, 10, 0);
+    lv_obj_add_flag(row_refresh_time, LV_OBJ_FLAG_EVENT_BUBBLE);        
+
+    lv_obj_t *refresh_time_button = lv_button_create(row_refresh_time);
+    lv_obj_set_flex_grow(refresh_time_button, 1);
+    lv_obj_set_style_radius(refresh_time_button, 8, 0);
+    lv_obj_set_style_pad_all(refresh_time_button, 6, 0); 
+    styles_set_button(refresh_time_button);
+    //lv_obj_add_event_cb(refresh_time_button, settings_build_wifi_connection_dialog, LV_EVENT_CLICKED, ctx);
+    lv_obj_set_style_align(refresh_time_button, LV_ALIGN_CENTER, 0);
+    lv_obj_t *refresh_time_lbl = lv_label_create(refresh_time_button);
+    lv_label_set_text(refresh_time_lbl, "Refresh Date&Time");
+    lv_obj_center(refresh_time_lbl);
+    
+    /* Toggle startup refresh */
+    lv_obj_t *row_startup_refresh = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_startup_refresh);
+    lv_obj_set_flex_flow(row_startup_refresh, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_startup_refresh, 6, 0);
+    lv_obj_set_style_pad_all(row_startup_refresh, 0, 0);
+    lv_obj_set_width(row_startup_refresh, LV_PCT(90));
+    lv_obj_set_height(row_startup_refresh, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(row_startup_refresh, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_margin_top(row_startup_refresh, 10, 0);
+    lv_obj_add_flag(row_startup_refresh, LV_OBJ_FLAG_EVENT_BUBBLE);      
+
+    lv_obj_t *startup_label = lv_label_create(row_startup_refresh);
+    lv_label_set_text(startup_label, "Auto connect at startup");
+    lv_obj_set_style_text_align(startup_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_long_mode(startup_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(startup_label, LV_PCT(100));
+    styles_set_text_color(startup_label, 0);
+    lv_obj_set_flex_grow(startup_label, 1); /* push switch to the far right */
+
+    lv_obj_t *startup_switch = lv_switch_create(row_startup_refresh);
+    styles_set_switch(startup_switch);
+    bool startup_enabled = settings_get_auto_connect_enabled();
+    if (startup_enabled) {
+        lv_obj_add_state(startup_switch, LV_STATE_CHECKED);
+    } else {
+        lv_obj_clear_state(startup_switch, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(startup_switch, ui_on_startup_switch_changed, LV_EVENT_VALUE_CHANGED, NULL);
+
+    /* Action row */
+    lv_obj_t *row_actions = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_actions);
+    lv_obj_set_flex_flow(row_actions, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_actions, 6, 0);
+    lv_obj_set_style_pad_all(row_actions, 0, 0);
+    lv_obj_set_width(row_actions, LV_PCT(100));
+    lv_obj_set_height(row_actions, LV_SIZE_CONTENT);
+    lv_obj_set_style_margin_top(row_actions, 10, 0);
+    lv_obj_add_flag(row_actions, LV_OBJ_FLAG_EVENT_BUBBLE);
+    
+    lv_obj_t *close_btn = lv_button_create(row_actions);
+    lv_obj_set_flex_grow(close_btn, 1);
+    lv_obj_set_style_radius(close_btn, 6, 0);
+    lv_obj_t *close_lbl = lv_label_create(close_btn);
+    lv_label_set_text(close_lbl, "Close");
+    lv_obj_center(close_lbl);
+    lv_obj_add_flag(close_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+    styles_set_button(close_btn);
+    lv_obj_add_event_cb(close_btn, settings_close_connection_dialog, LV_EVENT_CLICKED, ctx);
+    
+}
+
+static void settings_build_wifi_connection_dialog(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->wifi_sntp_dialog) {
+        return;
+    }    
+    lv_obj_delete(ctx->wifi_sntp_dialog);
+    ctx->wifi_sntp_dialog = NULL;
+
+    if (ctx->access_point_dialog){
+        lv_obj_delete(ctx->access_point_dialog);
+        ctx->access_point_dialog = NULL;
+    }
+
+    lv_obj_t *dlg = lv_obj_create(ctx->wifi_sntp_overlay);
+    lv_obj_set_style_radius(dlg, 12, 0);
+    lv_obj_set_style_pad_all(dlg, 6, 0);
+    lv_obj_set_style_pad_gap(dlg, 4, 0);
+    lv_obj_set_size(dlg, lv_pct(85), lv_pct(75));
+    lv_obj_set_flex_flow(dlg, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(dlg, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(dlg, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_add_flag(dlg, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scroll_dir(dlg, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
+    styles_set_dialog(dlg);
+    lv_obj_set_style_border_width(dlg, 2, 0);
+    //lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_center(dlg);
+    ctx->access_point_dialog = dlg;
+
+    lv_obj_t *title = lv_label_create(dlg);
+    lv_label_set_text(title, "Access Point");
+    lv_obj_set_style_text_font(title, &Domine_16, 0);
+    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(title, LV_PCT(100));
+    lv_obj_add_flag(title, LV_OBJ_FLAG_EVENT_BUBBLE);    
+
+    /* Access Point SSID row */
+    lv_obj_t *row_ap_ssid = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_ap_ssid);
+    lv_obj_set_flex_flow(row_ap_ssid, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_ap_ssid, 6, 0);
+    lv_obj_set_style_pad_all(row_ap_ssid, 0, 0);
+    lv_obj_set_width(row_ap_ssid, LV_PCT(90));
+    lv_obj_set_height(row_ap_ssid, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(row_ap_ssid, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_margin_top(row_ap_ssid, 10, 0);
+    lv_obj_add_flag(row_ap_ssid, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t *ssid_lbl = lv_label_create(row_ap_ssid);
+    lv_label_set_text(ssid_lbl, "SSID:");
+    lv_obj_add_flag(ssid_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_set_width(ssid_lbl, 90);
+    lv_obj_set_style_text_align(ssid_lbl, LV_TEXT_ALIGN_RIGHT, 0);    
+
+    lv_obj_t *ssid_ta = lv_textarea_create(row_ap_ssid);
+    lv_obj_set_flex_grow(ssid_ta, 1);
+    lv_obj_set_height(ssid_ta, 32);
+    lv_textarea_set_one_line(ssid_ta, true);
+    lv_textarea_set_max_length(ssid_ta, 32);
+    lv_textarea_set_placeholder_text(ssid_ta, "");
+    styles_set_textarea(ssid_ta);
+
+    /* Access Point password row */
+    lv_obj_t *row_ap_password = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_ap_password);
+    lv_obj_set_flex_flow(row_ap_password, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_ap_password, 6, 0);
+    lv_obj_set_style_pad_all(row_ap_password, 0, 0);
+    lv_obj_set_width(row_ap_password, LV_PCT(90));
+    lv_obj_set_height(row_ap_password, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(row_ap_password, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_margin_top(row_ap_password, 10, 0);
+    lv_obj_add_flag(row_ap_password, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t *pwd_lbl = lv_label_create(row_ap_password);
+    lv_label_set_text(pwd_lbl, "Password:");
+    lv_obj_add_flag(pwd_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_set_width(pwd_lbl, 90);
+    lv_obj_set_style_text_align(pwd_lbl, LV_TEXT_ALIGN_RIGHT, 0);    
+
+    lv_obj_t *pwd_ta = lv_textarea_create(row_ap_password);
+    lv_obj_set_flex_grow(pwd_ta, 1);
+    lv_obj_set_height(pwd_ta, 32);    
+    lv_textarea_set_one_line(pwd_ta, true);
+    lv_textarea_set_max_length(pwd_ta, 63);
+    lv_textarea_set_password_mode(pwd_ta, true);
+    lv_textarea_set_placeholder_text(pwd_ta, "");
+    styles_set_textarea(pwd_ta);
+
+        /* Action row */
+    lv_obj_t *row_actions = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_actions);
+    lv_obj_set_flex_flow(row_actions, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_actions, 6, 0);
+    lv_obj_set_style_pad_all(row_actions, 0, 0);
+    lv_obj_set_width(row_actions, LV_PCT(100));
+    lv_obj_set_height(row_actions, LV_SIZE_CONTENT);
+    lv_obj_set_style_margin_top(row_actions, 10, 0);
+    lv_obj_add_flag(row_actions, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t *apply_btn = lv_button_create(row_actions);
+    lv_obj_set_flex_grow(apply_btn, 1);
+    lv_obj_set_style_radius(apply_btn, 6, 0);
+    lv_obj_t *apply_lbl = lv_label_create(apply_btn);
+    lv_label_set_text(apply_lbl, "Apply");
+    lv_obj_center(apply_lbl);
+    lv_obj_add_flag(apply_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+    styles_set_button(apply_btn);
+    //lv_obj_add_event_cb(apply_btn, settings_apply_screensaver, LV_EVENT_CLICKED, ctx);
+    
+    lv_obj_t *cancel_btn = lv_button_create(row_actions);
+    lv_obj_set_flex_grow(cancel_btn, 1);
+    lv_obj_set_style_radius(cancel_btn, 6, 0);
+    lv_obj_t *cancel_lbl = lv_label_create(cancel_btn);
+    lv_label_set_text(cancel_lbl, "Cancel");
+    lv_obj_center(cancel_lbl);
+    lv_obj_add_flag(cancel_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+    styles_set_button(cancel_btn);
+    lv_obj_add_event_cb(cancel_btn, settings_close_access_point_dialog, LV_EVENT_CLICKED, ctx);
+}
+
+static void settings_wifi_sntp_dialog(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx) {
+        return;
+    }
+
+    settings_build_wifi_sntp_dialog(ctx);
+}
+
+bool settings_get_auto_connect_enabled(void)
+{
+    return s_settings_ctx.settings.startup_auto_connect;
+}
+
+static void set_auto_connect_enabled(bool enable)
+{
+    if (s_settings_ctx.settings.startup_auto_connect == enable) {
+        return;
+    }
+    s_settings_ctx.settings.startup_auto_connect = enable;
+    persist_auto_connect_to_nvs();
+}
+
+static void ui_on_startup_switch_changed(lv_event_t *e)
+{
+    lv_obj_t *sw = lv_event_get_target(e);
+    bool enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    set_auto_connect_enabled(enabled);
 }
 
 static void settings_theme_confirm_yes(lv_event_t *e)
@@ -3328,6 +3719,7 @@ static void settings_clear_ui_refs(settings_ctx_t *ctx)
     ctx->theme_confirm_mbox = NULL;
     ctx->datetime_overlay = NULL;
     ctx->screensaver_overlay = NULL;
+    ctx->wifi_sntp_overlay = NULL;
     ctx->dt_month_ta = NULL;
     ctx->dt_day_ta = NULL;
     ctx->dt_year_ta = NULL;
@@ -3336,6 +3728,7 @@ static void settings_clear_ui_refs(settings_ctx_t *ctx)
     ctx->dt_keyboard = NULL;
     ctx->dt_dialog = NULL;
     ctx->screensaver_dialog = NULL;
+    ctx->wifi_sntp_dialog = NULL;
     ctx->dt_row_time = NULL;
     ctx->ss_dim_lbl = NULL;
     ctx->ss_dim_switch = NULL;
@@ -3751,4 +4144,29 @@ static void settings_close_screensaver(lv_event_t *e)
         ctx->ss_off_after_ta = NULL;
         ctx->ss_keyboard = NULL;
     }    
+}
+
+static void settings_close_connection_dialog(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e); 
+    if (ctx && ctx->wifi_sntp_overlay) {
+        lv_obj_del(ctx->wifi_sntp_overlay);
+        ctx->wifi_sntp_dialog = NULL;
+        ctx->wifi_sntp_overlay = NULL;
+        
+        ctx->ss_keyboard = NULL;
+    }    
+}
+
+static void settings_close_access_point_dialog(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e); 
+    if (ctx && ctx->wifi_sntp_overlay) {
+        lv_obj_del(ctx->wifi_sntp_overlay);
+        ctx->wifi_sntp_overlay = NULL;
+        ctx->access_point_dialog = NULL;
+        ctx->ss_keyboard = NULL;
+    }   
+    
+    settings_build_wifi_sntp_dialog(ctx);
 }
