@@ -24,21 +24,22 @@
 #include "touch_xpt2046.h"
 #include "styles.h"
 
-#define SETTINGS_NVS_NS                     "settings"
-#define SETTINGS_NVS_ROT_KEY                "rotation_step"
-#define SETTINGS_NVS_BRIGHTNESS_KEY         "brightness_pct"
-#define SETTINGS_NVS_MANUAL_RESTART_KEY     "manual_restart"
-#define SETTINGS_NVS_SNTP_RESULT_KEY        "sntp_result"
-#define SETTINGS_NVS_TIME_KEY               "time_epoch"
-#define SETTINGS_NVS_VALID_TIME_FLAG_KEY    "is_time_valid"
-#define SETTINGS_NVS_DIM_EN_KEY             "dim_en"
-#define SETTINGS_NVS_DIM_TIME_KEY           "dim_time"
-#define SETTINGS_NVS_DIM_LEVEL_KEY          "dim_level"
-#define SETTINGS_NVS_OFF_EN_KEY             "off_en"
-#define SETTINGS_NVS_OFF_TIME_KEY           "off_time"
-#define SETTINGS_NVS_CALIB_PROMPT_KEY       "calib_prompt"
-#define SETTINGS_NVS_THEME_KEY              "theme"
-#define SETTINGS_NVS_AUTO_CONNECT_KEY       "auto_connect"
+#define SETTINGS_NVS_NS                         "settings"
+#define SETTINGS_NVS_ROT_KEY                    "rotation_step"
+#define SETTINGS_NVS_BRIGHTNESS_KEY             "brightness_pct"
+#define SETTINGS_NVS_MANUAL_RESTART_KEY         "manual_restart"
+#define SETTINGS_NVS_SNTP_RESULT_KEY            "sntp_result"
+#define SETTINGS_NVS_TIME_KEY                   "time_epoch"
+#define SETTINGS_NVS_VALID_TIME_FLAG_KEY        "is_time_valid"
+#define SETTINGS_NVS_DIM_EN_KEY                 "dim_en"
+#define SETTINGS_NVS_DIM_TIME_KEY               "dim_time"
+#define SETTINGS_NVS_DIM_LEVEL_KEY              "dim_level"
+#define SETTINGS_NVS_OFF_EN_KEY                 "off_en"
+#define SETTINGS_NVS_OFF_TIME_KEY               "off_time"
+#define SETTINGS_NVS_CALIB_PROMPT_KEY           "calib_prompt"
+#define SETTINGS_NVS_THEME_KEY                  "theme"
+#define SETTINGS_NVS_AUTO_CONNECT_KEY           "auto_connect"
+#define SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY   "refresh_sntp"
 
 #define SETTINGS_ROTATION_STEPS          4
 #define SETTINGS_MINIMUM_BRIGHTNESS      1   /**< Lowest brightness percentage to avoid black screen */
@@ -52,6 +53,7 @@
 #define SETTINGS_DEFAULT_SCREEN_OFF_TIME        -1
 #define SETTINGS_DEFAULT_CALI_PROMPT_ENABLE     true
 #define SETTINGS_DEFAULT_STARTUP_AUTO_CONNECT   false
+#define SETTINGS_DEFAULT_REFRESH_SNTP_STARTUP   false
 #define SETTINGS_DEFAULT_DARK_THEME             true
 #define SETTINGS_DEFAULT_TIME_VALID             false
 #define SETTINGS_DEFAULT_SNTP_SUCCESS           false 
@@ -86,6 +88,7 @@ typedef struct{
     int off_time;
     bool calibration_prompt_enabled;    /**< True to ask for calibration at startup */
     bool startup_auto_connect;
+    bool refresh_sntp_startup;
     bool running_calibration;
     bool dark_theme;
     bool sntp_success;
@@ -103,6 +106,7 @@ typedef struct{
     lv_obj_t *restart_confirm_mbox;     /**< Active restart confirmation dialog (NULL when closed) */
     lv_obj_t *reset_confirm_mbox;       /**< Active reset confirmation dialog (NULL when closed) */
     lv_obj_t *theme_confirm_mbox;       /**< Active theme change confirmation dialog (NULL when closed) */
+    lv_obj_t *sntp_confirm_mbox;        /**< Active sntp confirmation dialog (NULL when closed) */
     lv_obj_t *datetime_overlay;         /**< Active date&time overlay (NULL when closed) */
     lv_obj_t *screensaver_overlay;      /**< Active screensaver overlay (NULL when closed) */
     lv_obj_t *wifi_sntp_overlay;        /**< Active Wi-Fi & SNTP overlay (NULL when closed) */
@@ -115,7 +119,7 @@ typedef struct{
     lv_obj_t *dt_dialog;                /**< Date&time dialog container */
     lv_obj_t *screensaver_dialog;       /**< Screensaver dialog container */
     lv_obj_t *wifi_sntp_dialog;         /**< Wi-Fi & SNTP dialog container */
-    lv_obj_t *access_point_dialog;         /**< Wi-Fi & SNTP dialog container */
+    lv_obj_t *access_point_dialog;      /**< Wi-Fi & SNTP dialog container */
     lv_obj_t *dt_row_time;              /**< Time row container */
     lv_obj_t *ss_dim_lbl;               /**< Screensaver dimming label */
     lv_obj_t *ss_dim_switch;            /**< Screensaver dimming on/off switch */
@@ -290,6 +294,13 @@ static void ui_on_startup_switch_changed(lv_event_t *e);
 static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx);
 
 /**
+ * @brief Prompt user confirmation to refresh SNTP (requires restart).
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_refresh_sntp(lv_event_t *e);
+
+/**
  * @brief Build the Access Point configuration dialog inside the Wi-Fi overlay.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
@@ -304,11 +315,27 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e);
 static void settings_theme_confirm_yes(lv_event_t *e);
 
 /**
+ * @brief Confirm SNTP refresh and flag the request for restart processing.
+ *
+ * Persists the refresh-on-startup flag and triggers a restart dialog flow.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_sntp_confirm_yes(lv_event_t *e);
+
+/**
  * @brief Closes the theme change dialog.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
 static void settings_theme_confirm_no(lv_event_t *e);
+
+/**
+ * @brief Cancel SNTP refresh request and close the confirmation dialog.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_sntp_confirm_no(lv_event_t *e);
 
 /**
  * @brief Close the reset confirmation overlay without applying changes.
@@ -863,6 +890,16 @@ static void persist_valid_time_flag_to_nvs(void);
 static void persist_sntp_result(void);
 
 /**
+ * @brief Persist the SNTP refresh-on-startup preference to NVS.
+ */
+static void persist_sntp_refresh(void);
+
+/**
+ * @brief Load the SNTP refresh-on-startup preference from NVS.
+ */
+static void load_sntp_refresh_from_nvs(void);
+
+/**
  * @brief Load the last SNTP synchronization result from NVS.
  */
 static void load_sntp_result_from_nvs(void);
@@ -939,8 +976,10 @@ void starting_routine(void)
     apply_default_font_theme(true); // Mostly used to apply the font
 
     /* ----- Wi-Fi & SNTP ----- */
-    if (s_settings_ctx.settings.startup_auto_connect){
+    if (s_settings_ctx.settings.startup_auto_connect || s_settings_ctx.settings.refresh_sntp_startup){
         sntp_startup(reason);
+        s_settings_ctx.settings.refresh_sntp_startup = false;
+        persist_sntp_refresh();
     }
 
     /* ----- XPT2046 Driver Init ----- */
@@ -1884,6 +1923,7 @@ static void init_default_configs(void)
 {
     s_settings_ctx.settings.calibration_prompt_enabled = SETTINGS_DEFAULT_CALI_PROMPT_ENABLE;
     s_settings_ctx.settings.startup_auto_connect = SETTINGS_DEFAULT_STARTUP_AUTO_CONNECT;
+    s_settings_ctx.settings.refresh_sntp_startup = SETTINGS_DEFAULT_REFRESH_SNTP_STARTUP;
     s_settings_ctx.settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.saved_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
@@ -1905,6 +1945,7 @@ static void load_last_saved_configs()
 {
     load_calibration_prompt_from_nvs();
     load_manual_restart_from_nvs();
+    load_sntp_refresh_from_nvs();
     load_auto_connect_from_nvs();
     load_brightness_from_nvs();
     load_rotation_from_nvs();
@@ -3024,6 +3065,34 @@ static void persist_sntp_result(void)
     nvs_close(h);
 }
 
+static void persist_sntp_refresh(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
+        return;
+    }
+    nvs_set_i8(h, SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY, s_settings_ctx.settings.refresh_sntp_startup? 1 : 0);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void load_sntp_refresh_from_nvs(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to open NVS for sntp refresh result: (%s)", esp_err_to_name(err));
+        return;
+    }
+
+    int8_t raw = -1;
+    if (nvs_get_i8(h, SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY, &raw) == ESP_OK) {
+        s_settings_ctx.settings.refresh_sntp_startup = (raw != 0);
+    }
+
+    nvs_close(h);
+}
+
 static void load_sntp_result_from_nvs(void)
 {
     nvs_handle_t h;
@@ -3384,7 +3453,7 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     lv_obj_set_style_radius(refresh_time_button, 8, 0);
     lv_obj_set_style_pad_all(refresh_time_button, 6, 0); 
     styles_set_button(refresh_time_button);
-    //lv_obj_add_event_cb(refresh_time_button, settings_build_wifi_connection_dialog, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(refresh_time_button, settings_refresh_sntp, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(refresh_time_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *refresh_time_lbl = lv_label_create(refresh_time_button);
     lv_label_set_text(refresh_time_lbl, "Refresh Date&Time");
@@ -3429,18 +3498,52 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     lv_obj_set_width(row_actions, LV_PCT(100));
     lv_obj_set_height(row_actions, LV_SIZE_CONTENT);
     lv_obj_set_style_margin_top(row_actions, 10, 0);
+    lv_obj_set_flex_align(row_actions, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_add_flag(row_actions, LV_OBJ_FLAG_EVENT_BUBBLE);
     
     lv_obj_t *close_btn = lv_button_create(row_actions);
-    lv_obj_set_flex_grow(close_btn, 1);
+    styles_set_button(close_btn);
+    lv_obj_set_width(close_btn, LV_PCT(55));
     lv_obj_set_style_radius(close_btn, 6, 0);
+    lv_obj_add_event_cb(close_btn, settings_close_connection_dialog, LV_EVENT_CLICKED, ctx);
     lv_obj_t *close_lbl = lv_label_create(close_btn);
     lv_label_set_text(close_lbl, "Close");
     lv_obj_center(close_lbl);
     lv_obj_add_flag(close_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    styles_set_button(close_btn);
-    lv_obj_add_event_cb(close_btn, settings_close_connection_dialog, LV_EVENT_CLICKED, ctx);
     
+}
+
+static void settings_refresh_sntp(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->wifi_sntp_dialog) {
+        return;
+    }   
+
+    if (ctx->sntp_confirm_mbox) {
+        lv_msgbox_close(ctx->sntp_confirm_mbox);
+        ctx->sntp_confirm_mbox = NULL;
+    }
+
+    lv_obj_t *mbox = lv_msgbox_create(NULL);
+    styles_set_msgbox(mbox);
+    ctx->sntp_confirm_mbox = mbox;
+    lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
+    lv_obj_center(mbox);
+
+    lv_obj_t *label = lv_label_create(mbox);
+    lv_label_set_text(label, "Restart required to refresh sntp");
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(label, LV_PCT(100));
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+
+    lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
+    styles_set_button(yes_btn);
+    lv_obj_add_event_cb(yes_btn, settings_sntp_confirm_yes, LV_EVENT_CLICKED, ctx);
+
+    lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
+    styles_set_button(cancel_btn);
+    lv_obj_add_event_cb(cancel_btn, settings_sntp_confirm_no, LV_EVENT_CLICKED, ctx);
 }
 
 static void settings_build_wifi_connection_dialog(lv_event_t *e)
@@ -3612,6 +3715,22 @@ static void settings_theme_confirm_yes(lv_event_t *e)
     settings_restart_confirm(e);
 }
 
+static void settings_sntp_confirm_yes(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx) {
+        return;
+    }
+
+    bsp_display_backlight_off();
+    s_settings_ctx.settings.refresh_sntp_startup = true;
+    persist_sntp_refresh();
+    s_settings_ctx.settings.time_valid = false;
+    persist_valid_time_flag_to_nvs();
+
+    settings_restart_confirm(e);
+}
+
 static void settings_theme_confirm_no(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
@@ -3620,6 +3739,16 @@ static void settings_theme_confirm_no(lv_event_t *e)
     }
     lv_msgbox_close(ctx->theme_confirm_mbox);
     ctx->theme_confirm_mbox = NULL;
+}
+
+static void settings_sntp_confirm_no(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->sntp_confirm_mbox) {
+        return;
+    }
+    lv_msgbox_close(ctx->sntp_confirm_mbox);
+    ctx->sntp_confirm_mbox = NULL;
 }
 
 static void settings_run_calibration(lv_event_t *e)
@@ -3717,6 +3846,7 @@ static void settings_clear_ui_refs(settings_ctx_t *ctx)
     ctx->restart_confirm_mbox = NULL;
     ctx->reset_confirm_mbox = NULL;
     ctx->theme_confirm_mbox = NULL;
+    ctx->sntp_confirm_mbox = NULL;
     ctx->datetime_overlay = NULL;
     ctx->screensaver_overlay = NULL;
     ctx->wifi_sntp_overlay = NULL;
