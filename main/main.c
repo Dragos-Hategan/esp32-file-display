@@ -16,7 +16,7 @@ static void main_task(void *arg)
 {
     ESP_LOGI(TAG, "\n\n ********** LVGL File Display ********** \n");
 
-    starting_routine();
+    settings_starting_routine();
 
     esp_err_t err = init_sdspi();
     if (err != ESP_OK){

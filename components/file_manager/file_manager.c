@@ -76,7 +76,8 @@ typedef struct {
     esp_timer_handle_t clock_timer;
     bool clock_timer_running;
     bool clock_user_set;
-    lv_obj_t *sort_panel;
+    lv_obj_t *sort_overlay;
+    lv_obj_t *date_time_overlay;
     lv_obj_t *sort_criteria_dd;
     lv_obj_t *sort_direction_dd;
     lv_obj_t *second_header;
@@ -95,6 +96,7 @@ typedef struct {
     lv_obj_t *paste_conflict_mbox;
     lv_obj_t *copy_confirm_mbox;
     lv_obj_t *loading_dialog;
+    lv_obj_t *date_time_dialog;
     lv_obj_t *rename_dialog;
     lv_obj_t *rename_textarea;
     lv_obj_t *rename_keyboard;
@@ -189,6 +191,36 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx);
  * @param e LVGL event (CLICKED) with user data = file_manager_ctx_t*.
  */
 static void file_manager_on_datetime_click(lv_event_t *e);
+
+/**
+ * @brief Build the date&time dialog overlay for the file manager.
+ *
+ * Creates an overlay with SNTP refresh and manual set buttons.
+ *
+ * @param ctx Active file manager context.
+ */
+static void file_manager_build_date_time_dialog(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Close and destroy the date&time dialog overlay.
+ *
+ * @param e LVGL event (CLICKED) with user data = file_manager_ctx_t*.
+ */
+static void close_date_time_dialog(lv_event_t *e);
+
+/**
+ * @brief Open the manual date&time picker from the settings module.
+ *
+ * @param e LVGL event (CLICKED) with user data = file_manager_ctx_t*.
+ */
+static void manual_date_time(lv_event_t *e);
+
+/**
+ * @brief Trigger SNTP refresh via the settings dialog.
+ *
+ * @param e LVGL event (CLICKED) with user data = file_manager_ctx_t*.
+ */
+static void sntp_date_time(lv_event_t *e);
 
 /**
  * @brief Start the periodic clock timer (esp_timer) to refresh the header clock label.
@@ -2190,7 +2222,150 @@ static void file_manager_on_unsupported_ok(lv_event_t *e)
 static void file_manager_on_datetime_click(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->screen){
+        return;
+    }
+    
+    file_manager_build_date_time_dialog(ctx);
+}
+
+static void file_manager_build_date_time_dialog(file_manager_ctx_t *ctx)
+{
+    if (ctx->date_time_overlay){
+        lv_obj_delete(ctx->date_time_overlay);
+        ctx->date_time_overlay = NULL;
+    }
+
+    lv_obj_t *overlay = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(overlay);
+    lv_obj_set_size(overlay, LV_PCT(100), LV_PCT(100));
+    styles_set_bg_color(overlay, 0);
+    lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
+    lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
+    ctx->date_time_overlay = overlay;
+
+    lv_obj_t *dlg = lv_obj_create(overlay);
+    lv_obj_set_style_radius(dlg, 12, 0);
+    lv_obj_set_style_pad_all(dlg, 6, 0);
+    lv_obj_set_style_pad_gap(dlg, 4, 0);
+    lv_obj_set_size(dlg, lv_pct(85), lv_pct(80));
+    lv_obj_set_flex_flow(dlg, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(dlg, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(dlg, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_add_flag(dlg, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scroll_dir(dlg, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
+    styles_set_dialog(dlg);
+    lv_obj_set_style_border_width(dlg, 2, 0);
+    lv_obj_center(dlg);
+    ctx->date_time_dialog = dlg;
+
+    lv_obj_t *title = lv_label_create(dlg);
+    lv_label_set_text(title, "Set Date&Time");
+    lv_obj_set_style_text_font(title, &Domine_16, 0);
+    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(title, LV_PCT(100));
+    lv_obj_add_flag(title, LV_OBJ_FLAG_EVENT_BUBBLE);    
+
+    /* SNTP row */
+    lv_obj_t *row_sntp = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_sntp);
+    lv_obj_set_flex_flow(row_sntp, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_sntp, 6, 0);
+    lv_obj_set_style_pad_all(row_sntp, 0, 0);
+    lv_obj_set_width(row_sntp, LV_PCT(90));
+    lv_obj_set_height(row_sntp, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(row_sntp, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_margin_top(row_sntp, 10, 0);
+    lv_obj_add_flag(row_sntp, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t *sntp_button = lv_button_create(row_sntp);
+    lv_obj_set_flex_grow(sntp_button, 1);
+    lv_obj_set_style_radius(sntp_button, 8, 0);
+    lv_obj_set_style_pad_all(sntp_button, 6, 0); 
+    styles_set_button(sntp_button);
+    lv_obj_add_event_cb(sntp_button, sntp_date_time, LV_EVENT_CLICKED, ctx);
+    lv_obj_set_style_align(sntp_button, LV_ALIGN_CENTER, 0);
+    lv_obj_t *sntp_lbl = lv_label_create(sntp_button);
+    lv_label_set_text(sntp_lbl, "Refresh SNTP");
+    lv_obj_center(sntp_lbl);      
+
+    /* Manual time row */
+    lv_obj_t *row_manual = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_manual);
+    lv_obj_set_flex_flow(row_manual, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_manual, 6, 0);
+    lv_obj_set_style_pad_all(row_manual, 0, 0);
+    lv_obj_set_width(row_manual, LV_PCT(90));
+    lv_obj_set_height(row_manual, LV_SIZE_CONTENT);
+    lv_obj_set_flex_align(row_manual, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_margin_top(row_manual, 10, 0);
+    lv_obj_add_flag(row_manual, LV_OBJ_FLAG_EVENT_BUBBLE);        
+
+    lv_obj_t *manual_button = lv_button_create(row_manual);
+    lv_obj_set_flex_grow(manual_button, 1);
+    lv_obj_set_style_radius(manual_button, 8, 0);
+    lv_obj_set_style_pad_all(manual_button, 6, 0); 
+    styles_set_button(manual_button);
+    lv_obj_add_event_cb(manual_button, manual_date_time, LV_EVENT_CLICKED, ctx);
+    lv_obj_set_style_align(manual_button, LV_ALIGN_CENTER, 0);
+    lv_obj_t *manual_lbl = lv_label_create(manual_button);
+    lv_label_set_text(manual_lbl, "Manual Date&Time");
+    lv_obj_center(manual_lbl);
+
+    /* Action row */
+    lv_obj_t *row_actions = lv_obj_create(dlg);
+    lv_obj_remove_style_all(row_actions);
+    lv_obj_set_flex_flow(row_actions, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_gap(row_actions, 6, 0);
+    lv_obj_set_style_pad_all(row_actions, 0, 0);
+    lv_obj_set_width(row_actions, LV_PCT(100));
+    lv_obj_set_height(row_actions, LV_SIZE_CONTENT);
+    lv_obj_set_style_margin_top(row_actions, 10, 0);
+    lv_obj_set_flex_align(row_actions, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_flag(row_actions, LV_OBJ_FLAG_EVENT_BUBBLE);
+    
+    lv_obj_t *close_btn = lv_button_create(row_actions);
+    styles_set_button(close_btn);
+    lv_obj_set_width(close_btn, LV_PCT(55));
+    lv_obj_set_style_radius(close_btn, 6, 0);
+    lv_obj_set_style_margin_top(close_btn, 15, 0);
+    lv_obj_add_event_cb(close_btn, close_date_time_dialog, LV_EVENT_CLICKED, ctx);
+    lv_obj_t *close_lbl = lv_label_create(close_btn);
+    lv_label_set_text(close_lbl, "Close");
+    lv_obj_center(close_lbl);
+    lv_obj_add_flag(close_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
+    
+}
+
+static void close_date_time_dialog(lv_event_t *e)
+{
+    file_manager_ctx_t *ctx = lv_event_get_user_data(e); 
+    if (ctx && ctx->date_time_overlay) {
+        lv_obj_del(ctx->date_time_overlay);
+        ctx->date_time_dialog = NULL;
+        ctx->date_time_overlay = NULL;
+    }    
+}
+
+static void manual_date_time(lv_event_t *e)
+{
+    file_manager_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->screen){
+        return;
+    }
+    
     settings_show_date_time_dialog(ctx ? ctx->screen : NULL);
+}
+
+static void sntp_date_time(lv_event_t *e)
+{
+    file_manager_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->screen){
+        return;
+    }
+    
+    settings_show_sntp_dialog(ctx ? ctx->screen : NULL);
 }
 
 static void file_manager_start_clock_timer(file_manager_ctx_t *ctx)
@@ -2580,11 +2755,11 @@ static void file_manager_apply_sort(file_manager_ctx_t *ctx, fs_nav_sort_mode_t 
 
 static void file_manager_close_sort_dialog(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->sort_panel) {
+    if (!ctx || !ctx->sort_overlay) {
         return;
     }
-    lv_obj_del(ctx->sort_panel);
-    ctx->sort_panel = NULL;
+    lv_obj_del(ctx->sort_overlay);
+    ctx->sort_overlay = NULL;
     ctx->sort_criteria_dd = NULL;
     ctx->sort_direction_dd = NULL;
 }
@@ -2602,7 +2777,7 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    ctx->sort_panel = overlay;
+    ctx->sort_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
     lv_obj_set_style_radius(dlg, 12, 0);

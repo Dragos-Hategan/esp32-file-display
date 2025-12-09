@@ -16,7 +16,7 @@ extern "C" {
  *
  * @note Call once at startup before launching UI tasks.
  */
-void starting_routine(void);
+void settings_starting_routine(void);
 
 /**
  * @brief Open the Settings UI, creating it on first call and loading it into LVGL.
@@ -34,9 +34,17 @@ esp_err_t settings_open_settings(lv_obj_t *return_screen);
  * settings context/state.
  *
  * @param return_screen Screen that owns the caller UI (can be NULL).
- * @return ESP_OK on success, ESP_ERR_INVALID_ARG if LVGL is not ready.
  */
-esp_err_t settings_show_date_time_dialog(lv_obj_t *return_screen);
+void settings_show_date_time_dialog(lv_obj_t *return_screen);
+
+ /**
+ * @brief Show the SNTP refresh confirmation dialog.
+ *
+ * Stores the caller screen and builds a confirmation message box to refresh time via SNTP.
+ *
+ * @param return_screen Screen that owns the caller UI (can be NULL).
+ */
+void settings_show_sntp_dialog(lv_obj_t *return_screen);
 
 /**
  * @brief Register callbacks for time set/reset events.

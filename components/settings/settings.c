@@ -294,6 +294,15 @@ static void ui_on_startup_switch_changed(lv_event_t *e);
 static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx);
 
 /**
+ * @brief Build the confirmation message box for SNTP refresh.
+ *
+ * Closes any existing SNTP confirmation box, then creates a new one with Yes/Cancel actions.
+ *
+ * @param ctx Active settings context.
+ */
+static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx);
+
+/**
  * @brief Prompt user confirmation to refresh SNTP (requires restart).
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
@@ -566,9 +575,8 @@ static void settings_rotate_screen(lv_event_t *e);
  * and numeric keyboard, and stores pointers in the shared settings context.
  *
  * @param ctx Active settings context (must be non-NULL).
- * @return ESP_OK on success, ESP_ERR_INVALID_ARG if ctx is NULL.
  */
-static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx);
+static void settings_build_date_time_dialog(settings_ctx_t *ctx);
 
 /**
  * @brief Settings button handler to open the date&time dialog.
@@ -954,7 +962,7 @@ static void get_sntp_time()
     esp_restart();
 }
 
-void starting_routine(void)
+void settings_starting_routine(void)
 {
     esp_reset_reason_t reason = esp_reset_reason();
     
@@ -973,7 +981,7 @@ void starting_routine(void)
     /* ----- Configurations ----- */
     ESP_LOGI(TAG, "Loading configurations");
     init_settings();
-    apply_default_font_theme(true); // Mostly used to apply the font
+    apply_default_font_theme(true);
 
     /* ----- Wi-Fi & SNTP ----- */
     if (s_settings_ctx.settings.startup_auto_connect || s_settings_ctx.settings.refresh_sntp_startup){
@@ -1019,11 +1027,18 @@ esp_err_t settings_open_settings(lv_obj_t *return_screen)
     return ESP_OK;
 }
 
-esp_err_t settings_show_date_time_dialog(lv_obj_t *return_screen)
+void settings_show_date_time_dialog(lv_obj_t *return_screen)
 {
     settings_ctx_t *ctx = &s_settings_ctx;
     ctx->return_screen = return_screen;
-    return settings_build_date_time_dialog(ctx);
+    settings_build_date_time_dialog(ctx);
+}
+
+void settings_show_sntp_dialog(lv_obj_t *return_screen)
+{
+    settings_ctx_t *ctx = &s_settings_ctx;
+    ctx->return_screen = return_screen;
+    settings_build_refresh_sntp_msgbox(ctx);
 }
 
 void settings_register_time_callbacks(void (*on_time_set)(void),
@@ -1967,10 +1982,10 @@ static void settings_rotate_screen(lv_event_t *e)
     apply_rotation_to_display(false);
 }
 
-static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
+static void settings_build_date_time_dialog(settings_ctx_t *ctx)
 {
     if (!ctx) {
-        return ESP_ERR_INVALID_ARG;
+        return;
     }
 
     /* Close previous overlay if still open. */
@@ -2157,8 +2172,6 @@ static esp_err_t settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_add_event_cb(ctx->dt_keyboard, settings_on_dt_keyboard_event, LV_EVENT_CANCEL, ctx);
     lv_obj_add_event_cb(ctx->dt_keyboard, settings_on_dt_keyboard_event, LV_EVENT_READY, ctx);
     lv_obj_align(ctx->dt_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
-
-    return ESP_OK;
 }
 
 static void settings_set_date_time(lv_event_t *e)
@@ -3386,7 +3399,6 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    //lv_obj_add_event_cb(overlay, settings_on_ss_background_tap, LV_EVENT_CLICKED, ctx);
     ctx->wifi_sntp_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
@@ -3402,7 +3414,6 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
     styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
-    //lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
     lv_obj_center(dlg);
     ctx->wifi_sntp_dialog = dlg;
 
@@ -3513,13 +3524,8 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     
 }
 
-static void settings_refresh_sntp(lv_event_t *e)
+static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx)
 {
-    settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->wifi_sntp_dialog) {
-        return;
-    }   
-
     if (ctx->sntp_confirm_mbox) {
         lv_msgbox_close(ctx->sntp_confirm_mbox);
         ctx->sntp_confirm_mbox = NULL;
@@ -3544,6 +3550,16 @@ static void settings_refresh_sntp(lv_event_t *e)
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, settings_sntp_confirm_no, LV_EVENT_CLICKED, ctx);
+}
+
+static void settings_refresh_sntp(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->wifi_sntp_dialog) {
+        return;
+    }   
+
+    settings_build_refresh_sntp_msgbox(ctx);
 }
 
 static void settings_build_wifi_connection_dialog(lv_event_t *e)
@@ -3573,7 +3589,6 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
     styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
-    //lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
     lv_obj_center(dlg);
     ctx->access_point_dialog = dlg;
 
