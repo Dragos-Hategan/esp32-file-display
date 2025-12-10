@@ -148,6 +148,10 @@ static int s_fade_steps_left = 0;
 static int s_fade_direction = 0;
 static bool s_wake_in_progress = false;
 
+static void backlight_on_without_wipe_effect(void);
+static void startup_splash_screen(void);
+static void get_sntp_time();
+
 /**
  * @brief Build the settings screen (header + scrollable settings list).
  *
@@ -469,9 +473,9 @@ static void manual_restart_flow(void);
 /**
  * @brief Handle SNTP startup flow depending on reset reason.
  *
- * @param reason Current reset reason (hard vs software/manual restart).
+ * @param power_reset Current reset reason (hard vs software/manual restart).
  */
-static void sntp_startup(esp_reset_reason_t reason);
+static void sntp_startup(bool power_reset);
 
 /**
  * @brief Apply the desired timezone to the C library clock.
@@ -936,35 +940,10 @@ static void load_theme_from_nvs(void);
 static void (*s_time_set_cb)(void) = NULL;
 static void (*s_time_reset_cb)(void) = NULL;
 
-static void get_sntp_time()
-{
-    show_connecting_message();
-    lv_timer_handler();
-    if (!s_settings_ctx.settings.time_valid && s_settings_ctx.settings.manual_restart){
-        vTaskDelay(150);
-        bsp_display_backlight_on(); 
-    }
-    bsp_display_stop();
-
-    esp_err_t err = wifi_init_sta();
-    if (err == ESP_OK){
-        err = init_sntp();    
-    }
-    if (err == ESP_OK){
-        s_settings_ctx.settings.sntp_success = true;
-        save_time_data();
-    }else{
-        s_settings_ctx.settings.sntp_success = false;
-    }
-    persist_sntp_result();
-    s_settings_ctx.settings.manual_restart = false;
-    persist_manual_restart();
-    esp_restart();
-}
-
 void settings_starting_routine(void)
 {
     esp_reset_reason_t reason = esp_reset_reason();
+    bool power_reset = (reason == ESP_RST_POWERON);
     
     /* ----- NSV ----- */
     ESP_LOGI(TAG, "Initializing NVS");
@@ -973,9 +952,7 @@ void settings_starting_routine(void)
     /* ----- Display and LVGL ----- */
     ESP_LOGI(TAG, "Starting bsp for ILI9341 display");
     ESP_ERROR_CHECK(bsp_display_start_result());
-    if (reason != ESP_RST_SW) {
-        bsp_display_backlight_off();
-    }
+    if (power_reset) bsp_display_backlight_off();
     styles_init_colors();
 
     /* ----- Configurations ----- */
@@ -984,8 +961,12 @@ void settings_starting_routine(void)
     apply_default_font_theme(true);
 
     /* ----- Wi-Fi & SNTP ----- */
-    if (s_settings_ctx.settings.startup_auto_connect || s_settings_ctx.settings.refresh_sntp_startup){
-        sntp_startup(reason);
+    if (power_reset){
+        ESP_LOGI(TAG, "Showing splash & connection screens");   
+        startup_splash_screen();  
+        get_sntp_time();
+    }else{
+        sntp_startup(power_reset);
         s_settings_ctx.settings.refresh_sntp_startup = false;
         persist_sntp_refresh();
     }
@@ -1146,6 +1127,45 @@ bool settings_get_dark_theme_flag(void)
 void settings_set_dark_theme_flag(bool is_dark)
 {
     s_settings_ctx.settings.dark_theme = is_dark;
+}
+
+static void get_sntp_time()
+{
+    show_connecting_message();
+    lv_timer_handler();
+    if (!s_settings_ctx.settings.time_valid && s_settings_ctx.settings.manual_restart){
+        vTaskDelay(150);
+        bsp_display_backlight_on(); 
+    }
+    bsp_display_stop();
+
+    esp_err_t err = wifi_init_sta();
+    if (err == ESP_OK){
+        err = init_sntp();    
+    }
+    if (err == ESP_OK){
+        s_settings_ctx.settings.sntp_success = true;
+        save_time_data();
+    }else{
+        s_settings_ctx.settings.sntp_success = false;
+    }
+    persist_sntp_result();
+    s_settings_ctx.settings.manual_restart = false;
+    persist_manual_restart();
+    esp_restart();
+}
+
+static void backlight_on_without_wipe_effect(void)
+{
+    vTaskDelay(pdMS_TO_TICKS(150));
+    bsp_display_backlight_on();
+}
+
+static void startup_splash_screen(void)
+{
+    show_splash_screen();
+    backlight_on_without_wipe_effect();
+    vTaskDelay(pdMS_TO_TICKS(1350));   
 }
 
 static void settings_build_screen(settings_ctx_t *ctx)
@@ -1566,35 +1586,29 @@ static void sntp_restart_flow(void)
     }else{
         show_connection_result_message(ESP_FAIL);
     }
-    vTaskDelay(pdMS_TO_TICKS(150));
-    bsp_display_backlight_on();            
+    backlight_on_without_wipe_effect();
     vTaskDelay(pdMS_TO_TICKS(1000));
 }
 
 static void manual_restart_flow(void)
 {
-    if(!s_settings_ctx.settings.time_valid){
-        get_sntp_time();
-    }else{
-        vTaskDelay(pdMS_TO_TICKS(150));
-        bsp_display_backlight_on(); 
+    if(s_settings_ctx.settings.startup_auto_connect ||
+            s_settings_ctx.settings.refresh_sntp_startup){
+                get_sntp_time();
     }
 }
 
-static void sntp_startup(esp_reset_reason_t reason)
+static void sntp_startup(bool power_reset)
 {
-    if (reason == ESP_RST_SW){
-        if (s_settings_ctx.settings.manual_restart){
-            manual_restart_flow();
-        }else{
-            sntp_restart_flow();
-        }
+    if (power_reset)
+        return;
+
+    if (s_settings_ctx.settings.manual_restart){
+        startup_splash_screen();  
+        manual_restart_flow();
     }else{
-        ESP_LOGI(TAG, "Showing splash & connection screens");
-        show_splash_screen();
-        get_sntp_time();
-    }
-    
+        sntp_restart_flow();
+    }    
 }
 
 static void apply_rotation_to_display(bool lock_display)
@@ -2318,20 +2332,13 @@ static void build_connecting_screen(void)
 
 static void show_splash_screen(void)
 {
-
     bsp_display_lock(0);
     build_splash_screen();
     bsp_display_unlock();
-    
-    // Small delay before turning on the screen to avoid wipe effect
-    vTaskDelay(pdMS_TO_TICKS(150));
-    bsp_display_backlight_on();
-    vTaskDelay(pdMS_TO_TICKS(1350));
 }
 
 static void show_connecting_message(void)
 {
-
     bsp_display_lock(0);
     build_connecting_screen();
     bsp_display_unlock();
@@ -2339,7 +2346,6 @@ static void show_connecting_message(void)
 
 static void show_connection_result_message(esp_err_t result)
 {
-
     bsp_display_lock(0);
     build_connection_result_message(result);
     bsp_display_unlock();
@@ -3737,7 +3743,6 @@ static void settings_sntp_confirm_yes(lv_event_t *e)
         return;
     }
 
-    bsp_display_backlight_off();
     s_settings_ctx.settings.refresh_sntp_startup = true;
     persist_sntp_refresh();
     s_settings_ctx.settings.time_valid = false;
