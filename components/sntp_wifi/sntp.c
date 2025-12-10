@@ -8,8 +8,7 @@
 
 #define SNTP_RETRY_NUMBER 5
 
-static const char *TAG_SNTP = "SNTP";
-static const char *TAG_GETT = "GET_TIME";
+static const char *TAG = "sntp";
 
 /**
  * @brief Start the SNTP client with a static NTP server.
@@ -38,9 +37,9 @@ static esp_err_t sntp_start(void)
 
     esp_err_t err = esp_netif_sntp_init(&config);
     if (err == ESP_OK){
-        ESP_LOGI(TAG_SNTP, "SNTP started via esp_netif");
+        ESP_LOGI(TAG, "SNTP started via esp_netif");
     }else{
-        ESP_LOGE(TAG_SNTP, "SNTP init failed: (%s)", esp_err_to_name(err));
+        ESP_LOGE(TAG, "SNTP init failed: (%s)", esp_err_to_name(err));
     }
     return err;
 }
@@ -49,7 +48,7 @@ esp_err_t wait_for_time_blocking(uint32_t timeout_ms)
 {
     esp_err_t err = esp_netif_sntp_sync_wait(pdMS_TO_TICKS(timeout_ms));
     if (err == ESP_OK) {
-        ESP_LOGI(TAG_GETT, "Time synced");
+        ESP_LOGI(TAG, "Time synced");
         return err;
     }
 
@@ -60,13 +59,13 @@ esp_err_t wait_for_time_blocking(uint32_t timeout_ms)
         time(&now);
         localtime_r(&now, &ti);
         if (ti.tm_year > (2016 - 1900)) {
-            ESP_LOGI(TAG_GETT, "Time looks valid (fallback).");
+            ESP_LOGI(TAG, "Time looks valid (fallback).");
             return ESP_OK;
         }
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 
-    ESP_LOGW(TAG_GETT, "Time not synced (timeout).");
+    ESP_LOGW(TAG, "Time not synced (timeout).");
     return ESP_FAIL;
 }
 
@@ -75,7 +74,7 @@ esp_err_t init_sntp(void)
 {
     esp_err_t err = sntp_start();
     if (err != ESP_OK){
-        ESP_LOGI(TAG_SNTP, "sntp_start failed: (%s)", esp_err_to_name(err));
+        ESP_LOGI(TAG, "sntp_start failed: (%s)", esp_err_to_name(err));
         return err;
     }
 
@@ -84,7 +83,7 @@ esp_err_t init_sntp(void)
 
     err = wait_for_time_blocking(10000);
     if (err != ESP_OK){
-        ESP_LOGI(TAG_SNTP, "wait_for_time_blocking failed: (%s)", esp_err_to_name(err));
+        ESP_LOGI(TAG, "wait_for_time_blocking failed: (%s)", esp_err_to_name(err));
     }   
 
     return err;
