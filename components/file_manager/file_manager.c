@@ -2807,7 +2807,7 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_width(row_dir, LV_SIZE_CONTENT);
     lv_obj_set_height(row_dir, LV_SIZE_CONTENT);
     lv_obj_set_flex_align(row_dir, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_margin_top(row_dir, 3, 0);
+    lv_obj_set_style_margin_top(row_dir, 6, 0);
     lv_obj_t *dir_lbl = lv_label_create(row_dir);
     styles_set_text_color(dir_lbl, 0);
     lv_label_set_text(dir_lbl, "Direction:");
@@ -2834,7 +2834,7 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_width(row_crit, row_dir_w);
     lv_obj_set_height(row_crit, LV_SIZE_CONTENT);
     lv_obj_set_flex_align(row_crit, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_margin_top(row_crit, 6, 0);
+    lv_obj_set_style_margin_top(row_crit, 3, 0);
     lv_obj_t *crit_lbl = lv_label_create(row_crit);
     styles_set_text_color(crit_lbl, 0);
     lv_label_set_text(crit_lbl, "Criteria:");
@@ -2847,6 +2847,9 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
 
     lv_obj_t *sort_list = lv_dropdown_get_list(ctx->sort_criteria_dd);
     styles_set_dropdown(sort_list);
+
+    /* Place Criteria row above Direction while keeping aligned widths. */
+    lv_obj_move_to_index(row_crit, lv_obj_get_index(row_dir));
 
     lv_obj_t *actions = lv_obj_create(dlg);
     lv_obj_remove_style_all(actions);
