@@ -10,6 +10,7 @@ idf_component_register(
         sntp_wifi
         nvs_flash
         esp_timer
+        esp_wifi
         sd_card
         styles
         fonts

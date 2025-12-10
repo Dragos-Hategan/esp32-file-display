@@ -11,14 +11,15 @@
 #include "freertos/task.h"
 
 #include "bsp/esp-bsp.h"
+#include "sntp_header.h"
 #include "esp_system.h"
-#include "esp_timer.h"
 #include "Domine_14.h"
 #include "Domine_16.h"
 #include "nvs_flash.h"
+#include "esp_timer.h"
+#include "esp_wifi.h"
 #include "esp_log.h"
 #include "wifi.h"
-#include "sntp_header.h"
 #include "nvs.h"
 
 #include "calibration_xpt2046.h"
@@ -42,6 +43,7 @@
 #define SETTINGS_NVS_THEME_KEY                  "theme"
 #define SETTINGS_NVS_TIME_KEY                   "time_epoch"
 #define SETTINGS_NVS_ROT_KEY                    "rotation_step"
+#define SETTINGS_NVS_SNTP_ERROR_KEY             "sntp_err"
 #define SETTINGS_NVS_NS                         "settings"
 
 #define SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT  false
@@ -59,6 +61,7 @@
 #define SETTINGS_DEFAULT_SCREEN_OFF                 false
 #define SETTINGS_DEFAULT_DARK_THEME                 true
 #define SETTINGS_DEFAULT_TIME_VALID                 false
+#define SETTINGS_DEFAULT_SNTP_ERR_CODE              ESP_ERR_INVALID_STATE
 
 #define SETTINGS_CALIBRATION_TASK_STACK  (10 * 1024)
 #define SETTINGS_CALIBRATION_TASK_PRIO   (5)
@@ -98,6 +101,7 @@ typedef struct{
     bool running_calibration;
     bool dark_theme;
     bool sntp_success;
+    esp_err_t sntp_last_err;
     bool manual_restart;
     char ap_ssid[SETTINGS_AP_SSID_MAX_LEN + 1];
     char ap_pwd[SETTINGS_AP_PWD_MAX_LEN + 1];
@@ -1247,6 +1251,7 @@ static void get_sntp_time()
     if (err == ESP_OK){
         err = init_sntp();    
     }
+    s_settings_ctx.settings.sntp_last_err = err;
     if (err == ESP_OK){
         s_settings_ctx.settings.sntp_success = true;
         save_time_data();
@@ -1685,13 +1690,21 @@ static void apply_default_font_theme(bool lock_display)
 static void sntp_restart_flow(void)
 {
     load_sntp_result_from_nvs();            
+    esp_err_t last_err = s_settings_ctx.settings.sntp_last_err;
     if (s_settings_ctx.settings.sntp_success){
         show_connection_result_message(ESP_OK);
     }else{
-        show_connection_result_message(ESP_FAIL);
+        if (last_err == ESP_OK) {
+            last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
+        }
+        show_connection_result_message(last_err);
     }
     backlight_on_without_wipe_effect();
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(2500));
+    
+    bsp_display_lock(0);
+    lv_obj_clean(lv_screen_active());
+    bsp_display_unlock();
 }
 
 static void manual_restart_flow(void)
@@ -2061,6 +2074,7 @@ static void init_default_configs(void)
     s_settings_ctx.settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.saved_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.manual_restart = SETTINGS_DEFAULT_MANUAL_RESTART; 
+    s_settings_ctx.settings.sntp_last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
     s_settings_ctx.settings.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
     s_settings_ctx.settings.dim_level = SETTINGS_DEFAULT_SCREEN_DIM_LEVEL;
     s_settings_ctx.settings.sntp_success = SETTINGS_DEFAULT_SNTP_SUCCESS; 
@@ -2406,6 +2420,36 @@ static void build_splash_screen(void)
     lv_screen_load(scr);
 }
 
+/**
+ * @brief Translate the last SNTP/Wi-Fi error into a short user-facing reason.
+ *
+ * Provides readable text for common connection and time-sync failures. When
+ * the code is not handled explicitly, the esp_err_to_name string is used as a
+ * fallback.
+ *
+ * @param err Last esp_err_t recorded during SNTP/Wi-Fi initialization.
+ * @return const char* Static description of the failure reason.
+ */
+static const char *get_time_failure_reason(esp_err_t err)
+{
+    switch (err) {
+        case ESP_ERR_INVALID_ARG:
+            return "Wi-Fi credentials missing or invalid.\n\nCheck credentials.";
+#ifdef ESP_ERR_WIFI_TIMEOUT
+        case ESP_ERR_WIFI_TIMEOUT:
+            return "Wi-Fi connection timed out.\n\nCheck credentials.";
+#endif
+        case ESP_ERR_INVALID_STATE:
+            return "No recorded failure reason.";
+        case ESP_FAIL:
+            return "SNTP sync timed out.";
+        default: {
+            const char *name = esp_err_to_name(err);
+            return name ? name : "Unknown error";
+        }
+    }
+}
+
 static void build_connection_result_message(esp_err_t result)
 {
     lv_obj_t *scr = lv_screen_active();
@@ -2415,12 +2459,21 @@ static void build_connection_result_message(esp_err_t result)
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
 
     lv_obj_t *label = lv_label_create(scr);
+    lv_obj_set_width(label, LV_PCT(100));
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     if (result == ESP_OK){
         lv_label_set_text(label, "Time set succesfully!");
     }else{
         lv_label_set_text(label, "Time setting failed.");
     }
     lv_obj_center(label);
+    if (result != ESP_OK) {
+        lv_obj_t *reason_label = lv_label_create(scr);
+        lv_obj_set_width(reason_label, LV_PCT(100));
+        lv_obj_set_style_text_align(reason_label, LV_TEXT_ALIGN_CENTER, 0);
+        lv_label_set_text_fmt(reason_label, "Reason: %s", get_time_failure_reason(result));
+        lv_obj_align_to(reason_label, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 8);
+    }
 
     lv_screen_load(scr);
 }
@@ -3286,6 +3339,7 @@ static void persist_sntp_result(void)
         return;
     }
     nvs_set_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, s_settings_ctx.settings.sntp_success ? 1 : 0);
+    nvs_set_i32(h, SETTINGS_NVS_SNTP_ERROR_KEY, (int32_t)s_settings_ctx.settings.sntp_last_err);
     nvs_commit(h);
     nvs_close(h);
 }
@@ -3392,6 +3446,12 @@ static void load_sntp_result_from_nvs(void)
     int8_t raw = -1;
     if (nvs_get_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, &raw) == ESP_OK) {
         s_settings_ctx.settings.sntp_success = (raw != 0);
+    }
+    int32_t raw_err = (int32_t)SETTINGS_DEFAULT_SNTP_ERR_CODE;
+    if (nvs_get_i32(h, SETTINGS_NVS_SNTP_ERROR_KEY, &raw_err) == ESP_OK) {
+        s_settings_ctx.settings.sntp_last_err = (esp_err_t)raw_err;
+    } else {
+        s_settings_ctx.settings.sntp_last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
     }
 
     nvs_close(h);
@@ -3720,7 +3780,7 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     lv_obj_add_event_cb(ap_data_button, settings_build_wifi_connection_dialog, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(ap_data_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *ap_data_lbl = lv_label_create(ap_data_button);
-    lv_label_set_text(ap_data_lbl, "Access Point");
+    lv_label_set_text(ap_data_lbl, "Access Point Credentials");
     lv_obj_center(ap_data_lbl);      
 
     /* Refresh time row */
@@ -3877,7 +3937,7 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_add_event_cb(dlg, settings_on_ap_background_tap, LV_EVENT_CLICKED, ctx);    
 
     lv_obj_t *title = lv_label_create(dlg);
-    lv_label_set_text(title, "Access Point");
+    lv_label_set_text(title, "Access Point Credentials");
     lv_obj_set_style_text_font(title, &Domine_16, 0);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(title, LV_PCT(100));
