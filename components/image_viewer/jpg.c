@@ -240,6 +240,12 @@ static void jpg_viewer_build_ui(jpg_viewer_ctx_t *ctx)
     lv_obj_align(close_btn, LV_ALIGN_TOP_RIGHT, -10, 10);
     styles_set_button(close_btn);
     lv_obj_set_style_radius(close_btn, 1, 0); 
+    /* Remove press resize animation and darken color on press. */
+    lv_obj_set_style_transform_width(close_btn, 0, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_transform_height(close_btn, 0, LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_color_t base_bg = lv_obj_get_style_bg_color(close_btn, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(close_btn, lv_color_darken(base_bg, 80), LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(close_btn, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_PRESSED);
     lv_obj_add_event_cb(close_btn, jpg_viewer_on_close, LV_EVENT_CLICKED, ctx);
     lv_obj_t *close_lbl = lv_label_create(close_btn);
     lv_label_set_text(close_lbl, LV_SYMBOL_CLOSE);
