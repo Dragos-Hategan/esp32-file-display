@@ -467,6 +467,16 @@ static void text_viewer_show_name_dialog(text_viewer_ctx_t *ctx);
 static void text_viewer_close_name_dialog(text_viewer_ctx_t *ctx);
 
 /**
+ * @brief Confirm the filename dialog as if pressing Save.
+ *
+ * Validates, composes the path, and triggers the save flow.
+ *
+ * @param ctx Viewer context.
+ * @return true on success, false if validation failed.
+ */
+static bool text_viewer_confirm_name_dialog(text_viewer_ctx_t *ctx);
+
+/**
  * @brief Filename dialog button handler.
  *
  * @param e LVGL event.
@@ -1287,6 +1297,14 @@ static void text_viewer_on_keyboard_ready(lv_event_t *e)
     {
         return;
     }
+
+    lv_obj_t *target = ctx->keyboard ? lv_keyboard_get_textarea(ctx->keyboard) : NULL;
+    if (ctx->name_dialog && target && target == ctx->name_textarea)
+    {
+        text_viewer_confirm_name_dialog(ctx);
+        return;
+    }
+
     text_viewer_handle_save(ctx);
 }
 
@@ -1986,6 +2004,43 @@ static void text_viewer_close_name_dialog(text_viewer_ctx_t *ctx)
     text_viewer_hide_keyboard(ctx);
 }
 
+static bool text_viewer_confirm_name_dialog(text_viewer_ctx_t *ctx)
+{
+    if (!ctx || !ctx->name_dialog)
+    {
+        return false;
+    }
+
+    const char *raw = ctx->name_textarea ? lv_textarea_get_text(ctx->name_textarea) : "";
+    char name_buf[FS_NAV_MAX_NAME];
+    strlcpy(name_buf, raw ? raw : "", sizeof(name_buf));
+    text_viewer_ensure_txt_extension(name_buf, sizeof(name_buf));
+    if (!text_viewer_validate_name(name_buf))
+    {
+        text_viewer_set_status(ctx, "Invalid .txt name");
+        return false;
+    }
+    esp_err_t compose_err = text_viewer_compose_new_path(ctx, name_buf, ctx->path, sizeof(ctx->path));
+    if (compose_err != ESP_OK)
+    {
+        text_viewer_set_status(ctx, "Path too long");
+        return false;
+    }
+    if (text_viewer_path_exists(ctx->path))
+    {
+        text_viewer_set_status(ctx, "File already exists");
+        return false;
+    }
+
+    strlcpy(ctx->pending_name, name_buf, sizeof(ctx->pending_name));
+    ctx->directory[0] = '\0';
+    ctx->new_file = false;
+    text_viewer_set_path_label(ctx, ctx->path);
+    text_viewer_close_name_dialog(ctx);
+    text_viewer_handle_save(ctx);
+    return true;
+}
+
 static void text_viewer_on_name_dialog(lv_event_t *e)
 {
     text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
@@ -2000,33 +2055,7 @@ static void text_viewer_on_name_dialog(lv_event_t *e)
         return;
     }
 
-    const char *raw = ctx->name_textarea ? lv_textarea_get_text(ctx->name_textarea) : "";
-    char name_buf[FS_NAV_MAX_NAME];
-    strlcpy(name_buf, raw ? raw : "", sizeof(name_buf));
-    text_viewer_ensure_txt_extension(name_buf, sizeof(name_buf));
-    if (!text_viewer_validate_name(name_buf))
-    {
-        text_viewer_set_status(ctx, "Invalid .txt name");
-        return;
-    }
-    esp_err_t compose_err = text_viewer_compose_new_path(ctx, name_buf, ctx->path, sizeof(ctx->path));
-    if (compose_err != ESP_OK)
-    {
-        text_viewer_set_status(ctx, "Path too long");
-        return;
-    }
-    if (text_viewer_path_exists(ctx->path))
-    {
-        text_viewer_set_status(ctx, "File already exists");
-        return;
-    }
-
-    strlcpy(ctx->pending_name, name_buf, sizeof(ctx->pending_name));
-    ctx->directory[0] = '\0';
-    ctx->new_file = false;
-    text_viewer_set_path_label(ctx, ctx->path);
-    text_viewer_close_name_dialog(ctx);
-    text_viewer_handle_save(ctx);
+    text_viewer_confirm_name_dialog(ctx);
 }
 
 static void text_viewer_show_confirm(text_viewer_ctx_t *ctx)

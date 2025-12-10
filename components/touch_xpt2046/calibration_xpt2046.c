@@ -150,7 +150,7 @@ static void ui_show_calibration_message(bool calibration_found);
  * @brief Show a modal Yes/No dialog with optional 10-second auto-yes countdown.
  *
  * Builds a centered vertical stack on the top layer containing:
- *  - an LVGL message box with the fixed question "Run Touch Screen Calibration?"
+ *  - an LVGL message box with the fixed question "Run touch screen calibration?"
  *    and two buttons: **Yes** and **No**
  *  - optionally a loader row showing "Performing Calibration In:" with a circular progress
  *    arc and numeric countdown (10 → 1) when the loader is enabled

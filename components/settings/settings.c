@@ -2819,10 +2819,11 @@ static void settings_on_ap_keyboard_event(lv_event_t *e)
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CANCEL) {
         settings_hide_ap_keyboard(ctx);
+        return;
     }
 
     if (code == LV_EVENT_READY){
-
+        settings_hide_ap_keyboard(ctx);
     }
 }
 
