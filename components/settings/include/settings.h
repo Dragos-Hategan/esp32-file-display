@@ -133,6 +133,20 @@ bool settings_get_dark_theme_flag(void);
  */
 void settings_set_dark_theme_flag(bool is_dark);
 
+/**
+ * @brief Get the configured Access Point SSID string.
+ *
+ * @return Pointer to the null-terminated SSID stored in settings (do not free).
+ */
+char* settings_get_ap_ssid();
+
+/**
+ * @brief Get the configured Access Point password string.
+ *
+ * @return Pointer to the null-terminated password stored in settings (do not free).
+ */
+char* settings_get_ap_pwd();
+
 #ifdef __cplusplus
 }
 #endif

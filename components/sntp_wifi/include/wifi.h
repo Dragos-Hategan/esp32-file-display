@@ -1,9 +1,6 @@
 #ifndef WIFI_H
 #define WIFI_H
 
-#define WIFI_SSID "WIFI_SSID"
-#define WIFI_PASS "WIFI_PASS"
-
 #include "esp_err.h"
 
 /**
