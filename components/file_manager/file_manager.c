@@ -3998,8 +3998,10 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
         lv_obj_set_user_data(cancel_btn, (void *)FILE_BROWSER_ACTION_CANCEL);
         lv_obj_add_event_cb(cancel_btn, file_manager_on_action_button, LV_EVENT_CLICKED, ctx);
     } else {
+        lv_obj_set_flex_align(row3, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         lv_obj_t *cancel_btn = lv_button_create(row3);
-        lv_obj_set_flex_grow(cancel_btn, 1);
+        lv_obj_set_flex_grow(cancel_btn, 0);
+        lv_obj_set_width(cancel_btn, LV_PCT(60));
         styles_set_button(cancel_btn);
         lv_obj_t *cancel_lbl = lv_label_create(cancel_btn);
         lv_label_set_text(cancel_lbl, "Cancel");
