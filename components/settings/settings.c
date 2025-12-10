@@ -1548,7 +1548,7 @@ static void settings_on_about(lv_event_t *e)
         "Screensaver: opens the screensaver configuration for dimming and turning off the screen.",
         "Change Theme: toggles between dark and light system theme, saves other unsaved configs and restarts.",
         "Manual Date&Time: opens the date&time picker to manually set values in this format: HH:MM MM/DD/YY.",
-        "Wi-Fi & SNTP: configure the SSID and password of the Wi-fi connection for precise and automatic time, also with the option to connect automatically at every startup.",
+        "Wi-Fi & SNTP: configure the SSID and password of the Wi-Fi connection for precise and automatic time, also with a switch for auto-connect at startup.",
         "Rotate Screen: rotates the display 90 degrees each time.",
         "Run Calibration: starts the touch calibration wizard and saves the new calibration data. Also offers startup calibration toggle.",
         "Restart: reboots the device after saving configs. Note: configs are also saved by simply leaving settings.",
@@ -3713,9 +3713,9 @@ static void settings_toggle_theme(lv_event_t *e)
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
-    lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
-    styles_set_button(yes_btn);
-    lv_obj_add_event_cb(yes_btn, settings_theme_confirm_yes, LV_EVENT_CLICKED, ctx);
+    lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "Ok");
+    styles_set_button(ok_btn);
+    lv_obj_add_event_cb(ok_btn, settings_theme_confirm_yes, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     styles_set_button(cancel_btn);
@@ -3873,14 +3873,14 @@ static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx)
     lv_obj_center(mbox);
 
     lv_obj_t *label = lv_label_create(mbox);
-    lv_label_set_text(label, "Restart required to refresh sntp");
+    lv_label_set_text(label, "Restart required to refresh SNTP");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
-    lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
-    styles_set_button(yes_btn);
-    lv_obj_add_event_cb(yes_btn, settings_sntp_confirm_yes, LV_EVENT_CLICKED, ctx);
+    lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "Ok");
+    styles_set_button(ok_btn);
+    lv_obj_add_event_cb(ok_btn, settings_sntp_confirm_yes, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     styles_set_button(cancel_btn);

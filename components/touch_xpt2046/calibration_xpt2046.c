@@ -154,7 +154,7 @@ static void ui_show_calibration_message(bool calibration_found);
  *    and two buttons: **Yes** and **No**
  *  - optionally a loader row showing "Performing Calibration In:" with a circular progress
  *    arc and numeric countdown (10 → 1) when the loader is enabled
- *  - a row with the label "Ask For Calibration At Startup" and a switch (default ON)
+ *  - a row with the label "Ask for calibration at startup" and a switch (default ON)
  *
  * The function blocks the calling task:
  *  - When the loader/countdown is enabled: until the user presses a button or the
@@ -532,9 +532,9 @@ static void ui_show_calibration_message(bool calibration_found)
     lv_obj_t *lbl = lv_label_create(scr);
     styles_set_text_color(lbl, 0);
     if (!calibration_found){
-        lv_label_set_text(lbl, "No Previous Calibration Found\n\nGet Ready For Touch Screen Calibration\n\nClick Inside The Pointing Arrows");
+        lv_label_set_text(lbl, "No previous calibration found\n\nGet ready for touch screen calibration\n\nClick inside the pointing arrows");
     }else{
-        lv_label_set_text(lbl, "Get Ready For Touch Screen Calibration\n\nClick Inside The Pointing Arrows");
+        lv_label_set_text(lbl, "Get ready for touch screen calibration\n\nClick inside the pointing arrows");
     }
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(lbl, LV_PCT(100));
@@ -579,7 +579,7 @@ static bool ui_yes_no_dialog(void)
     lv_obj_set_style_max_width(mbox, lv_pct(90), 0);
 
     lv_obj_t *label = lv_label_create(mbox);
-    lv_label_set_text(label, "Run Touch Screen Calibration?");
+    lv_label_set_text(label, "Run touch screen calibration?");
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(label, lv_pct(100));
@@ -616,7 +616,7 @@ static bool ui_yes_no_dialog(void)
         lv_obj_set_height(loader_wrap, LV_SIZE_CONTENT);
 
         lv_obj_t *performing_label = lv_label_create(loader_wrap);
-        lv_label_set_text(performing_label, "Performing Calibration In:");
+        lv_label_set_text(performing_label, "Performing calibration in:");
         lv_obj_set_style_text_align(performing_label, LV_TEXT_ALIGN_LEFT, 0);
         styles_set_text_color(performing_label, 0);
         lv_obj_set_width(performing_label, LV_SIZE_CONTENT);
@@ -654,7 +654,7 @@ static bool ui_yes_no_dialog(void)
     lv_obj_set_height(toggle_row, LV_SIZE_CONTENT);
 
     lv_obj_t *ask_label = lv_label_create(toggle_row);
-    lv_label_set_text(ask_label, "Ask For Calibration At Startup");
+    lv_label_set_text(ask_label, "Ask for calibration at startup");
     lv_obj_set_style_text_align(ask_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(ask_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(ask_label, LV_PCT(100));
