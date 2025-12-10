@@ -3,7 +3,6 @@
 #include "esp_log.h"
 
 #include "sntp_header.h"
-#include "esp_err.h"
 #include "wifi.h"
 
 #define SNTP_RETRY_NUMBER 5
@@ -26,23 +25,7 @@ static const char *TAG = "sntp";
  * @return 
  *      - ESP_OK on succes
  */
-static esp_err_t sntp_start(void)
-{
-    // Simple configuration with static server; see notes above for DHCP options
-    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
-    // Example options:
-    // config.server_from_dhcp = true;             // accept NTP servers via DHCP
-    // config.renew_servers_after_new_IP = true;   // refresh servers on new lease
-    // config.start = true;                        // auto-start (default true)
-
-    esp_err_t err = esp_netif_sntp_init(&config);
-    if (err == ESP_OK){
-        ESP_LOGI(TAG, "SNTP started via esp_netif");
-    }else{
-        ESP_LOGE(TAG, "SNTP init failed: (%s)", esp_err_to_name(err));
-    }
-    return err;
-}
+static esp_err_t sntp_start(void);
 
 esp_err_t wait_for_time_blocking(uint32_t timeout_ms)
 {
@@ -86,5 +69,18 @@ esp_err_t init_sntp(void)
         ESP_LOGI(TAG, "wait_for_time_blocking failed: (%s)", esp_err_to_name(err));
     }   
 
+    return err;
+}
+
+static esp_err_t sntp_start(void)
+{
+    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+    
+    esp_err_t err = esp_netif_sntp_init(&config);
+    if (err == ESP_OK){
+        ESP_LOGI(TAG, "SNTP started via esp_netif");
+    }else{
+        ESP_LOGE(TAG, "SNTP init failed: (%s)", esp_err_to_name(err));
+    }
     return err;
 }
