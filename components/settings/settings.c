@@ -69,6 +69,8 @@
 #define STR_HELPER(x)               #x
 #define STR(x)                      STR_HELPER(x)
 
+static const char *TAG = "settings";
+
 typedef struct{
     int screen_rotation_step;           /**< Current rotation step (0-3) applied to display */
     int saved_rotation_step;            /**< Last persisted rotation step */
@@ -139,7 +141,6 @@ typedef struct{
 }settings_ctx_t;
 
 static settings_ctx_t s_settings_ctx;
-static const char *TAG = "settings";
 static esp_timer_handle_t s_ss_off_timer = NULL;
 static esp_timer_handle_t s_ss_dim_timer = NULL;
 static esp_timer_handle_t s_fade_timer = NULL;
@@ -148,8 +149,19 @@ static int s_fade_steps_left = 0;
 static int s_fade_direction = 0;
 static bool s_wake_in_progress = false;
 
+/**
+ * @brief Turn the backlight on after a short delay without clearing the screen.
+ */
 static void backlight_on_without_wipe_effect(void);
+
+/**
+ * @brief Show the startup splash screen and keep it visible briefly.
+ */
 static void startup_splash_screen(void);
+
+/**
+ * @brief Connect to Wi-Fi, sync time via SNTP, persist the result, and restart.
+ */
 static void get_sntp_time();
 
 /**
@@ -400,7 +412,23 @@ static void settings_apply_screensaver(lv_event_t *e);
  */
 static void settings_close_screensaver(lv_event_t *e);
 
+/**
+ * @brief Close the Wi-Fi/SNTP connection dialog overlay.
+ *
+ * Deletes the overlay and clears cached pointers in the context.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
 static void settings_close_connection_dialog(lv_event_t *e);
+
+/**
+ * @brief Close the Access Point configuration dialog and rebuild the Wi-Fi dialog.
+ *
+ * Deletes the overlay, clears stored pointers, and recreates the Wi-Fi/SNTP dialog to return
+ * the user to the previous view.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
 static void settings_close_access_point_dialog(lv_event_t *e);
 
 /**

@@ -8,13 +8,11 @@ extern "C" {
 #include "lvgl.h"
 
 /**
- * @brief Perform one-time system bring-up (NVS, display, touch, SD) and UI calibration.
+ * @brief Execute the full startup flow (NVS, display, settings, SNTP, touch).
  *
- * Initializes NVS, display/LVGL (backlight + default Domine font theme), touch driver,
- * LVGL input registration, touch calibration (load from NVS and run dialog), and SD
- * card over SDSPI with retry scheduling. Ends by seeding in-memory settings state.
- *
- * @note Call once at startup before launching UI tasks.
+ * Initializes NVS, starts the display and styles, loads persisted settings, then either shows
+ * the splash screen with SNTP sync on power-on resets or resumes the saved SNTP state after
+ * other resets. Finally, it brings up the touch driver and optionally runs calibration.
  */
 void settings_starting_routine(void);
 
