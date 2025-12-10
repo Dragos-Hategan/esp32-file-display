@@ -195,7 +195,7 @@ static void file_manager_on_datetime_click(lv_event_t *e);
 /**
  * @brief Build the date&time dialog overlay for the file manager.
  *
- * Creates an overlay with SNTP refresh and manual set buttons.
+ * Creates an overlay with Wi-Fi & SNTP and manual set.
  *
  * @param ctx Active file manager context.
  */
@@ -2287,7 +2287,7 @@ static void file_manager_build_date_time_dialog(file_manager_ctx_t *ctx)
     lv_obj_add_event_cb(sntp_button, sntp_date_time, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(sntp_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *sntp_lbl = lv_label_create(sntp_button);
-    lv_label_set_text(sntp_lbl, "Refresh SNTP");
+    lv_label_set_text(sntp_lbl, "Wi-Fi & SNTP");
     lv_obj_center(sntp_lbl);      
 
     /* Manual time row */

@@ -1113,7 +1113,7 @@ void settings_show_sntp_dialog(lv_obj_t *return_screen)
 {
     settings_ctx_t *ctx = &s_settings_ctx;
     ctx->return_screen = return_screen;
-    settings_build_refresh_sntp_msgbox(ctx);
+    settings_build_wifi_sntp_dialog(ctx);
 }
 
 void settings_register_time_callbacks(void (*on_time_set)(void),
@@ -1465,7 +1465,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_add_event_cb(connection_button, settings_wifi_sntp_dialog, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(connection_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *connection_lbl = lv_label_create(connection_button);
-    lv_label_set_text(connection_lbl, "SNTP & Wi-Fi");
+    lv_label_set_text(connection_lbl, "Wi-Fi & SNTP");
     lv_obj_center(connection_lbl);  
 
     /* Row: Restart + Reset */
@@ -1545,7 +1545,7 @@ static void settings_on_about(lv_event_t *e)
         "Rotate Screen: rotates the display 90 degrees each time.",
         "Run Calibration: starts the touch calibration wizard and saves the new calibration data. Also offers startup calibration toggle.",
         "Change Theme: toggles between dark and light system theme, saves other unsaved configs and restarts.",
-        "SNTP & Wi-Fi: configure the SSID and password of the Wi-fi connection for a precise and automatic time at startup.",
+        "Wi-Fi & SNTP: configure the SSID and password of the Wi-fi connection for a precise and automatic time at startup.",
         "Restart: reboots the device after saving configs. Note: configs are also saved by simply leaving settings.",
         "Reset: restores all configs to default - calibration, screensaver, brightness, rotation, theme, Wi-Fi connection and date&time.",
     };
@@ -3797,7 +3797,6 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     lv_label_set_text(close_lbl, "Close");
     lv_obj_center(close_lbl);
     lv_obj_add_flag(close_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    
 }
 
 static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx)
