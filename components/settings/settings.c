@@ -1,10 +1,11 @@
 #include "settings.h"
 
+#include <sys/time.h>
+#include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <time.h>
-#include <sys/time.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -34,15 +35,14 @@
 #define SETTINGS_NVS_DIM_LEVEL_KEY              "dim_level"
 #define SETTINGS_NVS_DIM_TIME_KEY               "dim_time"
 #define SETTINGS_NVS_OFF_TIME_KEY               "off_time"
+#define SETTINGS_NVS_AP_SSID_KEY                "ap_ssid"
+#define SETTINGS_NVS_AP_PWD_KEY                 "ap_pwd"
 #define SETTINGS_NVS_OFF_EN_KEY                 "off_en"
 #define SETTINGS_NVS_DIM_EN_KEY                 "dim_en"
 #define SETTINGS_NVS_THEME_KEY                  "theme"
 #define SETTINGS_NVS_TIME_KEY                   "time_epoch"
 #define SETTINGS_NVS_ROT_KEY                    "rotation_step"
 #define SETTINGS_NVS_NS                         "settings"
-
-#define SETTINGS_MINIMUM_BRIGHTNESS      1   /**< Lowest brightness percentage to avoid black screen */
-#define SETTINGS_ROTATION_STEPS          4
 
 #define SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT  false
 #define SETTINGS_DEFAULT_REFRESH_SNTP_STARTUP       false
@@ -62,6 +62,10 @@
 
 #define SETTINGS_CALIBRATION_TASK_STACK  (10 * 1024)
 #define SETTINGS_CALIBRATION_TASK_PRIO   (5)
+#define SETTINGS_MINIMUM_BRIGHTNESS      1   /**< Lowest brightness percentage to avoid black screen */
+#define SETTINGS_AP_SSID_MAX_LEN         32
+#define SETTINGS_AP_PWD_MAX_LEN          63
+#define SETTINGS_ROTATION_STEPS          4
 #define SETTINGS_DIM_FADE_MS             500
 #define SETTINGS_OFF_FADE_MS             500
 #define SETTINGS_UP_FADE_MS              250
@@ -95,6 +99,8 @@ typedef struct{
     bool dark_theme;
     bool sntp_success;
     bool manual_restart;
+    char ap_ssid[SETTINGS_AP_SSID_MAX_LEN + 1];
+    char ap_pwd[SETTINGS_AP_PWD_MAX_LEN + 1];
 }settings_t;
 
 typedef struct{
@@ -122,6 +128,9 @@ typedef struct{
     lv_obj_t *screensaver_dialog;       /**< Screensaver dialog container */
     lv_obj_t *wifi_sntp_dialog;         /**< Wi-Fi & SNTP dialog container */
     lv_obj_t *access_point_dialog;      /**< Wi-Fi & SNTP dialog container */
+    lv_obj_t *access_point_keyboard;    /**< On-screen keyboard for access point dialog */
+    lv_obj_t *access_point_ssid_ta;     /**< SSID input for access point dialog */
+    lv_obj_t *access_point_pwd_ta;      /**< Password input for access point dialog */    
     lv_obj_t *dt_row_time;              /**< Time row container */
     lv_obj_t *ss_dim_lbl;               /**< Screensaver dimming label */
     lv_obj_t *ss_dim_switch;            /**< Screensaver dimming on/off switch */
@@ -363,6 +372,44 @@ static void settings_theme_confirm_no(lv_event_t *e);
 static void settings_sntp_confirm_no(lv_event_t *e);
 
 /**
+ * @brief Show and attach the AP keyboard when SSID/password fields gain focus.
+ *
+ * @param e LVGL event (FOCUSED or CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_on_ap_textarea_focus(lv_event_t *e);
+
+/**
+ * @brief Hide the AP keyboard when tapping outside editable areas.
+ *
+ * Ignores taps on the keyboard itself or the currently focused textarea.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_on_ap_background_tap(lv_event_t *e);
+
+/**
+ * @brief Handle AP keyboard cancel/ready events and hide it when finished.
+ *
+ * @param e LVGL event (CANCEL or READY) with user data = settings_ctx_t*.
+ */
+static void settings_on_ap_keyboard_event(lv_event_t *e);
+
+/**
+ * @brief Detach and hide the AP keyboard, then reset dialog alignment.
+ *
+ * @param ctx Active settings context.
+ */
+static void settings_hide_ap_keyboard(settings_ctx_t *ctx);
+
+/**
+ * @brief Realign the AP dialog to keep the active textarea visible above the keyboard.
+ *
+ * @param ctx Active settings context.
+ * @param ta  Focused textarea requesting alignment (NULL to reset).
+ */
+static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
+
+/**
  * @brief Close the reset confirmation overlay without applying changes.
  *
  * Dismisses the reset dialog and clears its pointer from the context.
@@ -404,6 +451,15 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx);
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
 static void settings_apply_screensaver(lv_event_t *e);
+
+/**
+ * @brief Persist Access Point credentials from the dialog and close it.
+ *
+ * Copies SSID/password text, saves to NVS, and dismisses the AP dialog.
+ *
+ * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
+ */
+static void settings_apply_ap_data(lv_event_t *e);
 
 /**
  * @brief Close the screensaver dialog without applying changes.
@@ -930,6 +986,16 @@ static void persist_valid_time_flag_to_nvs(void);
 static void persist_sntp_result(void);
 
 /**
+ * @brief Persist the access point credentials to NVS.
+ */
+static void persist_ap_credentials_to_nvs(void);
+
+/**
+ * @brief Load the access point credentials from NVS.
+ */
+static void load_ap_credentials_from_nvs(void);
+
+/**
  * @brief Persist the SNTP refresh-on-startup preference to NVS.
  */
 static void persist_sntp_refresh(void);
@@ -1155,6 +1221,16 @@ bool settings_get_dark_theme_flag(void)
 void settings_set_dark_theme_flag(bool is_dark)
 {
     s_settings_ctx.settings.dark_theme = is_dark;
+}
+
+char* settings_get_ap_ssid()
+{
+    return s_settings_ctx.settings.ap_ssid;
+}
+
+char* settings_get_ap_pwd()
+{
+    return s_settings_ctx.settings.ap_pwd;
 }
 
 static void get_sntp_time()
@@ -1996,11 +2072,14 @@ static void init_default_configs(void)
     s_settings_ctx.settings.dark_theme = SETTINGS_DEFAULT_DARK_THEME;
     s_settings_ctx.settings.time_valid = SETTINGS_DEFAULT_TIME_VALID; 
     s_settings_ctx.changing_brightness = false; 
+    s_settings_ctx.settings.ap_ssid[0] = '\0';
+    s_settings_ctx.settings.ap_pwd[0] = '\0';    
 }
 
 static void load_last_saved_configs()
 {
     load_calibration_prompt_from_nvs();
+    load_ap_credentials_from_nvs();
     load_manual_restart_from_nvs();
     load_sntp_refresh_from_nvs();
     load_auto_connect_from_nvs();
@@ -2581,6 +2660,35 @@ static void settings_realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *t
     lv_obj_align(ctx->screensaver_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
+static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
+{
+    if (!ctx || !ctx->access_point_dialog || !lv_obj_is_valid(ctx->access_point_dialog)) {
+        return;
+    }
+
+    int16_t kb_h = (ctx->access_point_keyboard && lv_obj_is_valid(ctx->access_point_keyboard)) ? lv_obj_get_height(ctx->access_point_keyboard) : 0;
+    if (kb_h <= 0) {
+        kb_h = lv_obj_get_height(ctx->access_point_dialog) / 3;
+    }
+    if (kb_h <= 0) {
+        kb_h = 120; /* fallback */
+    }
+
+    int16_t offset = 0;
+    if (ta) {
+        /* Lift more for password row to keep it visible. */
+        if (ta == ctx->access_point_pwd_ta) {
+            offset = -(kb_h * 2 / 3);
+            if (offset == 0) offset = -80;
+        } else {
+            offset = -(kb_h / 2);
+            if (offset == 0) offset = -60;
+        }
+    }
+
+    lv_obj_align(ctx->access_point_dialog, LV_ALIGN_CENTER, 0, offset);
+}
+
 static void settings_on_dt_keyboard_event(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
@@ -2617,6 +2725,76 @@ static void settings_on_ss_keyboard_event(lv_event_t *e)
         return;
     }
     settings_hide_ss_keyboard(ctx);
+}
+
+static void settings_hide_ap_keyboard(settings_ctx_t *ctx)
+{
+    if (!ctx || !ctx->access_point_keyboard) {
+        return;
+    }
+    lv_keyboard_set_textarea(ctx->access_point_keyboard, NULL);
+    lv_obj_add_flag(ctx->access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
+    settings_realign_ap_dialog(ctx, NULL);
+}
+
+static void settings_on_ap_background_tap(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx) {
+        return;
+    }
+
+    lv_obj_t *target = lv_event_get_target(e);
+    if (settings_is_descendant(target, ctx->access_point_keyboard)) {
+        return;
+    }
+    lv_obj_t *attached = ctx->access_point_keyboard ? lv_keyboard_get_textarea(ctx->access_point_keyboard) : NULL;
+    if (settings_is_descendant(target, attached)) {
+        return;
+    }
+
+    settings_hide_ap_keyboard(ctx);
+}
+
+static void settings_on_ap_keyboard_event(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx) {
+        return;
+    }
+
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CANCEL) {
+        settings_hide_ap_keyboard(ctx);
+    }
+
+    if (code == LV_EVENT_READY){
+
+    }
+}
+
+static void settings_on_ap_textarea_focus(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (!ctx || !ctx->access_point_keyboard) {
+        return;
+    }
+
+    if (code != LV_EVENT_FOCUSED && code != LV_EVENT_CLICKED) {
+        return;
+    }
+
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (!ta || lv_obj_has_state(ta, LV_STATE_DISABLED)) {
+        return;
+    }
+
+    lv_keyboard_set_textarea(ctx->access_point_keyboard, ta);
+    lv_obj_clear_flag(ctx->access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
+    settings_realign_ap_dialog(ctx, ta);
+    lv_obj_scroll_to_view(ta, LV_ANIM_ON);
 }
 
 static void settings_on_ss_textarea_focus(lv_event_t *e)
@@ -3112,6 +3290,29 @@ static void persist_sntp_result(void)
     nvs_close(h);
 }
 
+static void persist_ap_credentials_to_nvs(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open NVS for AP creds: (%s)", esp_err_to_name(err));
+        return;
+    }
+
+    esp_err_t res = nvs_set_str(h, SETTINGS_NVS_AP_SSID_KEY, s_settings_ctx.settings.ap_ssid);
+    if (res == ESP_OK) {
+        res = nvs_set_str(h, SETTINGS_NVS_AP_PWD_KEY, s_settings_ctx.settings.ap_pwd);
+    }
+    if (res == ESP_OK) {
+        res = nvs_commit(h);
+    }
+    nvs_close(h);
+
+    if (res != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save AP credentials: (%s)", esp_err_to_name(res));
+    }
+}
+
 static void persist_sntp_refresh(void)
 {
     nvs_handle_t h;
@@ -3135,6 +3336,45 @@ static void load_sntp_refresh_from_nvs(void)
     int8_t raw = -1;
     if (nvs_get_i8(h, SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY, &raw) == ESP_OK) {
         s_settings_ctx.settings.refresh_sntp_startup = (raw != 0);
+    }
+
+    nvs_close(h);
+}
+
+static void load_ap_credentials_from_nvs(void)
+{
+    s_settings_ctx.settings.ap_ssid[0] = '\0';
+    s_settings_ctx.settings.ap_pwd[0] = '\0';
+
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h) != ESP_OK) {
+        return;
+    }
+
+    size_t len = sizeof(s_settings_ctx.settings.ap_ssid);
+    esp_err_t res = nvs_get_str(h, SETTINGS_NVS_AP_SSID_KEY, s_settings_ctx.settings.ap_ssid, &len);
+    if (res == ESP_ERR_NVS_INVALID_LENGTH) {
+        char *tmp = (char *)malloc(len);
+        if (tmp && nvs_get_str(h, SETTINGS_NVS_AP_SSID_KEY, tmp, &len) == ESP_OK) {
+            strncpy(s_settings_ctx.settings.ap_ssid, tmp, sizeof(s_settings_ctx.settings.ap_ssid) - 1);
+            s_settings_ctx.settings.ap_ssid[sizeof(s_settings_ctx.settings.ap_ssid) - 1] = '\0';
+        }
+        free(tmp);
+    } else if (res != ESP_OK) {
+        s_settings_ctx.settings.ap_ssid[0] = '\0';
+    }
+
+    len = sizeof(s_settings_ctx.settings.ap_pwd);
+    res = nvs_get_str(h, SETTINGS_NVS_AP_PWD_KEY, s_settings_ctx.settings.ap_pwd, &len);
+    if (res == ESP_ERR_NVS_INVALID_LENGTH) {
+        char *tmp = (char *)malloc(len);
+        if (tmp && nvs_get_str(h, SETTINGS_NVS_AP_PWD_KEY, tmp, &len) == ESP_OK) {
+            strncpy(s_settings_ctx.settings.ap_pwd, tmp, sizeof(s_settings_ctx.settings.ap_pwd) - 1);
+            s_settings_ctx.settings.ap_pwd[sizeof(s_settings_ctx.settings.ap_pwd) - 1] = '\0';
+        }
+        free(tmp);
+    } else if (res != ESP_OK) {
+        s_settings_ctx.settings.ap_pwd[0] = '\0';
     }
 
     nvs_close(h);
@@ -3359,7 +3599,9 @@ static void settings_reset_confirm(lv_event_t *e)
     persist_brightness_to_nvs();
     persist_screensaver_to_nvs();
     persist_auto_connect_to_nvs();
+    persist_ap_credentials_to_nvs();
     persist_calibration_prompt_to_nvs();
+
     load_last_saved_configs();
     
     nvs_handle_t cal_nvs;
@@ -3610,6 +3852,13 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
         ctx->access_point_dialog = NULL;
     }
 
+    ctx->access_point_ssid_ta = NULL;
+    ctx->access_point_pwd_ta = NULL;
+    if (ctx->access_point_keyboard) {
+        lv_obj_del(ctx->access_point_keyboard);
+        ctx->access_point_keyboard = NULL;
+    }    
+
     lv_obj_t *dlg = lv_obj_create(ctx->wifi_sntp_overlay);
     lv_obj_set_style_radius(dlg, 12, 0);
     lv_obj_set_style_pad_all(dlg, 6, 0);
@@ -3625,6 +3874,8 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_set_style_border_width(dlg, 2, 0);
     lv_obj_center(dlg);
     ctx->access_point_dialog = dlg;
+    lv_obj_add_event_cb(ctx->wifi_sntp_overlay, settings_on_ap_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(dlg, settings_on_ap_background_tap, LV_EVENT_CLICKED, ctx);    
 
     lv_obj_t *title = lv_label_create(dlg);
     lv_label_set_text(title, "Access Point");
@@ -3655,9 +3906,15 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_set_flex_grow(ssid_ta, 1);
     lv_obj_set_height(ssid_ta, 32);
     lv_textarea_set_one_line(ssid_ta, true);
-    lv_textarea_set_max_length(ssid_ta, 32);
+    lv_textarea_set_max_length(ssid_ta, SETTINGS_AP_SSID_MAX_LEN);
     lv_textarea_set_placeholder_text(ssid_ta, "");
     styles_set_textarea(ssid_ta);
+    lv_obj_add_event_cb(ssid_ta, settings_on_ap_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ssid_ta, settings_on_ap_textarea_focus, LV_EVENT_CLICKED, ctx);
+    if (ctx->settings.ap_ssid[0] != '\0') {
+        lv_textarea_set_text(ssid_ta, ctx->settings.ap_ssid);
+    }
+    ctx->access_point_ssid_ta = ssid_ta;    
 
     /* Access Point password row */
     lv_obj_t *row_ap_password = lv_obj_create(dlg);
@@ -3681,12 +3938,18 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_set_flex_grow(pwd_ta, 1);
     lv_obj_set_height(pwd_ta, 32);    
     lv_textarea_set_one_line(pwd_ta, true);
-    lv_textarea_set_max_length(pwd_ta, 63);
+    lv_textarea_set_max_length(pwd_ta, SETTINGS_AP_PWD_MAX_LEN);
     lv_textarea_set_password_mode(pwd_ta, true);
     lv_textarea_set_placeholder_text(pwd_ta, "");
     styles_set_textarea(pwd_ta);
+    lv_obj_add_event_cb(pwd_ta, settings_on_ap_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(pwd_ta, settings_on_ap_textarea_focus, LV_EVENT_CLICKED, ctx);
+    if (ctx->settings.ap_pwd[0] != '\0') {
+        lv_textarea_set_text(pwd_ta, ctx->settings.ap_pwd);
+    }
+    ctx->access_point_pwd_ta = pwd_ta;    
 
-        /* Action row */
+    /* Action row */
     lv_obj_t *row_actions = lv_obj_create(dlg);
     lv_obj_remove_style_all(row_actions);
     lv_obj_set_flex_flow(row_actions, LV_FLEX_FLOW_ROW);
@@ -3705,7 +3968,7 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_center(apply_lbl);
     lv_obj_add_flag(apply_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     styles_set_button(apply_btn);
-    //lv_obj_add_event_cb(apply_btn, settings_apply_screensaver, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(apply_btn, settings_apply_ap_data, LV_EVENT_CLICKED, ctx);
     
     lv_obj_t *cancel_btn = lv_button_create(row_actions);
     lv_obj_set_flex_grow(cancel_btn, 1);
@@ -3716,6 +3979,16 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_add_flag(cancel_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, settings_close_access_point_dialog, LV_EVENT_CLICKED, ctx);
+    
+    ctx->access_point_keyboard = lv_keyboard_create(ctx->wifi_sntp_overlay);
+    styles_set_keyboard(ctx->access_point_keyboard);
+    lv_keyboard_set_mode(ctx->access_point_keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
+    lv_keyboard_set_textarea(ctx->access_point_keyboard, NULL);
+    lv_obj_add_flag(ctx->access_point_keyboard, LV_OBJ_FLAG_FLOATING);
+    lv_obj_add_flag(ctx->access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(ctx->access_point_keyboard, settings_on_ap_keyboard_event, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->access_point_keyboard, settings_on_ap_keyboard_event, LV_EVENT_READY, ctx);
+    lv_obj_align(ctx->access_point_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 }
 
 static void settings_wifi_sntp_dialog(lv_event_t *e)
@@ -3904,9 +4177,15 @@ static void settings_clear_ui_refs(settings_ctx_t *ctx)
     ctx->dt_hour_ta = NULL;
     ctx->dt_min_ta = NULL;
     ctx->dt_keyboard = NULL;
+    ctx->access_point_keyboard = NULL;
+    ctx->access_point_ssid_ta = NULL;
+    ctx->access_point_pwd_ta = NULL;    
     ctx->dt_dialog = NULL;
     ctx->screensaver_dialog = NULL;
     ctx->wifi_sntp_dialog = NULL;
+    ctx->access_point_dialog = NULL;
+    ctx->access_point_ssid_ta = NULL;
+    ctx->access_point_pwd_ta = NULL;    
     ctx->dt_row_time = NULL;
     ctx->ss_dim_lbl = NULL;
     ctx->ss_dim_switch = NULL;
@@ -4300,6 +4579,26 @@ static void settings_apply_screensaver(lv_event_t *e)
     settings_close_screensaver(e);
 }
 
+static void settings_apply_ap_data(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx || !ctx->access_point_dialog) {
+        return;
+    }
+
+    const char *ssid_txt = ctx->access_point_ssid_ta ? lv_textarea_get_text(ctx->access_point_ssid_ta) : "";
+    const char *pwd_txt = ctx->access_point_pwd_ta ? lv_textarea_get_text(ctx->access_point_pwd_ta) : "";
+
+    /* Copy into bounded buffers */
+    strncpy(ctx->settings.ap_ssid, ssid_txt ? ssid_txt : "", sizeof(ctx->settings.ap_ssid) - 1);
+    ctx->settings.ap_ssid[sizeof(ctx->settings.ap_ssid) - 1] = '\0';
+    strncpy(ctx->settings.ap_pwd, pwd_txt ? pwd_txt : "", sizeof(ctx->settings.ap_pwd) - 1);
+    ctx->settings.ap_pwd[sizeof(ctx->settings.ap_pwd) - 1] = '\0';
+
+    persist_ap_credentials_to_nvs();
+    settings_close_access_point_dialog(e);
+}
+
 static void settings_close_screensaver(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e); 
@@ -4332,7 +4631,10 @@ static void settings_close_connection_dialog(lv_event_t *e)
         ctx->wifi_sntp_dialog = NULL;
         ctx->wifi_sntp_overlay = NULL;
         
-        ctx->ss_keyboard = NULL;
+        ctx->access_point_dialog = NULL;
+        ctx->access_point_ssid_ta = NULL;
+        ctx->access_point_pwd_ta = NULL;
+        ctx->access_point_keyboard = NULL;
     }    
 }
 
@@ -4343,7 +4645,9 @@ static void settings_close_access_point_dialog(lv_event_t *e)
         lv_obj_del(ctx->wifi_sntp_overlay);
         ctx->wifi_sntp_overlay = NULL;
         ctx->access_point_dialog = NULL;
-        ctx->ss_keyboard = NULL;
+        ctx->access_point_ssid_ta = NULL;
+        ctx->access_point_pwd_ta = NULL;
+        ctx->access_point_keyboard = NULL;
     }   
     
     settings_build_wifi_sntp_dialog(ctx);
