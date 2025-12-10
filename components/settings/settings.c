@@ -24,41 +24,41 @@
 #include "touch_xpt2046.h"
 #include "styles.h"
 
-#define SETTINGS_NVS_NS                         "settings"
-#define SETTINGS_NVS_ROT_KEY                    "rotation_step"
-#define SETTINGS_NVS_BRIGHTNESS_KEY             "brightness_pct"
-#define SETTINGS_NVS_MANUAL_RESTART_KEY         "manual_restart"
-#define SETTINGS_NVS_SNTP_RESULT_KEY            "sntp_result"
-#define SETTINGS_NVS_TIME_KEY                   "time_epoch"
-#define SETTINGS_NVS_VALID_TIME_FLAG_KEY        "is_time_valid"
-#define SETTINGS_NVS_DIM_EN_KEY                 "dim_en"
-#define SETTINGS_NVS_DIM_TIME_KEY               "dim_time"
-#define SETTINGS_NVS_DIM_LEVEL_KEY              "dim_level"
-#define SETTINGS_NVS_OFF_EN_KEY                 "off_en"
-#define SETTINGS_NVS_OFF_TIME_KEY               "off_time"
-#define SETTINGS_NVS_CALIB_PROMPT_KEY           "calib_prompt"
-#define SETTINGS_NVS_THEME_KEY                  "theme"
-#define SETTINGS_NVS_AUTO_CONNECT_KEY           "auto_connect"
 #define SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY   "refresh_sntp"
+#define SETTINGS_NVS_VALID_TIME_FLAG_KEY        "is_time_valid"
+#define SETTINGS_NVS_MANUAL_RESTART_KEY         "manual_restart"
+#define SETTINGS_NVS_AUTO_CONNECT_KEY           "auto_connect"
+#define SETTINGS_NVS_CALIB_PROMPT_KEY           "calib_prompt"
+#define SETTINGS_NVS_SNTP_RESULT_KEY            "sntp_result"
+#define SETTINGS_NVS_BRIGHTNESS_KEY             "brightness_pct"
+#define SETTINGS_NVS_DIM_LEVEL_KEY              "dim_level"
+#define SETTINGS_NVS_DIM_TIME_KEY               "dim_time"
+#define SETTINGS_NVS_OFF_TIME_KEY               "off_time"
+#define SETTINGS_NVS_OFF_EN_KEY                 "off_en"
+#define SETTINGS_NVS_DIM_EN_KEY                 "dim_en"
+#define SETTINGS_NVS_THEME_KEY                  "theme"
+#define SETTINGS_NVS_TIME_KEY                   "time_epoch"
+#define SETTINGS_NVS_ROT_KEY                    "rotation_step"
+#define SETTINGS_NVS_NS                         "settings"
 
-#define SETTINGS_ROTATION_STEPS          4
 #define SETTINGS_MINIMUM_BRIGHTNESS      1   /**< Lowest brightness percentage to avoid black screen */
+#define SETTINGS_ROTATION_STEPS          4
 
-#define SETTINGS_DEFAULT_BRIGHTNESS             100
-#define SETTINGS_DEFAULT_ROTATION_STEP          3
-#define SETTINGS_DEFAULT_SCREEN_DIM             false
-#define SETTINGS_DEFAULT_SCREEN_DIM_TIME        -1
-#define SETTINGS_DEFAULT_SCREEN_DIM_LEVEL       -1
-#define SETTINGS_DEFAULT_SCREEN_OFF             false
-#define SETTINGS_DEFAULT_SCREEN_OFF_TIME        -1
-#define SETTINGS_DEFAULT_CALI_PROMPT_ENABLE     true
-#define SETTINGS_DEFAULT_STARTUP_AUTO_CONNECT   false
-#define SETTINGS_DEFAULT_REFRESH_SNTP_STARTUP   false
-#define SETTINGS_DEFAULT_DARK_THEME             true
-#define SETTINGS_DEFAULT_TIME_VALID             false
-#define SETTINGS_DEFAULT_SNTP_SUCCESS           false 
-#define SETTINGS_DEFAULT_MANUAL_RESTART         false
-#define SETTINGS_DEFAULT_RUNNING_CALIBRATION    false
+#define SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT  false
+#define SETTINGS_DEFAULT_REFRESH_SNTP_STARTUP       false
+#define SETTINGS_DEFAULT_RUNNING_CALIBRATION        false
+#define SETTINGS_DEFAULT_CALI_PROMPT_ENABLE         true
+#define SETTINGS_DEFAULT_SCREEN_DIM_LEVEL           -1
+#define SETTINGS_DEFAULT_MANUAL_RESTART             false
+#define SETTINGS_DEFAULT_SCREEN_DIM_TIME            -1
+#define SETTINGS_DEFAULT_SCREEN_OFF_TIME            -1
+#define SETTINGS_DEFAULT_ROTATION_STEP              3
+#define SETTINGS_DEFAULT_SNTP_SUCCESS               false 
+#define SETTINGS_DEFAULT_BRIGHTNESS                 100
+#define SETTINGS_DEFAULT_SCREEN_DIM                 false
+#define SETTINGS_DEFAULT_SCREEN_OFF                 false
+#define SETTINGS_DEFAULT_DARK_THEME                 true
+#define SETTINGS_DEFAULT_TIME_VALID                 false
 
 #define SETTINGS_CALIBRATION_TASK_STACK  (10 * 1024)
 #define SETTINGS_CALIBRATION_TASK_PRIO   (5)
@@ -89,7 +89,7 @@ typedef struct{
     bool screen_off;
     int off_time;
     bool calibration_prompt_enabled;    /**< True to ask for calibration at startup */
-    bool startup_auto_connect;
+    bool startup_sntp_auto_connect;
     bool refresh_sntp_startup;
     bool running_calibration;
     bool dark_theme;
@@ -992,7 +992,7 @@ void settings_starting_routine(void)
     if (power_reset){
         ESP_LOGI(TAG, "Showing splash & connection screens");   
         startup_splash_screen();  
-        get_sntp_time();
+        if (s_settings_ctx.settings.startup_sntp_auto_connect) get_sntp_time();
     }else{
         sntp_startup(power_reset);
         s_settings_ctx.settings.refresh_sntp_startup = false;
@@ -1620,7 +1620,7 @@ static void sntp_restart_flow(void)
 
 static void manual_restart_flow(void)
 {
-    if(s_settings_ctx.settings.startup_auto_connect ||
+    if(s_settings_ctx.settings.startup_sntp_auto_connect ||
             s_settings_ctx.settings.refresh_sntp_startup){
                 get_sntp_time();
     }
@@ -1902,7 +1902,7 @@ static void persist_auto_connect_to_nvs(void)
         return;
     }
 
-    esp_err_t res = nvs_set_i8(h, SETTINGS_NVS_AUTO_CONNECT_KEY, s_settings_ctx.settings.startup_auto_connect ? 1 : 0);
+    esp_err_t res = nvs_set_i8(h, SETTINGS_NVS_AUTO_CONNECT_KEY, s_settings_ctx.settings.startup_sntp_auto_connect ? 1 : 0);
     if (res == ESP_OK) {
         res = nvs_commit(h);
     }
@@ -1916,7 +1916,7 @@ static void persist_auto_connect_to_nvs(void)
 static void load_auto_connect_from_nvs(void)
 {
     /* Default: disabled */
-    s_settings_ctx.settings.startup_auto_connect = SETTINGS_DEFAULT_STARTUP_AUTO_CONNECT;
+    s_settings_ctx.settings.startup_sntp_auto_connect = SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT;
 
     nvs_handle_t h;
     if (nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h) != ESP_OK) {
@@ -1925,7 +1925,7 @@ static void load_auto_connect_from_nvs(void)
 
     int8_t raw = -1;
     if (nvs_get_i8(h, SETTINGS_NVS_AUTO_CONNECT_KEY, &raw) == ESP_OK) {
-        s_settings_ctx.settings.startup_auto_connect = (raw != 0);
+        s_settings_ctx.settings.startup_sntp_auto_connect = (raw != 0);
     }
 
     nvs_close(h);
@@ -1978,23 +1978,23 @@ static void init_settings(void)
 
 static void init_default_configs(void)
 {
+    s_settings_ctx.settings.startup_sntp_auto_connect = SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT;
     s_settings_ctx.settings.calibration_prompt_enabled = SETTINGS_DEFAULT_CALI_PROMPT_ENABLE;
-    s_settings_ctx.settings.startup_auto_connect = SETTINGS_DEFAULT_STARTUP_AUTO_CONNECT;
     s_settings_ctx.settings.refresh_sntp_startup = SETTINGS_DEFAULT_REFRESH_SNTP_STARTUP;
+    s_settings_ctx.settings.running_calibration = SETTINGS_DEFAULT_RUNNING_CALIBRATION;    
     s_settings_ctx.settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.saved_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
+    s_settings_ctx.settings.manual_restart = SETTINGS_DEFAULT_MANUAL_RESTART; 
     s_settings_ctx.settings.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
-    s_settings_ctx.settings.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
     s_settings_ctx.settings.dim_level = SETTINGS_DEFAULT_SCREEN_DIM_LEVEL;
+    s_settings_ctx.settings.sntp_success = SETTINGS_DEFAULT_SNTP_SUCCESS; 
+    s_settings_ctx.settings.off_time = SETTINGS_DEFAULT_SCREEN_OFF_TIME;
     s_settings_ctx.settings.dim_time = SETTINGS_DEFAULT_SCREEN_DIM_TIME;
     s_settings_ctx.settings.screen_dim = SETTINGS_DEFAULT_SCREEN_DIM;
-    s_settings_ctx.settings.off_time = SETTINGS_DEFAULT_SCREEN_OFF_TIME;
+    s_settings_ctx.settings.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
     s_settings_ctx.settings.screen_off = SETTINGS_DEFAULT_SCREEN_OFF;
     s_settings_ctx.settings.dark_theme = SETTINGS_DEFAULT_DARK_THEME;
     s_settings_ctx.settings.time_valid = SETTINGS_DEFAULT_TIME_VALID; 
-    s_settings_ctx.settings.running_calibration = SETTINGS_DEFAULT_RUNNING_CALIBRATION;    
-    s_settings_ctx.settings.manual_restart = SETTINGS_DEFAULT_MANUAL_RESTART; 
-    s_settings_ctx.settings.sntp_success = SETTINGS_DEFAULT_SNTP_SUCCESS; 
     s_settings_ctx.changing_brightness = false; 
 }
 
@@ -3730,15 +3730,15 @@ static void settings_wifi_sntp_dialog(lv_event_t *e)
 
 bool settings_get_auto_connect_enabled(void)
 {
-    return s_settings_ctx.settings.startup_auto_connect;
+    return s_settings_ctx.settings.startup_sntp_auto_connect;
 }
 
 static void set_auto_connect_enabled(bool enable)
 {
-    if (s_settings_ctx.settings.startup_auto_connect == enable) {
+    if (s_settings_ctx.settings.startup_sntp_auto_connect == enable) {
         return;
     }
-    s_settings_ctx.settings.startup_auto_connect = enable;
+    s_settings_ctx.settings.startup_sntp_auto_connect = enable;
     persist_auto_connect_to_nvs();
 }
 
