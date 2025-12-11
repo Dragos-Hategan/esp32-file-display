@@ -38,10 +38,6 @@ typedef struct
     bool response;
 } msg_box_response_t;
 
-static const int CALIBRATION_MESSAGE_DISPLAY_TIME_MS = 3000;
-static touch_cal_t s_cal = {0};
-static bool s_show_loader = true;
-
 /** @brief 5-point calibration target set (screen-space). */
 static cal_point_t s_cal_points[5] = {
     {20, 20, 0, 0},                             // top left
@@ -50,6 +46,12 @@ static cal_point_t s_cal_points[5] = {
     {20, TOUCH_Y_MAX - 20, 0, 0},               // bottom left
     {TOUCH_X_MAX / 2, TOUCH_Y_MAX / 2, 0, 0}    // center
 };
+
+static const char* TAG = "calibration_xpt2046";
+
+static const int CALIBRATION_MESSAGE_DISPLAY_TIME_MS = 3000;
+static bool s_show_loader = true;
+static touch_cal_t s_cal = {0};
 
 /**
  * @brief Load touch calibration from NVS into the internal state.
@@ -240,7 +242,7 @@ void load_nvs_calibration(bool *calibration_found)
 {
     const touch_cal_t *existing_cal = &s_cal;
     *calibration_found = touch_cal_load_nvs(existing_cal);
-    ESP_LOGI("touch_calibration", "%s", *calibration_found ? "Touch driver is already calibrated" : "Touch driver needs calibration");
+    ESP_LOGI(TAG, "%s", *calibration_found ? "Touch driver is already calibrated" : "Touch driver needs calibration");
 }
 
 esp_err_t run_calibration(bool calibration_found)
@@ -251,7 +253,7 @@ esp_err_t run_calibration(bool calibration_found)
         // No calibration saved: runs calibration directly
         run_calibration_err = run_5point_touch_calibration(calibration_found);
         if (run_calibration_err != ESP_OK){
-            ESP_LOGE("Calibration Test", "5 point calibration failed: (%s)", esp_err_to_name(run_calibration_err));
+            ESP_LOGE(TAG, "5 point calibration failed: (%s)", esp_err_to_name(run_calibration_err));
             return run_calibration_err;
         }
     }
@@ -265,7 +267,7 @@ esp_err_t run_calibration(bool calibration_found)
         {
             run_calibration_err = run_5point_touch_calibration(calibration_found);
             if (run_calibration_err != ESP_OK){
-                ESP_LOGE("Calibration Test", "5 point calibration failed: (%s)", esp_err_to_name(run_calibration_err));
+                ESP_LOGE(TAG, "5 point calibration failed: (%s)", esp_err_to_name(run_calibration_err));
                 return run_calibration_err;
             }
         }
@@ -499,7 +501,7 @@ static esp_err_t sample_raw(int *rx, int *ry)
         uint8_t btn;
         sample_raw_err = esp_lcd_touch_read_data(touch_handle);
         if (sample_raw_err != ESP_OK){
-            ESP_LOGE("Raw Calibration Sample", "Failed to read lcd touch data: (%s)", esp_err_to_name(sample_raw_err));
+            ESP_LOGE(TAG, "Failed to read lcd touch data: (%s)", esp_err_to_name(sample_raw_err));
         }
 
         if (esp_lcd_touch_get_coordinates(touch_handle, &x, &y, NULL, &btn, 1))
