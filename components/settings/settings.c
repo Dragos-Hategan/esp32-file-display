@@ -2434,10 +2434,10 @@ static const char *get_time_failure_reason(esp_err_t err)
 {
     switch (err) {
         case ESP_ERR_INVALID_ARG:
-            return "Wi-Fi credentials missing or invalid.\nCheck credentials.";
+            return "Wi-Fi credentials missing or invalid.\nCHECK CREDENTIALS.";
 #ifdef ESP_ERR_WIFI_TIMEOUT
         case ESP_ERR_WIFI_TIMEOUT:
-            return "Wi-Fi connection timed out.\nCheck credentials or signal.";
+            return "Wi-Fi connection timed out.\nCHECK CREDENTIALS OR SIGNAL.";
 #endif
         case ESP_ERR_INVALID_STATE:
             return "No recorded failure reason.";

@@ -100,7 +100,10 @@ static esp_err_t start_wifi(void);
 static esp_err_t wait_for_ip(SemaphoreHandle_t s_ip_ready);
 
 /**
- * @brief General Wi-Fi/IP event handler for start, disconnect, and GOT_IP.
+ * @brief Dispatch Wi-Fi/IP events to specialized handlers.
+ *
+ * Routes events coming from the ESP event loop to Wi-Fi or IP-specific
+ * handlers.
  *
  * @param[in] arg        Unused user argument.
  * @param[in] event_base WIFI_EVENT or IP_EVENT.
@@ -108,6 +111,35 @@ static esp_err_t wait_for_ip(SemaphoreHandle_t s_ip_ready);
  * @param[in] event_data Event-specific payload (e.g., disconnect reason).
  */
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+
+/**
+ * @brief Handle Wi-Fi station events (start/disconnect).
+ *
+ * Attempts connection on start and manages retry/fail logic on disconnect.
+ *
+ * @param[in] event_id   WIFI_EVENT_* identifier.
+ * @param[in] event_data Event-specific payload (e.g., disconnect reason).
+ */
+static void handle_wifi_events(int32_t event_id, void *event_data);
+
+/**
+ * @brief Handle IP events for the STA interface.
+ *
+ * Currently processes successful IP acquisition events.
+ *
+ * @param[in] event_id IP_EVENT_* identifier.
+ */
+static void handle_ip_events(int32_t event_id);
+
+/**
+ * @brief Handle STA disconnections by logging and retrying until limit.
+ *
+ * Increments the retry counter, logs the disconnect reason when available,
+ * and triggers reconnection or signals failure once the retry cap is exceeded.
+ *
+ * @param[in] event_data Disconnect event data provided by the Wi-Fi stack.
+ */
+static void handle_wifi_disconnect(wifi_event_sta_disconnected_t *event_data);
 
 esp_err_t wifi_init_sta(void)
 {
@@ -207,8 +239,8 @@ static esp_err_t init_event_loop(void)
         return err;
     }
     
-    esp_netif_t *netif = NULL;
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_WIFI_STA();
+    esp_netif_t *netif = NULL;
 
     netif = esp_netif_new(&cfg);
     if (!netif){
@@ -327,46 +359,62 @@ static esp_err_t wait_for_ip(SemaphoreHandle_t s_ip_ready)
     return ESP_OK;
 }
 
-static void wifi_event_handler(void *arg, esp_event_base_t event_base,
-                               int32_t event_id, void *event_data)
+static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT) {
-        if (event_id == WIFI_EVENT_STA_START) {
-            if (s_creds_valid) {
-                esp_wifi_connect();
-            } else if (s_ip_ready) {
-                /* Unblock waiter immediately when creds are invalid. */
-                xSemaphoreGive(s_ip_ready);
-            }
+        handle_wifi_events(event_id, event_data);
 
-        } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
-            connection_retry_counter++;
-            if (connection_retry_counter > MAX_WIFI_RETRIES){
-                ESP_LOGE(TAG, "Too many retries, Wi-Fi failed.");
-                xSemaphoreGive(s_ip_ready);
-                return;
-            }   
+    } else if (event_base == IP_EVENT) {
+        handle_ip_events(event_id);
+    }
+}
 
-            const wifi_event_sta_disconnected_t *dis = (const wifi_event_sta_disconnected_t *)event_data;
-            ESP_LOGW(TAG, "Disconnected (reason=%d). Retrying...", dis ? dis->reason : -1);
-            if (dis) {
-                switch (dis->reason) {
-                    case WIFI_REASON_AUTH_FAIL:
-                    case WIFI_REASON_ASSOC_FAIL:
-                    case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
-                        ESP_LOGW(TAG, "Authentication failed. Please verify SSID/password.");
-                        break;
-                    case WIFI_REASON_NO_AP_FOUND:
-                        ESP_LOGW(TAG, "AP not found. Check SSID or signal.");
-                        break;
-                    default:
-                        break;
-                }
-            }
+static void handle_wifi_events(int32_t event_id, void *event_data)
+{
+    if (event_id == WIFI_EVENT_STA_START) {
+        if (s_creds_valid) {
             esp_wifi_connect();
+        } else if (s_ip_ready) {
+            /* Unblock waiter immediately when creds are invalid. */
+            xSemaphoreGive(s_ip_ready);
         }
+    
+    } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        handle_wifi_disconnect(event_data);
+    }
+}
 
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+static void handle_wifi_disconnect(wifi_event_sta_disconnected_t *event_data)
+{
+    connection_retry_counter++;
+    if (connection_retry_counter > MAX_WIFI_RETRIES){
+        ESP_LOGE(TAG, "Too many retries, Wi-Fi failed.");
+        xSemaphoreGive(s_ip_ready);
+        return;
+    }   
+
+    const wifi_event_sta_disconnected_t *dis = (const wifi_event_sta_disconnected_t *)event_data;
+    ESP_LOGW(TAG, "Disconnected (reason=%d). Retrying...", dis ? dis->reason : -1);
+    if (dis) {
+        switch (dis->reason) {
+            case WIFI_REASON_AUTH_FAIL:
+            case WIFI_REASON_ASSOC_FAIL:
+            case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+                ESP_LOGW(TAG, "Authentication failed. Please verify SSID/password.");
+                break;
+            case WIFI_REASON_NO_AP_FOUND:
+                ESP_LOGW(TAG, "AP not found. Check SSID or signal.");
+                break;
+            default:
+                break;
+        }
+    }
+    esp_wifi_connect();
+}
+
+static void handle_ip_events(int32_t event_id)
+{
+    if (event_id == IP_EVENT_STA_GOT_IP){
         ESP_LOGI(TAG, "Got IP!");
         if (s_ip_ready) {
             xSemaphoreGive(s_ip_ready);
