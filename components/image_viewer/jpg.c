@@ -45,7 +45,9 @@ static jpg_viewer_ctx_t s_jpg_viewer;
  *
  * This helper deletes the LVGL screen associated with the viewer (if any)
  * under a display lock, then calls jpg_viewer_reset() to clear the context.
- * If the context is NULL or not active, it simply resets the context.
+ * If the context is NULL or not active, it simply resets the context. When
+ * the lock cannot be acquired, the context is reset without deleting the
+ * LVGL screen.
  *
  * @param ctx Pointer to the viewer context to destroy.
  */
@@ -94,12 +96,22 @@ static esp_err_t jpg_handler_set_src(lv_obj_t *img, const char *path);
 static void jpg_viewer_reset(jpg_viewer_ctx_t *ctx);
 
 /**
+ * @brief Delete the viewer screen, unlock the display, and reset context.
+ *
+ * Expects the display lock to be held by the caller.
+ *
+ * @param ctx Pointer to the viewer context to clean up.
+ */
+static void jpg_viewer_cleanup_locked(jpg_viewer_ctx_t *ctx);
+
+/**
  * @brief LVGL event callback used to close the JPG viewer.
  *
  * This callback is attached to the close button. It retrieves the viewer
  * context from the event user data, switches back to the return screen
  * (or the previous screen if no explicit return screen is set), deletes
- * the viewer screen and resets the context.
+ * the viewer screen and resets the context. If the display lock cannot be
+ * acquired, it marks the viewer inactive to avoid stale callbacks.
  *
  * @param e Pointer to the LVGL event descriptor.
  */
@@ -199,10 +211,7 @@ esp_err_t jpg_viewer_open(const jpg_viewer_open_opts_t *opts)
         if (ctx->previous_screen) {
             lv_screen_load(ctx->previous_screen);
         }
-        lv_obj_del(ctx->screen);
-        ctx->screen = NULL;
-        bsp_display_unlock();
-        jpg_viewer_reset(ctx);
+        jpg_viewer_cleanup_locked(ctx);
         return err;
     }
 
@@ -222,10 +231,8 @@ static void jpg_viewer_destroy_active(jpg_viewer_ctx_t *ctx)
     }
 
     if (bsp_display_lock(0)) {
-        if (ctx->screen) {
-            lv_obj_del(ctx->screen);
-        }
-        bsp_display_unlock();
+        jpg_viewer_cleanup_locked(ctx);
+        return;
     }
 
     jpg_viewer_reset(ctx);
@@ -284,6 +291,16 @@ static void jpg_viewer_reset(jpg_viewer_ctx_t *ctx)
     memset(ctx, 0, sizeof(*ctx));
 }
 
+static void jpg_viewer_cleanup_locked(jpg_viewer_ctx_t *ctx)
+{
+    if (ctx && ctx->screen) {
+        lv_obj_del(ctx->screen);
+        ctx->screen = NULL;
+    }
+    bsp_display_unlock();
+    jpg_viewer_reset(ctx);
+}
+
 static void jpg_viewer_on_close(lv_event_t *e)
 {
     jpg_viewer_ctx_t *ctx = lv_event_get_user_data(e);
@@ -297,18 +314,12 @@ static void jpg_viewer_on_close(lv_event_t *e)
         return;
     }
 
-    lv_obj_t *old_screen = ctx->screen;
     lv_obj_t *target = ctx->return_screen ? ctx->return_screen : ctx->previous_screen;
     if (target) {
         lv_screen_load(target);
     }
 
-    if (old_screen) {
-        lv_obj_del(old_screen);
-    }
-
-    bsp_display_unlock();
-    jpg_viewer_reset(ctx);
+    jpg_viewer_cleanup_locked(ctx);
 }
 
 static size_t input_cb(JDEC *jd, uint8_t *buff, size_t nbytes)
