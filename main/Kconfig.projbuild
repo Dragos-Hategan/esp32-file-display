@@ -1,0 +1,7 @@
+menu "App Settings"
+    config APP_ENABLE_HEAP_STATS
+        bool "Enable heap stats task"
+        default n
+        help
+          When enabled, starts the periodic heap logging task.
+endmenu
