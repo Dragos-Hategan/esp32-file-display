@@ -1,18 +1,24 @@
-#include "esp_sntp.h"
+#include "sntp_header.h"
+
+#include <stdbool.h>
+#include <stdlib.h>
+#include <time.h>
+
 #include "esp_netif_sntp.h"
+#include "esp_sntp.h"
 #include "esp_log.h"
 
-#include "sntp_header.h"
 #include "wifi.h"
 
 #define SNTP_RETRY_NUMBER 5
+#define SNTP_MIN_VALID_YEAR (2016)
+#define SNTP_POLL_STEP_MS   (1000)
 
 static const char *TAG = "sntp";
 
 /**
  * @brief Start the SNTP client with a static NTP server.
  *
- * @details
  * Initializes and starts the SNTP service using esp_netif with a fixed
  * NTP server ("pool.ntp.org"). Alternative configuration options include:
  *   - Accepting NTP servers from DHCP.
@@ -22,36 +28,44 @@ static const char *TAG = "sntp";
  * @note This function should be called once after network initialization
  *       (after Wi-Fi or Ethernet is up).
  *
- * @return 
- *      - ESP_OK on succes
+ * @return ESP_OK on success or an error from esp_netif_sntp_init.
  */
 static esp_err_t sntp_start(void);
 
+/**
+ * @brief Validate that the current time is beyond a minimum year threshold.
+ *
+ * @return true if the current time looks valid, false otherwise.
+ */
+static bool sntp_time_is_valid(void);
+
 esp_err_t wait_for_time_blocking(uint32_t timeout_ms)
 {
-    esp_err_t err = esp_netif_sntp_sync_wait(pdMS_TO_TICKS(timeout_ms));
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "Time synced");
-        return err;
-    }
+    const TickType_t max_wait_ticks = pdMS_TO_TICKS(timeout_ms);
+    const TickType_t poll_ticks = pdMS_TO_TICKS(SNTP_POLL_STEP_MS);
+    const TickType_t start = xTaskGetTickCount();
 
-    // Very simple fallback check
-    for (int retry = 0; retry < SNTP_RETRY_NUMBER; ++retry) {
-        time_t now = 0;
-        struct tm ti = {0};
-        time(&now);
-        localtime_r(&now, &ti);
-        if (ti.tm_year > (2016 - 1900)) {
-            ESP_LOGI(TAG, "Time looks valid (fallback).");
+    while (true) {
+        esp_err_t err = esp_netif_sntp_sync_wait(poll_ticks);
+        if (err == ESP_OK && sntp_time_is_valid()) {
+            ESP_LOGI(TAG, "Time synced");
             return ESP_OK;
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+
+        if ((xTaskGetTickCount() - start) >= max_wait_ticks) {
+            break;
+        }
     }
 
-    ESP_LOGW(TAG, "Time not synced (timeout).");
-    return ESP_FAIL;
-}
+    /* Final fallback check in case sync completed just after timeout. */
+    if (sntp_time_is_valid()) {
+        ESP_LOGI(TAG, "Time looks valid (post-timeout check).");
+        return ESP_OK;
+    }
 
+    ESP_LOGW(TAG, "Time not synced (timeout after %u ms).", timeout_ms);
+    return ESP_ERR_TIMEOUT;
+}
 
 esp_err_t init_sntp(void)
 {
@@ -83,4 +97,13 @@ static esp_err_t sntp_start(void)
         ESP_LOGE(TAG, "SNTP init failed: (%s)", esp_err_to_name(err));
     }
     return err;
+}
+
+static bool sntp_time_is_valid(void)
+{
+    time_t now = 0;
+    struct tm ti = {0};
+    time(&now);
+    localtime_r(&now, &ti);
+    return (ti.tm_year > (SNTP_MIN_VALID_YEAR - 1900));
 }

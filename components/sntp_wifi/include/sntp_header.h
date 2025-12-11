@@ -7,42 +7,23 @@
 #define SNTP_DEFAULT_TIMEZONE TZ_EUROPE_BUCHAREST
 
 /**
- * @brief Block until time is synchronized or a timeout occurs.
+ * @brief Block until time is synced or a timeout elapses.
  *
- * @details
- * Waits for SNTP to complete synchronization. Uses the official
- * esp_netif_sntp_sync_wait() API (ESP-IDF 5.x). If that fails, falls
- * back to a manual check of the system time to validate synchronization.
+ * Polls SNTP sync status in 1s steps up to @p timeout_ms and validates the
+ * resulting time against a minimum year. Returns ESP_ERR_TIMEOUT on failure.
  *
- * @param timeout_ms Maximum time to wait in milliseconds.
- *
- * @note Logs a warning if synchronization fails within the timeout.
- * 
- * @return 
- *      - ESP_OK on succes
- *      - other error codes from esp_netif_sntp_sync_wait on failure
+ * @param timeout_ms Maximum wait in milliseconds.
+ * @return ESP_OK if time is valid, ESP_ERR_TIMEOUT otherwise.
  */
 esp_err_t wait_for_time_blocking(uint32_t timeout_ms);
 
 /**
- * @brief Initialize SNTP and configure the local time zone.
+ * @brief Initialize SNTP, set timezone, and wait for synchronization.
  *
- * @details
- * This function performs the following steps:
- *   - Initializes NVS (required for Wi-Fi).
- *   - Connects to Wi-Fi in station mode.
- *   - Starts SNTP client to synchronize time with NTP servers.
- *   - Configures the timezone for Europe/Bucharest (with automatic DST).
- *   - Blocks until the system time is synchronized or the given timeout expires.
+ * Starts SNTP, applies the default timezone from @c SNTP_DEFAULT_TIMEZONE,
+ * and waits up to 10 seconds for time to become valid.
  *
- * @note This function should be called once during system startup,
- *       typically from app_main().
- *
- * @param None
- * 
- * @return        
- *      - ESP_OK on succes
- *      - other error codes from on failure
+ * @return ESP_OK on success or an esp_err_t from SNTP init/sync.
  */
 esp_err_t init_sntp(void);
 
