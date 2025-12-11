@@ -38,7 +38,7 @@ extern "C" {
  * @note The recommended SPI clock for XPT2046 is typically ≤ 2.5 MHz.
  *
  */
-esp_err_t init_touch(void);
+esp_err_t touch_init(void);
 
 /**
  * @brief Registers the XPT2046 touch driver as an LVGL input device.
@@ -49,7 +49,7 @@ esp_err_t init_touch(void);
  * @return ESP_OK   Touch input device successfully registered.
  * @return ESP_FAIL Failed to register the touch device (NULL handle).
  */
-esp_err_t register_touch_to_lvgl(void);
+esp_err_t touch_register_to_lvgl(void);
 
 /**
  * @brief Get a pointer to the global touch input device created by lv_indev_create().

@@ -26,7 +26,7 @@ extern "C" {
  *
  * @see touch_cal_load_nvs()
  */
-void load_nvs_calibration(bool *calibration_found);
+void calibration_load_cal_data(bool *calibration_found);
 
 /**
  * @brief Run touch screen calibration if needed or requested by the user.
@@ -56,7 +56,7 @@ void load_nvs_calibration(bool *calibration_found);
  *                                 (either run or skipped by user).
  * @return Other esp_err_t codes   If run_5point_touch_calibration() fails.
  */
-esp_err_t run_calibration(bool calibration_found);
+esp_err_t calibration_run_cal(bool calibration_found);
 
 /**
  * @brief Control whether the countdown loader is shown in the calibration dialog.
@@ -82,7 +82,7 @@ void calibration_set_show_loader(bool enable);
  * @param xmax Screen width (max X, exclusive).
  * @param ymax Screen height (max Y, exclusive).
  */
-void apply_touch_calibration(uint16_t raw_x, uint16_t raw_y, lv_point_t *out_point, int xmax, int ymax);
+void calibration_apply_cal_data(uint16_t raw_x, uint16_t raw_y, lv_point_t *out_point, int xmax, int ymax);
 
 #ifdef __cplusplus
 }

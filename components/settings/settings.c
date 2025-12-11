@@ -430,7 +430,7 @@ static void settings_close_reset(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_run_calibration(lv_event_t *e);
+static void settings_calibration_run_cal(lv_event_t *e);
 
 /**
  * @brief Open the screensaver dialog from settings.
@@ -494,10 +494,10 @@ static void settings_close_access_point_dialog(lv_event_t *e);
 /**
  * @brief Background task to run touch calibration and restore UI state.
  *
- * Temporarily forces default rotation for calibration, runs @ref run_calibration,
+ * Temporarily forces default rotation for calibration, runs @ref calibration_run_cal,
  * restores the previous rotation, and reopens the settings screen.
  *
- * @param param settings_ctx_t* passed from @ref settings_run_calibration.
+ * @param param settings_ctx_t* passed from @ref settings_calibration_run_cal.
  */
 static void settings_calibration_task(void *param);
 
@@ -1071,19 +1071,19 @@ void settings_starting_routine(void)
 
     /* ----- XPT2046 Driver Init ----- */
     ESP_LOGI(TAG, "Initializing XPT2046 touch driver");
-    ESP_ERROR_CHECK(init_touch()); 
+    ESP_ERROR_CHECK(touch_init()); 
     ESP_LOGI(TAG, "Registering touch driver to LVGL");
-    ESP_ERROR_CHECK(register_touch_to_lvgl());
+    ESP_ERROR_CHECK(touch_register_to_lvgl());
     ESP_LOGI(TAG, "Load touch driver calibration data");
     bool calibration_found;
-    load_nvs_calibration(&calibration_found);
+    calibration_load_cal_data(&calibration_found);
 
     /* ----- XPT2046 Calibration ----- */
     if (s_settings_ctx.settings.calibration_prompt_enabled){
         ESP_LOGI(TAG, "Start calibration dialog");
         calibration_set_show_loader(true);
         settings_set_running_calibration(true);
-        ESP_ERROR_CHECK(run_calibration(calibration_found));
+        ESP_ERROR_CHECK(calibration_run_cal(calibration_found));
         settings_set_running_calibration(false);
     }
 }
@@ -1467,7 +1467,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(calibration_button, 8, 0);
     lv_obj_set_style_pad_all(calibration_button, 6, 0); 
     styles_set_button(calibration_button);
-    lv_obj_add_event_cb(calibration_button, settings_run_calibration, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(calibration_button, settings_calibration_run_cal, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(calibration_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *calibration_lbl = lv_label_create(calibration_button);
     lv_label_set_text(calibration_lbl, "Run Calibration");
@@ -4132,7 +4132,7 @@ static void settings_sntp_confirm_no(lv_event_t *e)
     ctx->sntp_confirm_mbox = NULL;
 }
 
-static void settings_run_calibration(lv_event_t *e)
+static void settings_calibration_run_cal(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->screen)
@@ -4190,7 +4190,7 @@ static void settings_calibration_task(void *param)
     bsp_display_brightness_set(100);
     screensaver_dim_stop();
     screensaver_off_stop();
-    esp_err_t calib_err = run_calibration(true);
+    esp_err_t calib_err = calibration_run_cal(true);
     if (calib_err != ESP_OK)
     {
         ESP_LOGE(TAG, "Calibration failed: %s", esp_err_to_name(calib_err));

@@ -17,8 +17,16 @@
 
 typedef struct
 {
-    float xA, xB, xC; // for x' = xA*x + xB*y + xC
-    float yA, yB, yC; // for y' = yA*x + yB*y + yC
+    // for x' = xA*x + xB*y + xC
+    float xA;
+    float xB;
+    float xC; 
+
+    // for y' = yA*x + yB*y + yC
+    float yA;
+    float yB;
+    float yC; 
+
     bool valid;
     uint32_t magic; // 0xC411B007
     uint32_t crc32; // simple, for integrity
@@ -58,10 +66,9 @@ static touch_cal_t s_cal = {0};
  *
  * Reads the calibration blob, validates magic and CRC, and updates @ref s_cal.
  *
- * @param existing_cal Non-NULL pointer (unused for output here; required to keep signature uniform).
  * @return true if a valid calibration was loaded, false otherwise.
  */
-static bool touch_cal_load_nvs(const touch_cal_t *existing_cal);
+static bool touch_cal_load_nvs(void);
 
 /**
  * @brief Save a valid touch calibration to NVS with CRC protection.
@@ -146,7 +153,7 @@ static esp_err_t sample_raw(int *rx, int *ry);
  * @note Runs on the LVGL thread/context; make sure your platform’s display
  *       locking rules are respected before calling if required.
  */
-static void ui_show_calibration_message(bool calibration_found);
+static void build_calibration_message(bool calibration_found);
 
 /**
  * @brief Show a modal Yes/No dialog with optional 10-second auto-yes countdown.
@@ -182,7 +189,19 @@ static void ui_show_calibration_message(bool calibration_found);
  * @warning The function performs blocking waits (semaphore / vTaskDelay).
  * @warning This function assumes there is no LVGL display lock already acquired.
  */
-static bool ui_yes_no_dialog(void);
+static bool build_confirm_calibration(void);
+
+/**
+ * @brief Drive the countdown/loader visuals until user input or timeout.
+ *
+ * Updates the countdown label and arc periodically, waits for Yes/No semaphore,
+ * and sets the response to Yes on timeout. No-op when loader is disabled.
+ *
+ * @param countdown_label Label showing remaining seconds (optional).
+ * @param loading_arc     Arc widget showing countdown progress (optional).
+ * @param msg_box_response Shared response/semaphore structure for the dialog.
+ */
+static void update_countown(lv_obj_t *countdown_label, lv_obj_t *loading_arc, msg_box_response_t *msg_box_response);
 
 /**
  * @brief Draw a four-arrow crosshair pointing to a target coordinate.
@@ -197,6 +216,19 @@ static bool ui_yes_no_dialog(void);
  * @note Designed for LVGL v9. Adjust types/APIs if using a different LVGL major version.
  */
 static void draw_cross(int x, int y);
+
+/**
+ * @brief Draw four arrows converging toward the target point.
+ *
+ * Helper for @ref draw_cross that renders the up/down/left/right shafts and
+ * arrowheads using the provided style.
+ *
+ * @param scr LVGL screen to draw on.
+ * @param st  Line style to apply.
+ * @param x   Center X coordinate.
+ * @param y   Center Y coordinate.
+ */
+static void draw_arrows(lv_obj_t *scr, lv_style_t *st, int x, int y);
 
 /**
  * @brief Create an LVGL line object with a given point array and optional style.
@@ -229,6 +261,39 @@ static void make_line(lv_obj_t *parent, const lv_point_precise_t *pts, uint16_t 
 static void event_cb(lv_event_t *e);
 
 /**
+ * @brief Draw calibration targets and collect raw touch samples for all points.
+ *
+ * Iterates through @ref s_cal_points, shows a crosshair for each target, and
+ * fills the raw (rx, ry) fields via @ref sample_raw.
+ *
+ * @return ESP_OK on success, error from sampling otherwise.
+ */
+static esp_err_t collect_raw_data(void);
+
+/**
+ * @brief Compute the affine calibration coefficients from collected samples.
+ *
+ * Uses least-squares over the five collected (raw -> target) pairs to derive
+ * xA/xB/xC and yA/yB/yC in @ref s_cal. Marks validity and saves to NVS.
+ *
+ * @return ESP_OK if coefficients are computed and saved, ESP_FAIL on singular
+ *         matrix, or other esp_err_t from NVS save.
+ */
+static esp_err_t calculate_coefficients(void);
+
+/**
+ * @brief Decide whether to run calibration and execute it when needed.
+ *
+ * If no calibration exists, runs calibration immediately. Otherwise shows the
+ * Yes/No dialog (with optional countdown) and runs calibration on Yes/timeout,
+ * or keeps existing calibration on No.
+ *
+ * @param calibration_found True if a valid calibration was loaded from NVS.
+ * @return ESP_OK on success, or esp_err_t returned by calibration on failure.
+ */
+static esp_err_t choose_calibration(bool calibration_found);
+
+/**
  * @brief Clamp an integer to a [lo, hi] range.
  *
  * @param v  Value to clamp.
@@ -238,46 +303,33 @@ static void event_cb(lv_event_t *e);
  */
 static inline int clampi(int v, int lo, int hi);
 
-void load_nvs_calibration(bool *calibration_found)
+void calibration_load_cal_data(bool *calibration_found)
 {
     const touch_cal_t *existing_cal = &s_cal;
-    *calibration_found = touch_cal_load_nvs(existing_cal);
+    if (!existing_cal){
+        *calibration_found = false;
+    }else{
+        *calibration_found = touch_cal_load_nvs();
+    }
     ESP_LOGI(TAG, "%s", *calibration_found ? "Touch driver is already calibrated" : "Touch driver needs calibration");
 }
 
-esp_err_t run_calibration(bool calibration_found)
+esp_err_t calibration_run_cal(bool calibration_found)
 {
-    esp_err_t run_calibration_err;
-    if (!calibration_found)
-    {
-        // No calibration saved: runs calibration directly
-        run_calibration_err = run_5point_touch_calibration(calibration_found);
-        if (run_calibration_err != ESP_OK){
-            ESP_LOGE(TAG, "5 point calibration failed: (%s)", esp_err_to_name(run_calibration_err));
-            return run_calibration_err;
+    esp_err_t err;
+    if (!calibration_found){
+        err = run_5point_touch_calibration(calibration_found);
+        if (err != ESP_OK){
+            ESP_LOGE(TAG, "run_5point_touch_calibration failed: (%s)", esp_err_to_name(err));
+            return err;
         }
     }
-    else
-    {
-        // Run calibration?
-        bool run;
-        run = ui_yes_no_dialog();
-
-        if (run)
-        {
-            run_calibration_err = run_5point_touch_calibration(calibration_found);
-            if (run_calibration_err != ESP_OK){
-                ESP_LOGE(TAG, "5 point calibration failed: (%s)", esp_err_to_name(run_calibration_err));
-                return run_calibration_err;
-            }
-        }
-        else
-        {
-            // We keep s_cal from NVS; we just clear the screen
-            bsp_display_lock(0);
-            lv_obj_clean(lv_screen_active());
-            bsp_display_unlock();
-        }
+    else{
+        err = choose_calibration(calibration_found);
+        if (err != ESP_OK){
+            ESP_LOGE(TAG, "choose_calibration failed: (%s)", esp_err_to_name(err));
+            return err;
+        }        
     }
 
     return ESP_OK;
@@ -288,7 +340,7 @@ void calibration_set_show_loader(bool enable)
     s_show_loader = enable;
 }
 
-void apply_touch_calibration(uint16_t raw_x, uint16_t raw_y, lv_point_t *out_point, int xmax, int ymax)
+void calibration_apply_cal_data(uint16_t raw_x, uint16_t raw_y, lv_point_t *out_point, int xmax, int ymax)
 {
     if (!s_cal.valid)
     {
@@ -304,11 +356,32 @@ void apply_touch_calibration(uint16_t raw_x, uint16_t raw_y, lv_point_t *out_poi
     out_point->y = clampi((int)(yf + 0.5f), 0, ymax - 1);
 }
 
-static bool touch_cal_load_nvs(const touch_cal_t *existing_cal)
+static esp_err_t choose_calibration(bool calibration_found)
 {
-    if (!existing_cal)
-        return false;
+    esp_err_t err;
 
+    bool run;
+    run = build_confirm_calibration();
+
+    if (run){
+        err = run_5point_touch_calibration(calibration_found);
+        if (err != ESP_OK){
+            ESP_LOGE(TAG, "run_5point_touch_calibration failed: (%s)", esp_err_to_name(err));
+            return err;
+        }
+    }
+    else{
+        // We keep s_cal from NVS; we just clear the screen
+        bsp_display_lock(0);
+        lv_obj_clean(lv_screen_active());
+        bsp_display_unlock();
+    }
+
+    return ESP_OK;
+}
+
+static bool touch_cal_load_nvs(void)
+{
     nvs_handle_t h;
     if (nvs_open(TOUCH_CAL_NVS_NS, NVS_READONLY, &h) != ESP_OK)
         return false;
@@ -376,48 +449,75 @@ static uint32_t crc32_fast(const void *data, size_t len)
 static esp_err_t run_5point_touch_calibration(bool calibration_found)
 {
     const char *TAG = "5 Point Calibration";
-    esp_err_t calibration_err;
+    esp_err_t err = ESP_OK;
 
     /* ----- Update screen for calibration ----- */
     bsp_display_lock(0);
-    ui_show_calibration_message(calibration_found);
+    build_calibration_message(calibration_found);
     bsp_display_unlock();
 
     calibration_found ? vTaskDelay(pdMS_TO_TICKS(CALIBRATION_MESSAGE_DISPLAY_TIME_MS)) :
                         vTaskDelay(pdMS_TO_TICKS(CALIBRATION_MESSAGE_DISPLAY_TIME_MS) + 500);
 
     lv_indev_t *indev = touch_get_indev();
-    if (indev)
-    {
+    if (indev) {
         bsp_display_lock(0);
         lv_indev_enable(indev, false);
         bsp_display_unlock();
     }
 
-    /* ----- Collect raw data ----- */
-    for (int i = 0; i < 5; i++)
-    {
-        bsp_display_lock(0);
-        draw_cross(s_cal_points[i].tx, s_cal_points[i].ty);
-        bsp_display_unlock();
-
-        calibration_err = sample_raw(&s_cal_points[i].rx, &s_cal_points[i].ry);
-        if (calibration_err != ESP_OK){
-            ESP_LOGE(TAG, "Failed to sample calibration data from touch driver: (%s)", esp_err_to_name(calibration_err));
-            return calibration_err;
-        }
-        vTaskDelay(pdMS_TO_TICKS(300));
+    err = collect_raw_data();
+    if (err != ESP_OK){
+        ESP_LOGE(TAG, "collect_raw_data failed");
+        goto cleanup;
     }
 
-    if (indev)
-    {
+    err = calculate_coefficients();
+    if (err != ESP_OK){
+        ESP_LOGE(TAG, "calculate_coefficients failed");
+        goto cleanup;
+    }
+
+    err = touch_cal_save_nvs(&s_cal);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save calibration data to NVS: (%s)", esp_err_to_name(err));
+        goto cleanup;
+    }
+    ESP_LOGI(TAG, "Touch cal saved to NVS");
+
+cleanup:
+    if (indev) {
         bsp_display_lock(0);
         lv_obj_clean(lv_screen_active());
         lv_indev_enable(indev, true);
         bsp_display_unlock();
     }
 
-    /* ----- Calculate the coefficients for the affine transformation ----- */
+    return err;
+}
+
+static esp_err_t collect_raw_data(void)
+{
+    esp_err_t err;
+    for (int i = 0; i < 5; i++)
+    {
+        bsp_display_lock(0);
+        draw_cross(s_cal_points[i].tx, s_cal_points[i].ty);
+        bsp_display_unlock();
+
+        err = sample_raw(&s_cal_points[i].rx, &s_cal_points[i].ry);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to sample calibration data from touch driver: (%s)", esp_err_to_name(err));
+            return err;
+        }
+        vTaskDelay(pdMS_TO_TICKS(300));
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t calculate_coefficients(void)
+{
     float Sx = 0;
     float Sy = 0;
     float Sxx = 0;
@@ -476,13 +576,6 @@ static esp_err_t run_5point_touch_calibration(bool calibration_found)
 
     s_cal.valid = true;
 
-    calibration_err = touch_cal_save_nvs(&s_cal);
-    if (calibration_err != ESP_OK){
-        ESP_LOGE(TAG, "Failed to save calibration data to NVS: (%s)", esp_err_to_name(calibration_err));
-        return calibration_err;
-    }
-
-    ESP_LOGI(TAG, "Touch cal saved to NVS");
     return ESP_OK;
 }
 
@@ -490,6 +583,10 @@ static esp_err_t sample_raw(int *rx, int *ry)
 {
     esp_err_t sample_raw_err = ESP_OK;
     esp_lcd_touch_handle_t touch_handle = touch_get_handle();
+    if (!touch_handle){
+        ESP_LOGE(TAG, "touch_get_handle failed");
+        return ESP_FAIL;
+    }
 
     uint32_t sx = 0;
     uint32_t sy = 0;
@@ -502,6 +599,7 @@ static esp_err_t sample_raw(int *rx, int *ry)
         sample_raw_err = esp_lcd_touch_read_data(touch_handle);
         if (sample_raw_err != ESP_OK){
             ESP_LOGE(TAG, "Failed to read lcd touch data: (%s)", esp_err_to_name(sample_raw_err));
+            return sample_raw_err;
         }
 
         if (esp_lcd_touch_get_coordinates(touch_handle, &x, &y, NULL, &btn, 1))
@@ -513,13 +611,14 @@ static esp_err_t sample_raw(int *rx, int *ry)
 
         vTaskDelay(pdMS_TO_TICKS(15));
     }
+
     *rx = sx / n;
     *ry = sy / n;
 
     return ESP_OK;
 }
 
-static void ui_show_calibration_message(bool calibration_found)
+static void build_calibration_message(bool calibration_found)
 {
     lv_obj_t *scr = lv_screen_active();
     lv_obj_remove_style_all(scr);
@@ -553,7 +652,7 @@ static void ui_on_ask_switch_changed(lv_event_t *e)
     settings_set_calibration_prompt_enabled(enabled);
 }
 
-static bool ui_yes_no_dialog(void)
+static bool build_confirm_calibration(void)
 {
     bsp_display_lock(0);
 
@@ -589,6 +688,11 @@ static bool ui_yes_no_dialog(void)
     msg_box_response_t msg_box_response = {
         .xSemaphore = xSemaphoreCreateBinary(),
         .response = false};
+
+    if (!msg_box_response.xSemaphore){
+        ESP_LOGE(TAG, "xSemaphoreCreateBinary failed at build_confirm_calibration, skipping calibration.");
+        return false;
+    }
 
     lv_obj_t *btn;
     btn = lv_msgbox_add_footer_button(mbox, "Yes");
@@ -678,13 +782,23 @@ static bool ui_yes_no_dialog(void)
 
     bsp_display_unlock();
 
-    if (!s_show_loader)
-    {
+    update_countown(countdown_label, loading_arc, &msg_box_response);
+
+    bsp_display_lock(0);
+    lv_obj_del(overlay); /* deletes dialog and loader wrap */
+    bsp_display_unlock();
+
+    vSemaphoreDelete(msg_box_response.xSemaphore);
+
+    return msg_box_response.response;
+}
+
+static void update_countown(lv_obj_t *countdown_label, lv_obj_t *loading_arc, msg_box_response_t *msg_box_response)
+{
+    if (!s_show_loader){
         /* Settings flow: no countdown/auto-yes. Wait for explicit Yes/No. */
-        xSemaphoreTake(msg_box_response.xSemaphore, portMAX_DELAY);
-    }
-    else
-    {
+        xSemaphoreTake(msg_box_response->xSemaphore, portMAX_DELAY);
+    }else{
         const uint32_t countdown_ms = 10000;
         TickType_t start_ticks = xTaskGetTickCount();
         TickType_t timeout_ticks = pdMS_TO_TICKS(countdown_ms);
@@ -693,7 +807,7 @@ static bool ui_yes_no_dialog(void)
 
         while (true)
         {
-            if (xSemaphoreTake(msg_box_response.xSemaphore, pdMS_TO_TICKS(50)) == pdTRUE)
+            if (xSemaphoreTake(msg_box_response->xSemaphore, pdMS_TO_TICKS(50)) == pdTRUE)
             {
                 break;
             }
@@ -704,7 +818,7 @@ static bool ui_yes_no_dialog(void)
 
             if (elapsed_ticks >= timeout_ticks)
             {
-                msg_box_response.response = true;
+                msg_box_response->response = true;
                 break;
             }
 
@@ -737,14 +851,6 @@ static bool ui_yes_no_dialog(void)
             vTaskDelay(pdMS_TO_TICKS(20));
         }
     }
-
-    bsp_display_lock(0);
-    lv_obj_del(overlay); /* deletes dialog and loader wrap */
-    bsp_display_unlock();
-
-    vSemaphoreDelete(msg_box_response.xSemaphore);
-
-    return msg_box_response.response;
 }
 
 static void draw_cross(int x, int y)
@@ -766,6 +872,13 @@ static void draw_cross(int x, int y)
         inited = true;
     }
 
+    draw_arrows(scr, &st, x, y);
+
+    lv_refr_now(NULL);
+}
+
+static void draw_arrows(lv_obj_t *scr, lv_style_t *st, int x, int y)
+{
     const int gap = 5;  // tip distance from center
     const int len = 24; // shaft length
     const int head = 7; // arrow head size
@@ -774,35 +887,33 @@ static void draw_cross(int x, int y)
     lv_point_precise_t up_shaft[] = {{x, y - gap - len}, {x, y - gap}};
     lv_point_precise_t up_head_l[] = {{x, y - gap}, {x - head, y - gap - head}};
     lv_point_precise_t up_head_r[] = {{x, y - gap}, {x + head, y - gap - head}};
-    make_line(scr, up_shaft, 2, &st);
-    make_line(scr, up_head_l, 2, &st);
-    make_line(scr, up_head_r, 2, &st);
+    make_line(scr, up_shaft, 2, st);
+    make_line(scr, up_head_l, 2, st);
+    make_line(scr, up_head_r, 2, st);
 
     /* ---- Down arrow (points up toward center) ----- */
     lv_point_precise_t down_shaft[] = {{x, y + gap + len}, {x, y + gap}};
     lv_point_precise_t down_head_l[] = {{x, y + gap}, {x - head, y + gap + head}};
     lv_point_precise_t down_head_r[] = {{x, y + gap}, {x + head, y + gap + head}};
-    make_line(scr, down_shaft, 2, &st);
-    make_line(scr, down_head_l, 2, &st);
-    make_line(scr, down_head_r, 2, &st);
+    make_line(scr, down_shaft, 2, st);
+    make_line(scr, down_head_l, 2, st);
+    make_line(scr, down_head_r, 2, st);
 
     /* ---- Left arrow (points right toward center) ----- */
     lv_point_precise_t left_shaft[] = {{x - gap - len, y}, {x - gap, y}};
     lv_point_precise_t left_head_u[] = {{x - gap, y}, {x - gap - head, y - head}};
     lv_point_precise_t left_head_d[] = {{x - gap, y}, {x - gap - head, y + head}};
-    make_line(scr, left_shaft, 2, &st);
-    make_line(scr, left_head_u, 2, &st);
-    make_line(scr, left_head_d, 2, &st);
+    make_line(scr, left_shaft, 2, st);
+    make_line(scr, left_head_u, 2, st);
+    make_line(scr, left_head_d, 2, st);
 
     /* ---- Right arrow (points left toward center) ----- */
     lv_point_precise_t right_shaft[] = {{x + gap + len, y}, {x + gap, y}};
     lv_point_precise_t right_head_u[] = {{x + gap, y}, {x + gap + head, y - head}};
     lv_point_precise_t right_head_d[] = {{x + gap, y}, {x + gap + head, y + head}};
-    make_line(scr, right_shaft, 2, &st);
-    make_line(scr, right_head_u, 2, &st);
-    make_line(scr, right_head_d, 2, &st);
-
-    lv_refr_now(NULL);
+    make_line(scr, right_shaft, 2, st);
+    make_line(scr, right_head_u, 2, st);
+    make_line(scr, right_head_d, 2, st);
 }
 
 static void make_line(lv_obj_t *parent, const lv_point_precise_t *pts, uint16_t cnt, const lv_style_t *style)

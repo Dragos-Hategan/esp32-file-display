@@ -68,7 +68,7 @@ static void handle_touch_press(uint16_t x, uint16_t y, bool *pressed, bool *prev
  */
 static void finalize_touch_state(bool pressed, uint16_t x, uint16_t y, bool *prev_pressed, lv_indev_data_t *data);
 
-esp_err_t init_touch(void)
+esp_err_t touch_init(void)
 {
     esp_err_t touch_init_err = ESP_OK;
     const bool shared_bus = (CONFIG_TOUCH_SPI_HOST == BSP_LCD_SPI_NUM ||
@@ -160,7 +160,7 @@ esp_err_t init_touch(void)
     return ESP_OK;
 }
 
-esp_err_t register_touch_to_lvgl(void)
+esp_err_t touch_register_to_lvgl(void)
 {
     if (!bsp_display_lock(0)) {
         ESP_LOGE(TAG, "Failed to lock display for LVGL touch registration");
@@ -241,7 +241,7 @@ static void handle_touch_press(uint16_t x, uint16_t y, bool *pressed, bool *prev
     }
 
     *pressed = true;
-    apply_touch_calibration(x, y, &data->point, TOUCH_X_MAX, TOUCH_Y_MAX);
+    calibration_apply_cal_data(x, y, &data->point, TOUCH_X_MAX, TOUCH_Y_MAX);
 }
 
 static void finalize_touch_state(bool pressed, uint16_t x, uint16_t y, bool *prev_pressed, lv_indev_data_t *data)
