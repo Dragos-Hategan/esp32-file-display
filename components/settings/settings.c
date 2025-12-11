@@ -1188,7 +1188,7 @@ bool settings_is_wake_in_progress(void)
     return s_wake_in_progress;
 }
 
-bool settings_get_brightness_state(void)
+bool settings_is_brightness_changing(void)
 {
     return s_settings_ctx.changing_brightness; 
 }

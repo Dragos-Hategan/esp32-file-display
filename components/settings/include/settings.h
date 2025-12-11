@@ -91,7 +91,7 @@ int settings_get_active_brightness(void);
  * @brief Get whether brightness/backlight is effectively on ( >0 ).
  * @return true if brightness > 0, false otherwise.
  */
-bool settings_get_brightness_state(void);
+bool settings_is_brightness_changing(void);
 
 /**
  * @brief Get the stored preference for prompting calibration at startup.
