@@ -27,6 +27,16 @@
 
 #define MAX_WIFI_RETRIES 5
 
+#define RETURN_ON_ERROR(expr, step)                 \
+    do {                                            \
+        esp_err_t __err = (expr);                   \
+        if (__err != ESP_OK) {                      \
+            ESP_LOGE(TAG, "%s failed: (%s)",        \
+                     (step), esp_err_to_name(__err)); \
+            return __err;                           \
+        }                                           \
+    } while (0)
+
 static const char *TAG = "wifi_init";
 
 static uint8_t connection_retry_counter = 0;
@@ -39,13 +49,6 @@ static bool s_creds_valid = true;
  * @return ESP_OK on success, otherwise error from NVS APIs.
  */
 static esp_err_t init_nvs(void);
-
-/**
- * @brief Initialize esp_netif library.
- *
- * @return ESP_OK on success, otherwise esp_netif_init error.
- */
-static esp_err_t init_network(void);
 
 /**
  * @brief Create default event loop and default STA netif with handlers.
@@ -143,60 +146,23 @@ static void handle_wifi_disconnect(wifi_event_sta_disconnected_t *event_data);
 
 esp_err_t wifi_init_sta(void)
 {
-    esp_err_t err = init_nvs();
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "init_nvs failed: (%s)", esp_err_to_name(err));
-        return err;
-    }    
-
-    err = init_network();
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "init_network failed: (%s)", esp_err_to_name(err));
-        return err;
-    }   
-
-    err = init_event_loop();
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "init_event_loop failed: (%s)", esp_err_to_name(err));
-        return err;
-    }    
-
-    err = init_wifi_driver();    
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "init_wifi_driver failed: (%s)", esp_err_to_name(err));
-        return err;
-    } 
+    RETURN_ON_ERROR(init_nvs(), "init_nvs");
+    RETURN_ON_ERROR(esp_netif_init(), "esp_netif_init");
+    RETURN_ON_ERROR(init_event_loop(), "init_event_loop");
+    RETURN_ON_ERROR(init_wifi_driver(), "init_wifi_driver");
 
     wifi_config_t wifi_config = {0};
-    err = config_sta_params(&wifi_config);
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "config_sta_params failed: (%s)", esp_err_to_name(err));
-        return err;
-    } 
-
-    err = register_event_handlers();
-    if (err != ESP_OK){
-        ESP_LOGE(TAG, "register_event_handlers failed: (%s)", esp_err_to_name(err));
-        return err;
-    }    
+    RETURN_ON_ERROR(config_sta_params(&wifi_config), "config_sta_params");
+    RETURN_ON_ERROR(register_event_handlers(), "register_event_handlers");
 
     s_ip_ready = xSemaphoreCreateBinary();
     if (!s_ip_ready){
         ESP_LOGE(TAG, "xSemaphoreCreateBinary failed");
         return ESP_FAIL;
-    }    
+    }
 
-    err = set_wifi(&wifi_config);
-    if (err != ESP_OK){
-        ESP_LOGE(TAG, "set_wifi failed: (%s)", esp_err_to_name(err));
-        return err;
-    } 
-    
-    err = start_wifi();
-    if (err != ESP_OK){
-        ESP_LOGE(TAG, "start_wifi failed: (%s)", esp_err_to_name(err));
-        return err;
-    }       
+    RETURN_ON_ERROR(set_wifi(&wifi_config), "set_wifi");
+    RETURN_ON_ERROR(start_wifi(), "start_wifi");
 
     return wait_for_ip(s_ip_ready);
 }
@@ -205,39 +171,16 @@ static esp_err_t init_nvs(void)
 {
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND || err == ESP_ERR_NVS_NOT_INITIALIZED) {
-        err = nvs_flash_erase();
-        if (err != ESP_OK){
-            ESP_LOGE(TAG, "nvs_flash_erase failed: (%s)", esp_err_to_name(err));
-            return err;
-        }
-
-        err = nvs_flash_init();
-        if (err != ESP_OK){
-            ESP_LOGE(TAG, "nvs_flash_init failed: (%s)", esp_err_to_name(err));
-            return err;
-        }
+        RETURN_ON_ERROR(nvs_flash_erase(), "nvs_flash_erase");
+        RETURN_ON_ERROR(nvs_flash_init(), "nvs_flash_init");
     }
 
     return ESP_OK;
 }
 
-static esp_err_t init_network(void)
-{
-    esp_err_t err = esp_netif_init();
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "esp_netif_init failed: (%s)", esp_err_to_name(err));
-        return err;
-    }
-    return err;
-}
-
 static esp_err_t init_event_loop(void)
 {
-    esp_err_t err =  esp_event_loop_create_default();
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "esp_event_loop_create_default failed: (%s)", esp_err_to_name(err));
-        return err;
-    }
+    RETURN_ON_ERROR(esp_event_loop_create_default(), "esp_event_loop_create_default");
     
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_WIFI_STA();
     esp_netif_t *netif = NULL;
@@ -247,18 +190,9 @@ static esp_err_t init_event_loop(void)
         ESP_LOGE(TAG, "esp_netif_new failed: (%s)", esp_err_to_name(ESP_FAIL));
         return ESP_FAIL;
     }
-    err = esp_netif_attach_wifi_station(netif);
-    if (err != ESP_OK) {
-        esp_netif_destroy(netif);
-        ESP_LOGE(TAG, "esp_netif_attach_wifi_station failed: (%s)", esp_err_to_name(ESP_FAIL));
-        return ESP_FAIL;
-    }
-    err = esp_wifi_set_default_wifi_sta_handlers();
-    if (err != ESP_OK) {
-        esp_netif_destroy(netif);
-        ESP_LOGE(TAG, "esp_wifi_set_default_wifi_sta_handlers failed: (%s)", esp_err_to_name(ESP_FAIL));
-        return ESP_FAIL;
-    }
+
+    RETURN_ON_ERROR(esp_netif_attach_wifi_station(netif), "esp_netif_attach_wifi_station");
+    RETURN_ON_ERROR(esp_wifi_set_default_wifi_sta_handlers(), "esp_wifi_set_default_wifi_sta_handlers");
 
     return ESP_OK;
 }
@@ -266,11 +200,7 @@ static esp_err_t init_event_loop(void)
 static esp_err_t init_wifi_driver(void)
 {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    esp_err_t err = esp_wifi_init(&cfg);
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "esp_wifi_init failed: (%s)", esp_err_to_name(err));
-        return err;
-    }   
+    RETURN_ON_ERROR(esp_wifi_init(&cfg), "esp_wifi_init");
 
     return ESP_OK;
 }
@@ -283,6 +213,7 @@ static esp_err_t config_sta_params(wifi_config_t *wifi_config)
     size_t pwd_len = ap_pwd ? strlen(ap_pwd) : 0;
     if (ssid_len == 0) {
         ESP_LOGE(TAG, "SSID missing. Please set Wi-Fi credentials in Settings.");
+        s_creds_valid = false;
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -298,43 +229,23 @@ static esp_err_t config_sta_params(wifi_config_t *wifi_config)
 
 static esp_err_t register_event_handlers(void)
 {
-    esp_err_t err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL);
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "esp_event_handler_register(WIFI_EVENT) failed: (%s)", esp_err_to_name(err));
-        return err;
-    }       
-    err = esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL);
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "esp_event_handler_register(IP_EVENT) failed: (%s)", esp_err_to_name(err));
-        return err;
-    }   
+    RETURN_ON_ERROR(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL), "esp_event_handler_register(WIFI_EVENT)");
+    RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL), "esp_event_handler_register(IP_EVENT)");
 
     return ESP_OK;
 }
 
 static esp_err_t set_wifi(wifi_config_t *wifi_config)
 {
-    esp_err_t err = esp_wifi_set_mode(WIFI_MODE_STA);
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "esp_wifi_set_mode failed: (%s)", esp_err_to_name(err));
-        return err;
-    }       
-    err = esp_wifi_set_config(WIFI_IF_STA, wifi_config);
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "esp_wifi_set_config failed: (%s)", esp_err_to_name(err));
-        return err;
-    }       
+    RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), "esp_wifi_set_mode");
+    RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, wifi_config), "esp_wifi_set_config");    
 
     return ESP_OK;
 }
 
 static esp_err_t start_wifi(void)
 {
-    esp_err_t err = esp_wifi_start();
-    if(err != ESP_OK){
-        ESP_LOGE(TAG, "esp_wifi_start failed: (%s)", esp_err_to_name(err));
-        return err;
-    }  
+    RETURN_ON_ERROR(esp_wifi_start(), "esp_wifi_start");
 
     return ESP_OK;
 }
