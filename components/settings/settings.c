@@ -1700,7 +1700,7 @@ static void sntp_restart_flow(void)
         show_connection_result_message(last_err);
     }
     backlight_on_without_wipe_effect();
-    vTaskDelay(pdMS_TO_TICKS(2500));
+    vTaskDelay(pdMS_TO_TICKS(s_settings_ctx.settings.sntp_success ? 2500 : 3000));
     
     bsp_display_lock(0);
     lv_obj_clean(lv_screen_active());
@@ -2434,10 +2434,10 @@ static const char *get_time_failure_reason(esp_err_t err)
 {
     switch (err) {
         case ESP_ERR_INVALID_ARG:
-            return "Wi-Fi credentials missing or invalid.\n\nCheck credentials.";
+            return "Wi-Fi credentials missing or invalid.\nCheck credentials.";
 #ifdef ESP_ERR_WIFI_TIMEOUT
         case ESP_ERR_WIFI_TIMEOUT:
-            return "Wi-Fi connection timed out.\n\nCheck credentials.";
+            return "Wi-Fi connection timed out.\nCheck credentials or signal.";
 #endif
         case ESP_ERR_INVALID_STATE:
             return "No recorded failure reason.";
@@ -2463,7 +2463,7 @@ static void build_connection_result_message(esp_err_t result)
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     if (result == ESP_OK){
         lv_label_set_text(label, "Time set succesfully!");
-    }else{
+    } else {
         lv_label_set_text(label, "Time setting failed.");
     }
     lv_obj_center(label);
@@ -2472,7 +2472,8 @@ static void build_connection_result_message(esp_err_t result)
         lv_obj_set_width(reason_label, LV_PCT(100));
         lv_obj_set_style_text_align(reason_label, LV_TEXT_ALIGN_CENTER, 0);
         lv_label_set_text_fmt(reason_label, "Reason: %s", get_time_failure_reason(result));
-        lv_obj_align_to(reason_label, label, LV_ALIGN_OUT_BOTTOM_MID, 0, 8);
+        lv_obj_center(reason_label);
+        lv_obj_align_to(label, reason_label, LV_ALIGN_OUT_TOP_MID, 0, -8);
     }
 
     lv_screen_load(scr);
