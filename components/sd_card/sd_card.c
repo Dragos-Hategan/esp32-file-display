@@ -49,11 +49,11 @@ static void sd_retry_task(void *param);
 /**
  * @brief LVGL callback fired when the retry dialog button is tapped.
  *
- * Gives the semaphore that wakes @ref sdspi_retry_wait_for_confirmation().
+ * Gives the semaphore that wakes @ref retry_wait_for_confirmation().
  *
  * @param e LVGL event descriptor (expects @c LV_EVENT_CLICKED).
  */
-static void sdspi_retry_prompt_event_cb(lv_event_t *e);
+static void retry_prompt_event_cb(lv_event_t *e);
 
 /**
  * @brief Show a modal prompt asking the user to check SD wiring.
@@ -61,7 +61,7 @@ static void sdspi_retry_prompt_event_cb(lv_event_t *e);
  * Blocks until the user taps the OK button. The dialog is created on the top
  * LVGL layer so it stays visible above any other UI.
  */
-static void sdspi_retry_wait_for_confirmation(void);
+static void retry_wait_for_confirmation(void);
 
 /**
  * @brief Update the retry overlay message label.
@@ -69,7 +69,7 @@ static void sdspi_retry_wait_for_confirmation(void);
  * @param ui   Overlay descriptor.
  * @param text New text (must be null-terminated).
  */
-static void sdspi_retry_ui_set_message(sdspi_retry_ui_t *ui, const char *text);
+static void retry_ui_set_message(sdspi_retry_ui_t *ui, const char *text);
 
 /**
  * @brief Update the attempt label so the user sees current progress.
@@ -77,7 +77,7 @@ static void sdspi_retry_ui_set_message(sdspi_retry_ui_t *ui, const char *text);
  * @param ui      Overlay descriptor.
  * @param attempt Attempt number starting at 1.
  */
-static void sdspi_retry_ui_set_attempt(sdspi_retry_ui_t *ui, uint32_t attempt);
+static void retry_ui_set_attempt(sdspi_retry_ui_t *ui, uint32_t attempt);
 
 /**
  * @brief Drive the arc progress to match elapsed retry time.
@@ -85,7 +85,7 @@ static void sdspi_retry_ui_set_attempt(sdspi_retry_ui_t *ui, uint32_t attempt);
  * @param ui         Overlay descriptor.
  * @param elapsed_ms Time already spent waiting.
  */
-static void sdspi_retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_ms);
+static void retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_ms);
 
 /**
  * @brief Block for @p wait_ms while keeping the overlay animation fluid.
@@ -94,14 +94,14 @@ static void sdspi_retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_m
  * @param elapsed_ms Running millisecond counter shared across retries.
  * @param wait_ms    Milliseconds to wait.
  */
-static void sdspi_retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t *elapsed_ms, uint32_t wait_ms);
+static void retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t *elapsed_ms, uint32_t wait_ms);
 
 /**
  * @brief Tear down the retry overlay UI.
  *
  * @param ui Overlay descriptor to clean.
  */
-static void sdspi_retry_ui_destroy(sdspi_retry_ui_t *ui);
+static void retry_ui_destroy(sdspi_retry_ui_t *ui);
 
 /**
  * @brief Build the LVGL overlay used while retrying SDSPI init.
@@ -109,7 +109,7 @@ static void sdspi_retry_ui_destroy(sdspi_retry_ui_t *ui);
  * @param ui                 Descriptor to populate.
  * @param total_duration_ms  Total wait duration (used to scale the arc).
  */
-static void sdspi_retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms);
+static void retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms);
 
 esp_err_t sd_card_init(void)
 {
@@ -175,37 +175,37 @@ esp_err_t sd_card_init(void)
 
 void sd_card_retry_init(void)
 {
-    sdspi_retry_wait_for_confirmation();
+    retry_wait_for_confirmation();
 
     esp_err_t err = ESP_OK;
 
     const uint32_t total_wait_ms = SDSPI_MAX_RETRIES * SDSPI_RETRY_DELAY_MS;
     sdspi_retry_ui_t retry_ui = {0};
-    sdspi_retry_ui_create(&retry_ui, total_wait_ms);
+    retry_ui_create(&retry_ui, total_wait_ms);
 
     uint32_t elapsed_ms = 0;
 
     for (int attempt = 1; attempt <= SDSPI_MAX_RETRIES; attempt++) {
         ESP_LOGW(TAG, "Retrying SD card init %d/%d...", attempt, SDSPI_MAX_RETRIES);
-        sdspi_retry_ui_set_attempt(&retry_ui, attempt);
-        sdspi_retry_ui_wait(&retry_ui, &elapsed_ms, SDSPI_RETRY_DELAY_MS);
+        retry_ui_set_attempt(&retry_ui, attempt);
+        retry_ui_wait(&retry_ui, &elapsed_ms, SDSPI_RETRY_DELAY_MS);
 
         err = sd_card_init();
         if (err == ESP_OK) {
-            sdspi_retry_ui_set_message(&retry_ui, "SD card recovered");
-            sdspi_retry_ui_set_progress(&retry_ui, total_wait_ms);
+            retry_ui_set_message(&retry_ui, "SD card recovered");
+            retry_ui_set_progress(&retry_ui, total_wait_ms);
             ESP_LOGW(TAG, "SD card recovered after %d attempt(s)", attempt);
             vTaskDelay(pdMS_TO_TICKS(1500));
-            sdspi_retry_ui_destroy(&retry_ui);
+            retry_ui_destroy(&retry_ui);
             xSemaphoreGive(reconnection_success);
             return;
         }
     }
 
-    sdspi_retry_ui_set_message(&retry_ui, "SD card retry failed, restarting...");
-    sdspi_retry_ui_set_progress(&retry_ui, total_wait_ms);
+    retry_ui_set_message(&retry_ui, "SD card retry failed, restarting...");
+    retry_ui_set_progress(&retry_ui, total_wait_ms);
     vTaskDelay(pdMS_TO_TICKS(1500));
-    sdspi_retry_ui_destroy(&retry_ui);
+    retry_ui_destroy(&retry_ui);
 
     ESP_LOGE(TAG, "SD card init failed after %d retries. Last ESP err: %s",
              SDSPI_MAX_RETRIES,
@@ -243,7 +243,7 @@ static void sd_retry_task(void *param)
     vTaskDelete(NULL);
 }
 
-static void sdspi_retry_prompt_event_cb(lv_event_t *e)
+static void retry_prompt_event_cb(lv_event_t *e)
 {
     sdspi_retry_prompt_ctx_t *ctx = (sdspi_retry_prompt_ctx_t *)lv_event_get_user_data(e);
     if (!ctx || !ctx->semaphore) {
@@ -257,7 +257,7 @@ static void sdspi_retry_prompt_event_cb(lv_event_t *e)
     xSemaphoreGive(ctx->semaphore);
 }
 
-static void sdspi_retry_wait_for_confirmation(void)
+static void retry_wait_for_confirmation(void)
 {
     sdspi_retry_prompt_ctx_t ctx = {
         .semaphore = xSemaphoreCreateBinary(),
@@ -287,7 +287,7 @@ static void sdspi_retry_wait_for_confirmation(void)
 
     lv_obj_t *btn = lv_msgbox_add_footer_button(mbox, "OK");
     styles_set_button(btn);
-    lv_obj_add_event_cb(btn, sdspi_retry_prompt_event_cb, LV_EVENT_CLICKED, &ctx);
+    lv_obj_add_event_cb(btn, retry_prompt_event_cb, LV_EVENT_CLICKED, &ctx);
 
     lv_obj_invalidate(mbox);
     lv_refr_now(NULL);
@@ -305,7 +305,7 @@ static void sdspi_retry_wait_for_confirmation(void)
     vSemaphoreDelete(ctx.semaphore);
 }
 
-static void sdspi_retry_ui_set_message(sdspi_retry_ui_t *ui, const char *text)
+static void retry_ui_set_message(sdspi_retry_ui_t *ui, const char *text)
 {
     if (!ui || !ui->container || !ui->message_label || !text) {
         return;
@@ -318,7 +318,7 @@ static void sdspi_retry_ui_set_message(sdspi_retry_ui_t *ui, const char *text)
     bsp_display_unlock();
 }
 
-static void sdspi_retry_ui_set_attempt(sdspi_retry_ui_t *ui, uint32_t attempt)
+static void retry_ui_set_attempt(sdspi_retry_ui_t *ui, uint32_t attempt)
 {
     if (!ui || !ui->container || !ui->attempt_label) {
         return;
@@ -331,7 +331,7 @@ static void sdspi_retry_ui_set_attempt(sdspi_retry_ui_t *ui, uint32_t attempt)
     bsp_display_unlock();
 }
 
-static void sdspi_retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_ms)
+static void retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_ms)
 {
     if (!ui || !ui->container || !ui->arc || ui->total_duration_ms == 0) {
         return;
@@ -348,7 +348,7 @@ static void sdspi_retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_m
     bsp_display_unlock();
 }
 
-static void sdspi_retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t *elapsed_ms, uint32_t wait_ms)
+static void retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t *elapsed_ms, uint32_t wait_ms)
 {
     if (!elapsed_ms) {
         return;
@@ -377,11 +377,11 @@ static void sdspi_retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t *elapsed_ms, uint
         }
         vTaskDelay(ticks);
         *elapsed_ms += chunk_ms;
-        sdspi_retry_ui_set_progress(ui, *elapsed_ms);
+        retry_ui_set_progress(ui, *elapsed_ms);
     }
 }
 
-static void sdspi_retry_ui_destroy(sdspi_retry_ui_t *ui)
+static void retry_ui_destroy(sdspi_retry_ui_t *ui)
 {
     if (!ui || !ui->container) {
         return;
@@ -399,7 +399,7 @@ static void sdspi_retry_ui_destroy(sdspi_retry_ui_t *ui)
     ui->arc = NULL;
 }
 
-static void sdspi_retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms)
+static void retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms)
 {
     if (!ui) {
         return;
