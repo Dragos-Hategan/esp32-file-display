@@ -16,11 +16,11 @@
 #define IMG_VIEWER_MAX_PATH 256
 
 typedef struct {
-    lv_fs_file_t file;
     esp_lcd_panel_handle_t panel;
-    uint16_t *stripe;               /* DMA-capable stripe buffer */
+    lv_fs_file_t file;
     uint32_t stripe_w;
     uint32_t stripe_h;
+    uint16_t *stripe;               /* DMA-capable stripe buffer */
     uint16_t disp_w;
     uint16_t disp_h;
     uint8_t scale;
@@ -28,12 +28,13 @@ typedef struct {
 
 typedef struct {
     bool active;
-    lv_obj_t *screen;
     lv_obj_t *image;
+    lv_obj_t *screen;
     lv_obj_t *close_btn;
     lv_obj_t *path_label;
     lv_obj_t *return_screen;
     lv_obj_t *previous_screen;
+    esp_lcd_panel_handle_t panel;
     char path[IMG_VIEWER_MAX_PATH];
 } jpg_viewer_ctx_t;
 
@@ -177,6 +178,13 @@ esp_err_t jpg_viewer_open(const jpg_viewer_open_opts_t *opts)
         return ESP_ERR_TIMEOUT;
     }
 
+    ctx->panel = bsp_display_get_panel();
+    if (!ctx->panel) {
+        bsp_display_unlock();
+        jpg_viewer_reset(ctx);
+        return ESP_ERR_INVALID_STATE;
+    }
+
     ctx->previous_screen = lv_screen_active();
     jpg_viewer_build_ui(ctx);
 
@@ -258,12 +266,12 @@ static esp_err_t jpg_handler_set_src(lv_obj_t *img, const char *path)
         return ESP_ERR_INVALID_ARG;
     }
 
-    esp_lcd_panel_handle_t panel = bsp_display_get_panel();
-    if (!panel) {
+    jpg_viewer_ctx_t *ctx = &s_jpg_viewer;
+    if (!ctx->panel) {
         return ESP_ERR_INVALID_STATE;
     }
     
-    esp_err_t err = jpg_draw_striped(path, panel);
+    esp_err_t err = jpg_draw_striped(path, ctx->panel);
 
     return err;
 }
@@ -284,6 +292,8 @@ static void jpg_viewer_on_close(lv_event_t *e)
     }
 
     if (!bsp_display_lock(0)) {
+        ESP_LOGW(TAG, "Display lock unavailable; marking viewer inactive");
+        ctx->active = false;
         return;
     }
 
