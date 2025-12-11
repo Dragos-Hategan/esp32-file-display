@@ -1616,41 +1616,38 @@ static void file_manager_schedule_wait_for_reconnection(void)
 static void file_manager_wait_for_reconnection_task(void* arg)
 {
     file_manager_ctx_t *ctx = &s_browser;
-    bool restart_required = false;
+    bool schedule_retry = false;
 
     if (xSemaphoreTake(reconnection_success, portMAX_DELAY) != pdTRUE) {
-        ESP_LOGE(TAG, "Failed to wait for SD reconnection, restarting...");
-        restart_required = true;
+        ESP_LOGE(TAG, "Failed to wait for SD reconnection, scheduling retry...");
+        schedule_retry = true;
     } else if (ctx->initialized) {
         if (ctx->pending_go_parent) {
             ctx->pending_go_parent = false;
             esp_err_t nav_err = fs_nav_go_parent(&ctx->nav);
             if (nav_err != ESP_OK){
-                ESP_LOGE(TAG, "fs_nav_go_parent() failed after reconnection (%s), restarting...", esp_err_to_name(nav_err));
-                restart_required = true;
+                ESP_LOGE(TAG, "fs_nav_go_parent() failed after reconnection (%s), scheduling retry...", esp_err_to_name(nav_err));
+                schedule_retry = true;
             }
         }
 
-        if (!restart_required) {
+        if (!schedule_retry) {
             esp_err_t err = file_manager_reload();
             if (err != ESP_OK){
-                ESP_LOGE(TAG, "file_manager_reload() failed while trying to refresh the screen after a sd card reconnection, restaring...\n");
-                restart_required = true;
+                ESP_LOGE(TAG, "file_manager_reload() failed while trying to refresh the screen after an SD card reconnection, scheduling retry...\n");
+                schedule_retry = true;
             }
         }
     } else {
         esp_err_t err = file_manager_start();
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "file_manager_start() failed after SD reconnection (%s), restarting...", esp_err_to_name(err));
-            restart_required = true;
+            ESP_LOGE(TAG, "file_manager_start() failed after SD reconnection (%s), scheduling retry...", esp_err_to_name(err));
+            schedule_retry = true;
         }
     }
     
-    if (restart_required) {
-        if (settings_is_time_valid()){
-            settings_shutdown_save_time();
-        }
-        esp_restart();
+    if (schedule_retry) {
+        sd_card_schedule_retry();
     }
     
     file_manager_wait_task = NULL;

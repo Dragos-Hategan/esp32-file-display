@@ -18,23 +18,30 @@
 
 #define SD_RETRY_STACK   (6 * 1024)
 #define SD_RETRY_PRIO    (4)
+#define SD_STATE_LOCK_TIMEOUT_MS 1000U
 
 typedef struct {
     SemaphoreHandle_t semaphore;
 } sdspi_retry_prompt_ctx_t;
 
 typedef struct {
+    uint32_t total_duration_ms;
+    uint32_t elapsed_ms;
     lv_obj_t *container;
     lv_obj_t *message_label;
     lv_obj_t *attempt_label;
     lv_obj_t *arc;
-    uint32_t total_duration_ms;
 } sdspi_retry_ui_t;
+
+typedef struct {
+    bool locked;
+} display_lock_guard_t;
 
 static const char *TAG = "sd_card";
 static sdmmc_card_t *sd_card_handle = NULL;
 static bool sd_spi_bus_ready = false;
 static TaskHandle_t s_sd_retry_task = NULL;
+static SemaphoreHandle_t s_sd_state_lock = NULL;
 
 SemaphoreHandle_t reconnection_success = NULL;
 
@@ -44,7 +51,7 @@ SemaphoreHandle_t reconnection_success = NULL;
  * Running the retry flow in its own FreeRTOS task keeps the UI responsive while the
  * modal dialog waits for user confirmation and the SDSPI driver reinitializes.
  */
-static void sd_retry_task(void *param);
+static void retry_task(void *param);
 
 /**
  * @brief LVGL callback fired when the retry dialog button is tapped.
@@ -90,11 +97,13 @@ static void retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_ms);
 /**
  * @brief Block for @p wait_ms while keeping the overlay animation fluid.
  *
- * @param ui         Overlay descriptor (optional).
- * @param elapsed_ms Running millisecond counter shared across retries.
- * @param wait_ms    Milliseconds to wait.
+ * Advances the UI's internal elapsed counter in small chunks and drives the
+ * arc progress accordingly. When the UI is missing, it simply delays.
+ *
+ * @param ui      Overlay descriptor (optional).
+ * @param wait_ms Milliseconds to wait.
  */
-static void retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t *elapsed_ms, uint32_t wait_ms);
+static void retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t wait_ms);
 
 /**
  * @brief Tear down the retry overlay UI.
@@ -111,8 +120,81 @@ static void retry_ui_destroy(sdspi_retry_ui_t *ui);
  */
 static void retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms);
 
+/**
+ * @brief Acquire SD state mutex to serialize bus/card operations.
+ *
+ * Creates the mutex on first use. Returns false if the mutex cannot be
+ * created or taken within the provided timeout.
+ *
+ * @param timeout_ticks FreeRTOS ticks to wait.
+ * @return true on lock acquired, false otherwise.
+ */
+static bool sd_state_lock(TickType_t timeout_ticks);
+
+/**
+ * @brief Release SD state mutex if held.
+ */
+static void sd_state_unlock(void);
+
+/**
+ * @brief Acquire the display lock and log a warning on failure.
+ *
+ * @param reason Short description used for logging when lock fails.
+ * @return guard struct indicating lock state.
+ */
+static display_lock_guard_t display_lock_guard_acquire(const char *reason);
+
+/**
+ * @brief Release the display lock held by a guard.
+ *
+ * @param guard Guard returned by display_lock_guard_acquire.
+ */
+static void display_lock_guard_release(display_lock_guard_t *guard);
+
+static bool sd_state_lock(TickType_t timeout_ticks)
+{
+    if (!s_sd_state_lock) {
+        s_sd_state_lock = xSemaphoreCreateMutex();
+        if (!s_sd_state_lock) {
+            ESP_LOGE(TAG, "Failed to create SD state lock");
+            return false;
+        }
+    }
+    return xSemaphoreTake(s_sd_state_lock, timeout_ticks) == pdTRUE;
+}
+
+static void sd_state_unlock(void)
+{
+    if (s_sd_state_lock) {
+        xSemaphoreGive(s_sd_state_lock);
+    }
+}
+
+static display_lock_guard_t display_lock_guard_acquire(const char *reason)
+{
+    display_lock_guard_t guard = { .locked = bsp_display_lock(0) };
+    if (!guard.locked && reason) {
+        ESP_LOGW(TAG, "Unable to acquire display lock: %s", reason);
+    }
+    return guard;
+}
+
+static void display_lock_guard_release(display_lock_guard_t *guard)
+{
+    if (guard && guard->locked) {
+        bsp_display_unlock();
+        guard->locked = false;
+    }
+}
+
 esp_err_t sd_card_init(void)
 {
+    esp_err_t err = ESP_OK;
+
+    if (!sd_state_lock(pdMS_TO_TICKS(SD_STATE_LOCK_TIMEOUT_MS))) {
+        return ESP_ERR_TIMEOUT;
+    }
+
     if (sd_card_handle){
         esp_vfs_fat_sdcard_unmount(CONFIG_SDSPI_MOUNT_POINT, sd_card_handle);
         sd_card_handle = NULL;
@@ -131,10 +213,10 @@ esp_err_t sd_card_init(void)
             .sclk_io_num = CONFIG_SPSPI_BUS_SCL_PIN,
             .max_transfer_sz = 4096,
         };
-        esp_err_t err = spi_bus_initialize(CONFIG_SDSPI_BUS_HOST, &spi_bus_config, SPI_DMA_CH_AUTO);
+        err = spi_bus_initialize(CONFIG_SDSPI_BUS_HOST, &spi_bus_config, SPI_DMA_CH_AUTO);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to init SDSPI bus: (%s)", esp_err_to_name(err));
-            return err;
+            goto cleanup;
         }
         sd_spi_bus_ready = true;
     }
@@ -154,12 +236,12 @@ esp_err_t sd_card_init(void)
     };
 
     ESP_LOGI(TAG, "Mounting SDSPI filesystem at %s", CONFIG_SDSPI_MOUNT_POINT);
-    esp_err_t err = esp_vfs_fat_sdspi_mount(CONFIG_SDSPI_MOUNT_POINT, &host, &slot_config, &mount_config, &sd_card_handle);
+    err = esp_vfs_fat_sdspi_mount(CONFIG_SDSPI_MOUNT_POINT, &host, &slot_config, &mount_config, &sd_card_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to init SD card: (%s). Check wiring/pull-ups.", esp_err_to_name(err));
         spi_bus_free(CONFIG_SDSPI_BUS_HOST);
         sd_spi_bus_ready = false;
-        return err;
+        goto cleanup;
     }
 
     sdmmc_card_print_info(stdout, sd_card_handle);
@@ -170,7 +252,11 @@ esp_err_t sd_card_init(void)
         xSemaphoreTake(reconnection_success, 0);
     }
 
-    return ESP_OK;
+    err = ESP_OK;
+
+cleanup:
+    sd_state_unlock();
+    return err;
 }
 
 void sd_card_retry_init(void)
@@ -183,12 +269,10 @@ void sd_card_retry_init(void)
     sdspi_retry_ui_t retry_ui = {0};
     retry_ui_create(&retry_ui, total_wait_ms);
 
-    uint32_t elapsed_ms = 0;
-
     for (int attempt = 1; attempt <= SDSPI_MAX_RETRIES; attempt++) {
         ESP_LOGW(TAG, "Retrying SD card init %d/%d...", attempt, SDSPI_MAX_RETRIES);
         retry_ui_set_attempt(&retry_ui, attempt);
-        retry_ui_wait(&retry_ui, &elapsed_ms, SDSPI_RETRY_DELAY_MS);
+        retry_ui_wait(&retry_ui, SDSPI_RETRY_DELAY_MS);
 
         err = sd_card_init();
         if (err == ESP_OK) {
@@ -219,11 +303,17 @@ void sd_card_retry_init(void)
 
 void sd_card_schedule_retry(void)
 {
-    if (s_sd_retry_task) {
+    if (!sd_state_lock(pdMS_TO_TICKS(SD_STATE_LOCK_TIMEOUT_MS))) {
+        ESP_LOGW(TAG, "Unable to acquire SD state lock to schedule retry");
         return;
     }
 
-    BaseType_t res = xTaskCreatePinnedToCore(sd_retry_task,
+    if (s_sd_retry_task) {
+        sd_state_unlock();
+        return;
+    }
+
+    BaseType_t res = xTaskCreatePinnedToCore(retry_task,
                                              "sd_retry",
                                              SD_RETRY_STACK,
                                              NULL,
@@ -234,12 +324,19 @@ void sd_card_schedule_retry(void)
         ESP_LOGE(TAG, "Failed to create SD retry task");
         s_sd_retry_task = NULL;
     }
+
+    sd_state_unlock();
 }
 
-static void sd_retry_task(void *param)
+static void retry_task(void *param)
 {
     sd_card_retry_init();
-    s_sd_retry_task = NULL;
+    if (sd_state_lock(pdMS_TO_TICKS(SD_STATE_LOCK_TIMEOUT_MS))) {
+        s_sd_retry_task = NULL;
+        sd_state_unlock();
+    } else {
+        s_sd_retry_task = NULL;
+    }
     vTaskDelete(NULL);
 }
 
@@ -267,9 +364,9 @@ static void retry_wait_for_confirmation(void)
         return;
     }
 
-    if (!bsp_display_lock(0)) {
+    display_lock_guard_t guard = display_lock_guard_acquire("SDSPI retry prompt");
+    if (!guard.locked) {
         vSemaphoreDelete(ctx.semaphore);
-        ESP_LOGW(TAG, "Unable to acquire display lock for SDSPI retry prompt");
         return;
     }
 
@@ -291,15 +388,16 @@ static void retry_wait_for_confirmation(void)
 
     lv_obj_invalidate(mbox);
     lv_refr_now(NULL);
-    bsp_display_unlock();
+    display_lock_guard_release(&guard);
 
     if (xSemaphoreTake(ctx.semaphore, portMAX_DELAY) != pdTRUE) {
         ESP_LOGW(TAG, "SDSPI retry prompt wait aborted");
     }
 
-    if (bsp_display_lock(0)) {
+    guard = display_lock_guard_acquire("SDSPI retry prompt cleanup");
+    if (guard.locked) {
         lv_obj_del(mbox);
-        bsp_display_unlock();
+        display_lock_guard_release(&guard);
     }
 
     vSemaphoreDelete(ctx.semaphore);
@@ -311,11 +409,12 @@ static void retry_ui_set_message(sdspi_retry_ui_t *ui, const char *text)
         return;
     }
 
-    if (!bsp_display_lock(0)) {
+    display_lock_guard_t guard = display_lock_guard_acquire("retry UI set message");
+    if (!guard.locked) {
         return;
     }
     lv_label_set_text(ui->message_label, text);
-    bsp_display_unlock();
+    display_lock_guard_release(&guard);
 }
 
 static void retry_ui_set_attempt(sdspi_retry_ui_t *ui, uint32_t attempt)
@@ -324,11 +423,12 @@ static void retry_ui_set_attempt(sdspi_retry_ui_t *ui, uint32_t attempt)
         return;
     }
 
-    if (!bsp_display_lock(0)) {
+    display_lock_guard_t guard = display_lock_guard_acquire("retry UI set attempt");
+    if (!guard.locked) {
         return;
     }
     lv_label_set_text_fmt(ui->attempt_label, "Attempt %lu/%d", attempt, SDSPI_MAX_RETRIES);
-    bsp_display_unlock();
+    display_lock_guard_release(&guard);
 }
 
 static void retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_ms)
@@ -340,34 +440,36 @@ static void retry_ui_set_progress(sdspi_retry_ui_t *ui, uint32_t elapsed_ms)
     if (elapsed_ms > ui->total_duration_ms) {
         elapsed_ms = ui->total_duration_ms;
     }
+    ui->elapsed_ms = elapsed_ms;
 
-    if (!bsp_display_lock(0)) {
+    display_lock_guard_t guard = display_lock_guard_acquire("retry UI set progress");
+    if (!guard.locked) {
         return;
     }
     lv_arc_set_value(ui->arc, elapsed_ms);
-    bsp_display_unlock();
+    display_lock_guard_release(&guard);
 }
 
-static void retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t *elapsed_ms, uint32_t wait_ms)
+static void retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t wait_ms)
 {
-    if (!elapsed_ms) {
+    if (!ui) {
         return;
     }
 
-    uint32_t target = *elapsed_ms + wait_ms;
+    uint32_t target = ui->elapsed_ms + wait_ms;
 
-    if (!ui || !ui->container || !ui->arc) {
+    if (!ui->container || !ui->arc) {
         TickType_t ticks = pdMS_TO_TICKS(wait_ms);
         if (ticks == 0) {
             ticks = 1;
         }
         vTaskDelay(ticks);
-        *elapsed_ms = target;
+        ui->elapsed_ms = target;
         return;
     }
 
-    while (*elapsed_ms < target) {
-        uint32_t chunk_ms = target - *elapsed_ms;
+    while (ui->elapsed_ms < target) {
+        uint32_t chunk_ms = target - ui->elapsed_ms;
         if (chunk_ms > SDSPI_RETRY_UI_STEP_MS) {
             chunk_ms = SDSPI_RETRY_UI_STEP_MS;
         }
@@ -376,8 +478,8 @@ static void retry_ui_wait(sdspi_retry_ui_t *ui, uint32_t *elapsed_ms, uint32_t w
             ticks = 1;
         }
         vTaskDelay(ticks);
-        *elapsed_ms += chunk_ms;
-        retry_ui_set_progress(ui, *elapsed_ms);
+        ui->elapsed_ms += chunk_ms;
+        retry_ui_set_progress(ui, ui->elapsed_ms);
     }
 }
 
@@ -387,11 +489,12 @@ static void retry_ui_destroy(sdspi_retry_ui_t *ui)
         return;
     }
 
-    if (!bsp_display_lock(0)) {
+    display_lock_guard_t guard = display_lock_guard_acquire("retry UI destroy");
+    if (!guard.locked) {
         return;
     }
     lv_obj_del(ui->container);
-    bsp_display_unlock();
+    display_lock_guard_release(&guard);
 
     ui->container = NULL;
     ui->message_label = NULL;
@@ -407,8 +510,8 @@ static void retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms)
 
     ui->total_duration_ms = total_duration_ms;
 
-    if (!bsp_display_lock(0)) {
-        ESP_LOGW(TAG, "Unable to acquire display lock for SDSPI retry UI");
+    display_lock_guard_t guard = display_lock_guard_acquire("SDSPI retry UI");
+    if (!guard.locked) {
         return;
     }
 
@@ -458,6 +561,7 @@ static void retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms)
     ui->message_label = message;
     ui->attempt_label = attempt;
     ui->arc = arc;
+    ui->elapsed_ms = 0;
 
-    bsp_display_unlock();
+    display_lock_guard_release(&guard);
 }
