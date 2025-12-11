@@ -162,7 +162,7 @@ static void file_manager_schedule_wait_for_reconnection(void);
  * @brief Worker that blocks until SD reconnection completes, then reloads UI.
  *
  * Waits indefinitely on @ref reconnection_success. Once the semaphore is given
- * (meaning @ref retry_init_sdspi succeeded) it calls @ref file_manager_reload.
+ * (meaning @ref sd_card_retry_init succeeded) it calls @ref file_manager_reload.
  * If the reload fails the device restarts to recover from the fatal state.
  *
  * @param arg Unused.
@@ -1219,7 +1219,7 @@ esp_err_t file_manager_start(void)
     esp_err_t nav_err = fs_nav_init(&ctx->nav, &nav_cfg);
     if (nav_err != ESP_OK) {
         ESP_LOGE(TAG_FILE_BROWSER_START, "Failed to initialize the file system navigator: (%s)", esp_err_to_name(nav_err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
         file_manager_schedule_wait_for_reconnection();
         return nav_err;
     }
@@ -1482,7 +1482,7 @@ static void file_manager_apply_window(file_manager_ctx_t *ctx, size_t start_inde
     esp_err_t werr = fs_nav_set_window(&ctx->nav, start_index, ctx->list_window_size);
     if (werr != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set window: %s", esp_err_to_name(werr));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
         return;
     }
 
@@ -2072,7 +2072,7 @@ static void file_manager_handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_
             file_manager_show_image_resolution_too_large_to_display_prompt();
         }else{
             ESP_LOGE(TAG, "Failed to open JPEG \"%s\": %s", path, esp_err_to_name(err));
-            sdspi_schedule_sd_retry();
+            sd_card_schedule_retry();
         }
     }
 }
@@ -2493,7 +2493,7 @@ static void file_manager_on_item_click(lv_event_t *e)
         } else {
             const char *item_name = (item && item->name) ? item->name : "<item>";
             ESP_LOGE(TAG, "Failed to enter \"%s\": %s", item_name, esp_err_to_name(err));
-            sdspi_schedule_sd_retry();
+            sd_card_schedule_retry();
             file_manager_schedule_wait_for_reconnection();
         }
         return;
@@ -2513,7 +2513,7 @@ static void file_manager_on_item_click(lv_event_t *e)
             file_manager_hide_loading(ctx);
             if (err != ESP_OK) {
                 ESP_LOGE(TAG, "Failed to view \"%s\": %s", item->name, esp_err_to_name(err));
-                sdspi_schedule_sd_retry();
+                sd_card_schedule_retry();
             }
         } else {
             ESP_LOGE(TAG, "Path too long for \"%s\"", item->name);
@@ -2688,7 +2688,7 @@ static void file_manager_on_parent_click(lv_event_t *e)
     } else {
         ESP_LOGE(TAG, "Failed to go parent: %s", esp_err_to_name(err));
         ctx->pending_go_parent = true;
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
         file_manager_schedule_wait_for_reconnection();
     }
     file_manager_hide_loading(ctx);
@@ -2903,7 +2903,7 @@ static void file_manager_start_new_txt(file_manager_ctx_t *ctx)
     esp_err_t err = text_viewer_open(&opts);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start new file editor: %s", esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
     }
 }
 
@@ -2976,7 +2976,7 @@ static void file_manager_editor_closed(bool changed, void *user_ctx)
     esp_err_t err = file_manager_reload();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to reload after editor: %s", esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
     }
 }
 
@@ -3104,7 +3104,7 @@ static void file_manager_on_folder_create(lv_event_t *e)
                                            true);
         } else {
             file_manager_set_folder_status(ctx, esp_err_to_name(err), true);
-            sdspi_schedule_sd_retry();
+            sd_card_schedule_retry();
         }
         return;
     }
@@ -3113,7 +3113,7 @@ static void file_manager_on_folder_create(lv_event_t *e)
     esp_err_t reload = file_manager_reload();
     if (reload != ESP_OK) {
         ESP_LOGE(TAG, "Failed to refresh after folder create: %s", esp_err_to_name(reload));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
     }
 }
 
@@ -3678,7 +3678,7 @@ static void file_manager_on_paste_click(lv_event_t *e)
         uint64_t total = 0;
         esp_err_t size_err = file_manager_compute_total_size(ctx->clipboard.src_path, &total);
         if (size_err != ESP_OK) {
-            sdspi_schedule_sd_retry();
+            sd_card_schedule_retry();
             return;
         }
         strlcpy(ctx->paste_target_path, dest_path, sizeof(ctx->paste_target_path));
@@ -3696,7 +3696,7 @@ static void file_manager_on_paste_click(lv_event_t *e)
     file_manager_hide_loading(ctx);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Paste failed: (%s)", esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
         return;
     }
 
@@ -3705,7 +3705,7 @@ static void file_manager_on_paste_click(lv_event_t *e)
     err = file_manager_reload();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to refresh after paste: %s", esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
     }
 }
 
@@ -3776,7 +3776,7 @@ static void file_manager_on_paste_conflict(lv_event_t *e)
 
     if (err != ESP_OK) {
         file_manager_show_message(esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
         return;
     }
 
@@ -3785,7 +3785,7 @@ static void file_manager_on_paste_conflict(lv_event_t *e)
     err = file_manager_reload();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to refresh after paste: %s", esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
     }
 }
 
@@ -3873,7 +3873,7 @@ static void file_manager_on_copy_confirm(lv_event_t *e)
     file_manager_hide_loading(ctx);
     if (err != ESP_OK) {
         file_manager_show_message(esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
         return;
     }
 
@@ -3882,7 +3882,7 @@ static void file_manager_on_copy_confirm(lv_event_t *e)
     err = file_manager_reload();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to refresh after paste: %s", esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
     }
 }
 
@@ -4064,7 +4064,7 @@ static void file_manager_on_action_button(lv_event_t *e)
             esp_err_t err = text_viewer_open(&opts);
             if (err != ESP_OK) {
                 ESP_LOGE(TAG, "Failed to edit \"%s\": %s", ctx->action_item.name, esp_err_to_name(err));
-                sdspi_schedule_sd_retry();
+                sd_card_schedule_retry();
             } else {
                 file_manager_clear_action_state(ctx);
             }
@@ -4192,7 +4192,7 @@ static void file_manager_on_delete_confirm(lv_event_t *e)
     esp_err_t err = file_manager_delete_selected_item(ctx);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Delete failed: %s", esp_err_to_name(err));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
     }
     file_manager_hide_loading(ctx);
 }
@@ -4404,7 +4404,7 @@ static void file_manager_on_rename_accept(lv_event_t *e)
                                            true);
         } else {
             file_manager_set_rename_status(ctx, esp_err_to_name(err), true);
-            sdspi_schedule_sd_retry();
+            sd_card_schedule_retry();
         }
         return;
     }
@@ -4415,7 +4415,7 @@ static void file_manager_on_rename_accept(lv_event_t *e)
     esp_err_t reload = file_manager_reload();
     if (reload != ESP_OK) {
         ESP_LOGE(TAG, "Failed to refresh after rename: %s", esp_err_to_name(reload));
-        sdspi_schedule_sd_retry();
+        sd_card_schedule_retry();
     }
 }
 

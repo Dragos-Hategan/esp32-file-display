@@ -80,10 +80,10 @@ static void main_task(void *arg)
 
     settings_starting_routine();
 
-    esp_err_t err = init_sdspi();
+    esp_err_t err = sd_card_init();
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "SD init failed (%s). Starting retry flow.", esp_err_to_name(err));
-        retry_init_sdspi();
+        sd_card_retry_init();
     }
 
     err = file_manager_start();
@@ -116,7 +116,7 @@ static void heap_stats_task(void *arg)
             build_formatted_number(formatted_free_heap, sizeof(formatted_free_heap), free_heap);
             build_formatted_number(formatted_min_heap, sizeof(formatted_min_heap), min_free_heap);
 
-            ESP_LOGI(TAG_HEAP, "%s REAL_TIME: %sB available. Least_Heap_Ever=%sB%s", COLOR_CYAN, formatted_free_heap, formatted_min_heap, COLOR_RESET);
+            ESP_LOGI(TAG_HEAP, "%s REAL_TIME: %sB available. Least_Heap_Ever: %sB%s.", COLOR_CYAN, formatted_free_heap, formatted_min_heap, COLOR_RESET);
         }
 
         vTaskDelay(delay_ticks);

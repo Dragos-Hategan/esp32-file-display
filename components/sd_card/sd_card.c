@@ -111,10 +111,8 @@ static void sdspi_retry_ui_destroy(sdspi_retry_ui_t *ui);
  */
 static void sdspi_retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms);
 
-esp_err_t init_sdspi(void)
+esp_err_t sd_card_init(void)
 {
-    const char *TAG_INIT_SDSPI = "init_sdspi";
-
     if (sd_card_handle){
         esp_vfs_fat_sdcard_unmount(CONFIG_SDSPI_MOUNT_POINT, sd_card_handle);
         sd_card_handle = NULL;
@@ -126,7 +124,7 @@ esp_err_t init_sdspi(void)
     }
 
     if (!sd_spi_bus_ready) {
-        ESP_LOGI(TAG_INIT_SDSPI, "Initializing SPI bus");
+        ESP_LOGI(TAG, "Initializing SPI bus");
         spi_bus_config_t spi_bus_config = {
             .mosi_io_num = CONFIG_SDSPI_BUS_MOSI_PIN,
             .miso_io_num = CONFIG_SDSPI_BUS_MISO_PIN,
@@ -135,7 +133,7 @@ esp_err_t init_sdspi(void)
         };
         esp_err_t err = spi_bus_initialize(CONFIG_SDSPI_BUS_HOST, &spi_bus_config, SPI_DMA_CH_AUTO);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG_INIT_SDSPI, "Failed to init SDSPI bus: (%s)", esp_err_to_name(err));
+            ESP_LOGE(TAG, "Failed to init SDSPI bus: (%s)", esp_err_to_name(err));
             return err;
         }
         sd_spi_bus_ready = true;
@@ -155,15 +153,17 @@ esp_err_t init_sdspi(void)
         .max_files = 5,
     };
 
-    ESP_LOGI(TAG_INIT_SDSPI, "Mounting SDSPI filesystem at %s", CONFIG_SDSPI_MOUNT_POINT);
+    ESP_LOGI(TAG, "Mounting SDSPI filesystem at %s", CONFIG_SDSPI_MOUNT_POINT);
     esp_err_t err = esp_vfs_fat_sdspi_mount(CONFIG_SDSPI_MOUNT_POINT, &host, &slot_config, &mount_config, &sd_card_handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG_INIT_SDSPI, "Failed to init SD card: (%s). Check wiring/pull-ups.", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to init SD card: (%s). Check wiring/pull-ups.", esp_err_to_name(err));
+        spi_bus_free(CONFIG_SDSPI_BUS_HOST);
+        sd_spi_bus_ready = false;
         return err;
     }
 
     sdmmc_card_print_info(stdout, sd_card_handle);
-    ESP_LOGI(TAG_INIT_SDSPI, "SDSPI ready");
+    ESP_LOGI(TAG, "SDSPI ready");
 
     if (!reconnection_success){
         reconnection_success = xSemaphoreCreateBinary();
@@ -173,7 +173,7 @@ esp_err_t init_sdspi(void)
     return ESP_OK;
 }
 
-void retry_init_sdspi(void)
+void sd_card_retry_init(void)
 {
     sdspi_retry_wait_for_confirmation();
 
@@ -190,7 +190,7 @@ void retry_init_sdspi(void)
         sdspi_retry_ui_set_attempt(&retry_ui, attempt);
         sdspi_retry_ui_wait(&retry_ui, &elapsed_ms, SDSPI_RETRY_DELAY_MS);
 
-        err = init_sdspi();
+        err = sd_card_init();
         if (err == ESP_OK) {
             sdspi_retry_ui_set_message(&retry_ui, "SD card recovered");
             sdspi_retry_ui_set_progress(&retry_ui, total_wait_ms);
@@ -217,7 +217,7 @@ void retry_init_sdspi(void)
     esp_restart();
 }
 
-void sdspi_schedule_sd_retry(void)
+void sd_card_schedule_retry(void)
 {
     if (s_sd_retry_task) {
         return;
@@ -238,7 +238,7 @@ void sdspi_schedule_sd_retry(void)
 
 static void sd_retry_task(void *param)
 {
-    retry_init_sdspi();
+    sd_card_retry_init();
     s_sd_retry_task = NULL;
     vTaskDelete(NULL);
 }

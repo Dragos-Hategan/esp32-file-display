@@ -19,7 +19,7 @@ typedef struct {
  *
  * Initializes the internal navigation context with `CONFIG_SDSPI_MOUNT_POINT`,
  * builds the LVGL widgets, and loads the screen. The SD card must already
- * be mounted via `init_sdspi()`.
+ * be mounted via `sd_card_init()`.
  *
  * @return
  * - ESP_OK on success

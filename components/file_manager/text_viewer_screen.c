@@ -341,7 +341,7 @@ static void text_viewer_on_text_changed(lv_event_t *e);
  * - On I/O errors (open/read/write/seek/rename) it:
  *      - Sets a human-readable status string via text_viewer_set_status().
  *      - Logs an error via ESP_LOGE().
- *      - Calls sdspi_schedule_sd_retry() to trigger SD-card recovery logic.
+ *      - Calls sd_card_schedule_retry() to trigger SD-card recovery logic.
  *      - Cleans up open FILE handles and removes the temporary file.
  *
  * On success:
@@ -1831,7 +1831,7 @@ static void text_viewer_schedule_sd_retry(text_viewer_ctx_t *ctx, text_viewer_sd
     ctx->waiting_sd = true;
     ctx->sd_retry_action = action;
     text_viewer_set_status(ctx, "Reconnect SD");
-    sdspi_schedule_sd_retry();
+    sd_card_schedule_retry();
 
     if (!ctx->sd_retry_timer)
     {

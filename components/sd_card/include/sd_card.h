@@ -24,17 +24,17 @@ extern SemaphoreHandle_t reconnection_success;
  *         - ESP_OK on success
  *         - ESP-IDF error code if SPI bus initialization or FAT mount fails
  */
-esp_err_t init_sdspi(void);
+esp_err_t sd_card_init(void);
 
 /**
  * @brief Prompt the user then retry SD card initialization with UI feedback.
  */
-void retry_init_sdspi(void);
+void sd_card_retry_init(void);
 
  /**
  * @brief Launch the SD retry worker task if one is not already running.
  */
-void sdspi_schedule_sd_retry(void);
+void sd_card_schedule_retry(void);
 
 #ifdef __cplusplus
 }
