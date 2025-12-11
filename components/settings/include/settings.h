@@ -126,7 +126,7 @@ void settings_set_running_calibration(bool enable);
  * 
  * @return true if the dark theme is on, false otherwise.* 
  */
-bool settings_get_dark_theme_flag(void);
+bool settings_is_theme_dark(void);
 
 /**
  * @brief Set the dark theme flag. 

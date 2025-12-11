@@ -1217,7 +1217,7 @@ void settings_set_running_calibration(bool enable)
     s_settings_ctx.settings.running_calibration = enable;
 }
 
-bool settings_get_dark_theme_flag(void)
+bool settings_is_theme_dark(void)
 {
     return s_settings_ctx.settings.dark_theme;
 }
@@ -4090,7 +4090,7 @@ static void settings_theme_confirm_yes(lv_event_t *e)
     }
 
     /* Toggle theme and persist */
-    bool new_dark = !settings_get_dark_theme_flag();
+    bool new_dark = !settings_is_theme_dark();
     settings_set_dark_theme_flag(new_dark);
     persist_theme_to_nvs();
 

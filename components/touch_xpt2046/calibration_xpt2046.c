@@ -865,7 +865,7 @@ static void draw_cross(int x, int y)
     {
         lv_style_init(&st);
         lv_style_set_line_width(&st, 3);
-        bool dark_theme = settings_get_dark_theme_flag();
+        bool dark_theme = settings_is_theme_dark();
         lv_color_t line_color = dark_theme ? UI_COLOR_TEXT_DARK : UI_COLOR_TEXT_LIGHT;
         lv_style_set_line_color(&st, line_color);
         lv_style_set_line_rounded(&st, false);
