@@ -3911,6 +3911,8 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
+    lv_coord_t mbox_pad = lv_obj_get_style_pad_left(mbox, 0);
+    lv_obj_set_style_pad_all(mbox, mbox_pad + 8, 0);
     ctx->action_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
@@ -3921,18 +3923,20 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
     styles_set_text_color(label, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_coord_t label_pad_bottom = lv_obj_get_style_pad_bottom(label, 0);
+    lv_obj_set_style_pad_bottom(label, label_pad_bottom + 10, 0);
 
     lv_obj_t *footer = lv_obj_create(mbox);
     lv_obj_remove_style_all(footer);
     lv_obj_set_size(footer, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(footer, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_gap(footer, 8, 0);
+    lv_obj_set_style_pad_gap(footer, 4, 0);
 
     lv_obj_t *row1 = lv_obj_create(footer);
     lv_obj_remove_style_all(row1);
     lv_obj_set_size(row1, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(row1, LV_FLEX_FLOW_ROW);
-    lv_obj_set_style_pad_gap(row1, 8, 0);
+    lv_obj_set_style_pad_gap(row1, 4, 0);
 
     lv_obj_t *rename_btn = lv_button_create(row1);
     lv_obj_set_flex_grow(rename_btn, 1);
@@ -3958,7 +3962,7 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
     lv_obj_remove_style_all(row2);
     lv_obj_set_size(row2, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(row2, LV_FLEX_FLOW_ROW);
-    lv_obj_set_style_pad_gap(row2, 8, 0);
+    lv_obj_set_style_pad_gap(row2, 4, 0);
 
     lv_obj_t *copy_btn = lv_button_create(row2);
     lv_obj_set_flex_grow(copy_btn, 1);
@@ -3984,7 +3988,7 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
     lv_obj_remove_style_all(row3);
     lv_obj_set_size(row3, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(row3, LV_FLEX_FLOW_ROW);
-    lv_obj_set_style_pad_gap(row3, 8, 0);
+    lv_obj_set_style_pad_gap(row3, 4, 0);
 
     bool has_edit = (!ctx->action_item.is_dir && ctx->action_item.is_txt);
     if (has_edit) {
