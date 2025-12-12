@@ -935,9 +935,18 @@ static void settings_on_ss_keyboard_event(lv_event_t *e);
 /**
  * @brief Start dim timer; delays and target level for screensaver dim.
  * @param seconds Delay in seconds before dim.
- * @param level_pct Target dim level percent (0..100).
  */
-static void screensaver_dim_start(int seconds, int level_pct);
+static void screensaver_dim_start(int seconds);
+
+/**
+ * @brief Shared helper to (re)create and start a one-shot screensaver timer.
+ *
+ * @param timer_handle Pointer to timer handle (created on-demand).
+ * @param cb           Timer callback.
+ * @param name         Timer name (for esp_timer_create).
+ * @param seconds      Delay before firing (negative treated as 0).
+ */
+static void screensaver_start_timer(esp_timer_handle_t *timer_handle, esp_timer_cb_t cb, const char *name, int seconds);
 
 /**
  * @brief Stop the screensaver dim timer.
@@ -1245,7 +1254,7 @@ void settings_start_screensaver_timers(void)
                         s_settings_ctx.settings.display.dim_time < s_settings_ctx.settings.display.off_time);
 
     if (dim_allowed) {
-        screensaver_dim_start(s_settings_ctx.settings.display.dim_time, s_settings_ctx.settings.display.dim_level);
+        screensaver_dim_start(s_settings_ctx.settings.display.dim_time);
     } else {
         screensaver_dim_stop();
     }
@@ -3092,29 +3101,46 @@ static void settings_update_off_controls_enabled(settings_ctx_t *ctx, bool enabl
     }
 }
 
-static void screensaver_dim_start(int seconds, int level_pct)
+static void screensaver_start_timer(esp_timer_handle_t *timer_handle, esp_timer_cb_t cb, const char *name, int seconds)
 {
-    if (s_ss_dim_timer == NULL) {
+    if (!timer_handle || !cb || !name) {
+        ESP_LOGE(TAG, "Invalid screensaver timer parameters");
+        return;
+    }
+
+    if (*timer_handle == NULL) {
         const esp_timer_create_args_t args = {
-            .callback = settings_dim_timer_cb,
+            .callback = cb,
             .arg = NULL,
             .dispatch_method = ESP_TIMER_TASK,
-            .name = "ss_dim",
+            .name = name,
         };
-        esp_err_t err = esp_timer_create(&args, &s_ss_dim_timer);
+        esp_err_t err = esp_timer_create(&args, timer_handle);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to create dim timer: %s", esp_err_to_name(err));
+            ESP_LOGE(TAG, "Failed to create %s timer: %s", name, esp_err_to_name(err));
             return;
         }
     } else {
-        esp_timer_stop(s_ss_dim_timer);
+        esp_timer_stop(*timer_handle);
     }
 
     int64_t us = (seconds < 0 ? 0 : seconds) * 1000000LL;
-    esp_err_t err = esp_timer_start_once(s_ss_dim_timer, us);
+    esp_err_t err = esp_timer_start_once(*timer_handle, us);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to start dim timer: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to start %s timer: %s", name, esp_err_to_name(err));
     }
+}
+
+static void screensaver_dim_start(int seconds)
+{
+    ESP_LOGD(TAG, "Start dim timer: %ds", seconds);
+    screensaver_start_timer(&s_ss_dim_timer, settings_dim_timer_cb, "ss_dim", seconds);
+}
+
+static void screensaver_off_start(int seconds)
+{
+    ESP_LOGD(TAG, "Start screen-off timer: %ds", seconds);
+    screensaver_start_timer(&s_ss_off_timer, settings_off_timer_cb, "ss_off", seconds);
 }
 
 static void screensaver_dim_stop(void)
@@ -3124,32 +3150,6 @@ static void screensaver_dim_stop(void)
     }
     if (s_ss_dim_timer) {
         esp_timer_stop(s_ss_dim_timer);
-    }
-}
-
-static void screensaver_off_start(int seconds)
-{
-    ESP_LOGD(TAG, "Start screen-off timer: %ds", seconds);
-    if (s_ss_off_timer == NULL) {
-        const esp_timer_create_args_t args = {
-            .callback = settings_off_timer_cb,
-            .arg = NULL,
-            .dispatch_method = ESP_TIMER_TASK,
-            .name = "ss_off",
-        };
-        esp_err_t err = esp_timer_create(&args, &s_ss_off_timer);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to create off timer: %s", esp_err_to_name(err));
-            return;
-        }
-    } else {
-        esp_timer_stop(s_ss_off_timer);
-    }
-
-    int64_t us = (seconds < 0 ? 0 : seconds) * 1000000LL;
-    esp_err_t err = esp_timer_start_once(s_ss_off_timer, us);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to start off timer: %s", esp_err_to_name(err));
     }
 }
 
@@ -3164,18 +3164,18 @@ static void screensaver_off_stop(void)
     settings_fade_brightness(s_settings_ctx.settings.display.brightness, 0); /* stop any ongoing fade */
 }
 
-static void settings_off_timer_cb(void *arg)
-{
-    (void)arg;
-    ESP_LOGD(TAG, "Off timer fired: fading screen off");
-    settings_fade_brightness(0, SETTINGS_OFF_FADE_MS);
-}
-
 static void settings_dim_timer_cb(void *arg)
 {
     (void)arg;
     ESP_LOGD(TAG, "Dim timer fired: fading to dim level");
     settings_fade_brightness(s_settings_ctx.settings.display.dim_level, SETTINGS_DIM_FADE_MS);
+}
+
+static void settings_off_timer_cb(void *arg)
+{
+    (void)arg;
+    ESP_LOGD(TAG, "Off timer fired: fading screen off");
+    settings_fade_brightness(0, SETTINGS_OFF_FADE_MS);
 }
 
 static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
