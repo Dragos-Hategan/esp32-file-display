@@ -185,6 +185,43 @@ static void reset_refresh_state(fs_nav_t *nav);
 static esp_err_t count_directory_entries(fs_nav_t *nav, size_t *total_out);
 
 /**
+ * @brief Open current directory for counting entries, logging on failure.
+ *
+ * @param nav Navigator context.
+ * @return DIR* on success; NULL on failure (item_count cleared).
+ */
+static DIR *open_directory_for_count(fs_nav_t *nav);
+
+/**
+ * @brief Count entries in an opened directory, skipping "." and "..".
+ *
+ * Sets errno to 0 before iterating.
+ *
+ * @param dir   Open directory handle.
+ * @param total Out count accumulator.
+ */
+static void count_entries_loop(DIR *dir, size_t *total);
+
+/**
+ * @brief Capture errno after a readdir loop and close directory.
+ *
+ * @param dir Directory handle to close.
+ * @return errno value captured prior to close.
+ */
+static int capture_count_errno_and_close(DIR *dir);
+
+/**
+ * @brief Finalize count operation, logging and setting outputs.
+ *
+ * @param nav         Navigator context.
+ * @param count_errno Errno captured after iteration.
+ * @param total       Total entries counted.
+ * @param total_out   Optional out pointer.
+ * @return ESP_OK on success; ESP_FAIL on errors.
+ */
+static esp_err_t finalize_count_result(fs_nav_t *nav, int count_errno, size_t total, size_t *total_out);
+
+/**
  * @brief Ensure a non-zero window size (defaults to 32).
  *
  * @param nav Navigator context.
@@ -238,6 +275,44 @@ static esp_err_t load_directory_entry(struct dirent *dent, fs_nav_t *nav, size_t
  * @return ESP_OK on success; ESP_FAIL/ESP_ERR_NO_MEM on errors.
  */
 static esp_err_t load_directory_items(fs_nav_t *nav);
+
+/**
+ * @brief Open current directory for loading items, logging on failure.
+ *
+ * @param nav Navigator context.
+ * @return DIR* on success; NULL on failure (item_count cleared).
+ */
+static DIR *open_directory_for_load(fs_nav_t *nav);
+
+/**
+ * @brief Iterate directory and populate item array.
+ *
+ * Sets errno to 0 before iterating. Breaks on load_directory_entry error.
+ *
+ * @param dir        Open directory.
+ * @param nav        Navigator context.
+ * @param idx        In/out next index to fill.
+ * @param load_errno In/out errno-like value updated by load_directory_entry.
+ */
+static void load_items_loop(DIR *dir, fs_nav_t *nav, size_t *idx, int *load_errno);
+
+/**
+ * @brief Capture errno after load loop and close directory.
+ *
+ * @param dir Directory handle to close.
+ * @return errno captured prior to close.
+ */
+static int capture_load_errno_and_close(DIR *dir);
+
+/**
+ * @brief Finalize load operation, handling errors or sorting items.
+ *
+ * @param nav        Navigator context.
+ * @param idx        Items loaded.
+ * @param load_errno Errno captured after iteration.
+ * @return ESP_OK on success; ESP_FAIL on read errors.
+ */
+static esp_err_t finalize_load_items(fs_nav_t *nav, size_t idx, int load_errno);
 
 /**
  * @brief Get current window slice for sorted mode.
@@ -969,24 +1044,48 @@ static void reset_refresh_state(fs_nav_t *nav)
 
 static esp_err_t count_directory_entries(fs_nav_t *nav, size_t *total_out)
 {
-    DIR *dir = opendir(nav->current);
+    DIR *dir = open_directory_for_count(nav);
     if (!dir) {
-        ESP_LOGE(TAG, "opendir(%s) failed: errno=%d", nav->current, errno);
-        nav->item_count = 0;
         return ESP_FAIL;
     }
 
     size_t total = 0;
+    count_entries_loop(dir, &total);
+    int count_errno = capture_count_errno_and_close(dir);
+    return finalize_count_result(nav, count_errno, total, total_out);
+}
+
+static DIR *open_directory_for_count(fs_nav_t *nav)
+{
+    DIR *dir = opendir(nav->current);
+    if (!dir) {
+        ESP_LOGE(TAG, "opendir(%s) failed: errno=%d", nav->current, errno);
+        nav->item_count = 0;
+    }
+    return dir;
+}
+
+static void count_entries_loop(DIR *dir, size_t *total)
+{
     struct dirent *dent = NULL;
     errno = 0;
     while ((dent = readdir(dir)) != NULL) {
         if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
             continue;
         }
-        total++;
+        (*total)++;
     }
+}
+
+static int capture_count_errno_and_close(DIR *dir)
+{
     int count_errno = errno;
     closedir(dir);
+    return count_errno;
+}
+
+static esp_err_t finalize_count_result(fs_nav_t *nav, int count_errno, size_t total, size_t *total_out)
+{
     if (count_errno != 0) {
         ESP_LOGE(TAG, "readdir(%s) failed while counting: errno=%d", nav->current, count_errno);
         nav->item_count = 0;
@@ -1061,25 +1160,49 @@ static esp_err_t load_directory_entry(struct dirent *dent, fs_nav_t *nav, size_t
 
 static esp_err_t load_directory_items(fs_nav_t *nav)
 {
-    DIR *dir = opendir(nav->current);
+    DIR *dir = open_directory_for_load(nav);
     if (!dir) {
-        ESP_LOGE(TAG, "opendir(%s) failed on second pass: errno=%d", nav->current, errno);
-        nav->item_count = 0;
         return ESP_FAIL;
     }
 
     size_t idx = 0;
     int load_errno = 0;
+    load_items_loop(dir, nav, &idx, &load_errno);
+    load_errno = capture_load_errno_and_close(dir);
+
+    return finalize_load_items(nav, idx, load_errno);
+}
+
+static DIR *open_directory_for_load(fs_nav_t *nav)
+{
+    DIR *dir = opendir(nav->current);
+    if (!dir) {
+        ESP_LOGE(TAG, "opendir(%s) failed on second pass: errno=%d", nav->current, errno);
+        nav->item_count = 0;
+    }
+    return dir;
+}
+
+static void load_items_loop(DIR *dir, fs_nav_t *nav, size_t *idx, int *load_errno)
+{
     struct dirent *dent = NULL;
     errno = 0;
     while ((dent = readdir(dir)) != NULL) {
-        if (load_directory_entry(dent, nav, &idx, &load_errno) != ESP_OK) {
+        if (load_directory_entry(dent, nav, idx, load_errno) != ESP_OK) {
             break;
         }
     }
-    load_errno = errno;
-    closedir(dir);
+}
 
+static int capture_load_errno_and_close(DIR *dir)
+{
+    int load_errno = errno;
+    closedir(dir);
+    return load_errno;
+}
+
+static esp_err_t finalize_load_items(fs_nav_t *nav, size_t idx, int load_errno)
+{
     if (load_errno != 0) {
         clear_items(nav);
         ESP_LOGE(TAG, "readdir(%s) failed while loading: errno=%d", nav->current, load_errno);
