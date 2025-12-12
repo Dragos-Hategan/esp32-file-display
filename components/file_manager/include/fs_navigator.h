@@ -205,17 +205,6 @@ size_t fs_nav_total_items(const fs_nav_t *nav);
 size_t fs_nav_window_start(const fs_nav_t *nav);
 
 /**
- * @brief Ensure metadata (is_dir, size, mtime) is populated for a given item in the current window.
- *
- * Performs stat() lazily when @c needs_stat is true.
- *
- * @param[in,out] nav   Navigator.
- * @param[in]     index Zero-based index into the current window returned by @c fs_nav_items().
- * @return ESP_OK on success; ESP_ERR_INVALID_ARG on bad inputs; ESP_FAIL on stat errors.
- */
-esp_err_t fs_nav_ensure_meta(fs_nav_t *nav, size_t index);
-
-/**
  * @brief Compose an absolute path by appending @p item_name to the current directory.
  *
  * @param[in]  nav         Navigator (must be initialized).
@@ -227,12 +216,10 @@ esp_err_t fs_nav_ensure_meta(fs_nav_t *nav, size_t index);
 esp_err_t fs_nav_compose_path(const fs_nav_t *nav, const char *item_name, char *out, size_t out_len);
 
 /**
- * @brief Ensure metadata (is_dir, size, mtime) is populated for a given item.
+ * @brief Ensure metadata (stat) for an item if pending.
  *
- * Performs stat() lazily if @c needs_stat is true.
- *
- * @param[in,out] nav   Navigator.
- * @param[in]     index Item index (0-based).
+ * @param nav Navigator.
+ * @param index Item index.
  * @return ESP_OK on success; ESP_ERR_INVALID_ARG on bad inputs; ESP_FAIL on stat errors.
  */
 esp_err_t fs_nav_ensure_meta(fs_nav_t *nav, size_t index);

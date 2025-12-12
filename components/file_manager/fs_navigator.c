@@ -43,21 +43,21 @@ static bool s_cmp_ascending = true;
  * @param[in] relative Candidate relative path.
  * @return true if valid.
  */
-static bool fs_nav_is_valid_relative(const char *relative);
+static bool is_valid_relative(const char *relative);
 
 /**
  * @brief Free capacity buffer, item names and reset item_count.
  *
  * @param nav Navigator.
  */
-static void fs_nav_clear_items(fs_nav_t *nav);
+static void clear_items(fs_nav_t *nav);
 
 /**
  * @brief Recompute absolute current path from root + relative.
  *
  * @param[in,out] nav Navigator.
  */
-static void fs_nav_update_current_path(fs_nav_t *nav);
+static void update_current_path(fs_nav_t *nav);
 
 /**
  * @brief Verify that the SD mount (root/current) is still accessible.
@@ -65,7 +65,7 @@ static void fs_nav_update_current_path(fs_nav_t *nav);
  * @param nav Navigator descriptor.
  * @return ESP_OK if both root and current paths are directories; error otherwise.
  */
-static esp_err_t fs_nav_check_storage_ready(const fs_nav_t *nav);
+static esp_err_t check_storage_ready(const fs_nav_t *nav);
 
 /**
  * @brief Set @c nav->relative (validated & cleaned) and rebuild @c nav->current.
@@ -77,7 +77,7 @@ static esp_err_t fs_nav_check_storage_ready(const fs_nav_t *nav);
  * - ESP_ERR_INVALID_ARG if @p relative is invalid
  * - ESP_ERR_INVALID_SIZE if paths exceed buffers
  */
-static esp_err_t fs_nav_set_relative(fs_nav_t *nav, const char *relative);
+static esp_err_t set_relative(fs_nav_t *nav, const char *relative);
 
 /**
  * @brief Persist current relative path and sort settings to NVS.
@@ -89,7 +89,7 @@ static esp_err_t fs_nav_set_relative(fs_nav_t *nav, const char *relative);
  * - ESP_OK on success
  * - Errors from NVS open/set/commit
  */
-static esp_err_t fs_nav_store_state(const fs_nav_t *nav);
+static esp_err_t store_state(const fs_nav_t *nav);
 
 /**
  * @brief Load persisted state (relative path and sort) from NVS and validate it.
@@ -103,16 +103,7 @@ static esp_err_t fs_nav_store_state(const fs_nav_t *nav);
  * - ESP_ERR_NVS_* / ESP_ERR_INVALID_* on decode/validation failures
  * - ESP_ERR_NOT_FOUND if restored path no longer exists
  */
-static esp_err_t fs_nav_load_state(fs_nav_t *nav);
-
-/**
- * @brief Ensure metadata (stat) for an item if pending.
- *
- * @param nav Navigator.
- * @param index Item index.
- * @return ESP_OK on success; ESP_ERR_INVALID_ARG on bad inputs; ESP_FAIL on stat errors.
- */
-esp_err_t fs_nav_ensure_meta(fs_nav_t *nav, size_t index);
+static esp_err_t load_state(fs_nav_t *nav);
 
 /**
  * @brief Sort the current items array with current mode and direction.
@@ -121,7 +112,7 @@ esp_err_t fs_nav_ensure_meta(fs_nav_t *nav, size_t index);
  *
  * @param[in,out] nav Navigator (no-op for <2 items or null array).
  */
-static void fs_nav_sort_items(fs_nav_t *nav);
+static void sort_items(fs_nav_t *nav);
 
 /**
  * @brief qsort comparator for @c fs_nav_item_t honoring directories-first and sort settings.
@@ -133,7 +124,7 @@ static void fs_nav_sort_items(fs_nav_t *nav);
  * @param rhs Pointer to @c fs_nav_item_t (right).
  * @return Negative/zero/positive per strcmp-style semantics; reversed if descending.
  */
-static int fs_nav_item_compare(const void *lhs, const void *rhs);
+static int item_compare(const void *lhs, const void *rhs);
 
 esp_err_t fs_nav_init(fs_nav_t *nav, const fs_nav_config_t *cfg)
 {
@@ -163,7 +154,7 @@ esp_err_t fs_nav_init(fs_nav_t *nav, const fs_nav_config_t *cfg)
         return ESP_ERR_INVALID_ARG;
     }
 
-    esp_err_t err = fs_nav_set_relative(nav, "");
+    esp_err_t err = set_relative(nav, "");
     if (err != ESP_OK) {
         return err;
     }
@@ -174,7 +165,7 @@ esp_err_t fs_nav_init(fs_nav_t *nav, const fs_nav_config_t *cfg)
         return ESP_ERR_NOT_FOUND;
     }
 
-    esp_err_t state_err = fs_nav_load_state(nav);
+    esp_err_t state_err = load_state(nav);
     if (state_err != ESP_OK) {
         ESP_LOGW(TAG, "Using default navigator state (%s)", esp_err_to_name(state_err));
     }
@@ -191,7 +182,7 @@ void fs_nav_deinit(fs_nav_t *nav)
     if (!nav) {
         return;
     }
-    fs_nav_clear_items(nav);
+    clear_items(nav);
 }
 
 esp_err_t fs_nav_refresh(fs_nav_t *nav)
@@ -200,11 +191,11 @@ esp_err_t fs_nav_refresh(fs_nav_t *nav)
         return ESP_ERR_INVALID_ARG;
     }
 
-    fs_nav_clear_items(nav);
+    clear_items(nav);
     nav->total_items = 0;
     nav->window_start = 0;
 
-    esp_err_t storage_err = fs_nav_check_storage_ready(nav);
+    esp_err_t storage_err = check_storage_ready(nav);
     if (storage_err != ESP_OK) {
         nav->item_count = 0;
         return storage_err;
@@ -303,7 +294,7 @@ esp_err_t fs_nav_refresh(fs_nav_t *nav)
         closedir(dir);
 
         if (load_errno != 0) {
-            fs_nav_clear_items(nav);
+            clear_items(nav);
             ESP_LOGE(TAG, "readdir(%s) failed while loading: errno=%d", nav->current, load_errno);
             nav->item_count = 0;
             return ESP_FAIL;
@@ -311,7 +302,7 @@ esp_err_t fs_nav_refresh(fs_nav_t *nav)
 
         nav->item_count = idx;
         nav->window_start = 0;
-        fs_nav_sort_items(nav);
+        sort_items(nav);
         return ESP_OK;
     }
 
@@ -401,17 +392,17 @@ esp_err_t fs_nav_enter(fs_nav_t *nav, size_t index)
         }
     }
 
-    esp_err_t err = fs_nav_set_relative(nav, next_relative);
+    esp_err_t err = set_relative(nav, next_relative);
     if (err != ESP_OK) {
         return err;
     }
 
     err = fs_nav_refresh(nav);
     if (err == ESP_OK) {
-        fs_nav_store_state(nav);
+        store_state(nav);
     } else {
         // best-effort restore previous location if refresh failed
-        fs_nav_set_relative(nav, prev_relative);
+        set_relative(nav, prev_relative);
     }
     return err;
 }
@@ -435,17 +426,17 @@ esp_err_t fs_nav_go_parent(fs_nav_t *nav)
         new_relative[0] = '\0';
     }
 
-    esp_err_t err = fs_nav_set_relative(nav, new_relative);
+    esp_err_t err = set_relative(nav, new_relative);
     if (err != ESP_OK) {
         return err;
     }
 
     err = fs_nav_refresh(nav);
     if (err == ESP_OK) {
-        fs_nav_store_state(nav);
+        store_state(nav);
     } else {
         // Restore previous relative path so navigation state doesn't drift
-        fs_nav_set_relative(nav, prev_relative);
+        set_relative(nav, prev_relative);
     }
     return err;
 }
@@ -459,9 +450,9 @@ esp_err_t fs_nav_set_sort(fs_nav_t *nav, fs_nav_sort_mode_t mode, bool ascending
     nav->sort_mode = mode;
     nav->ascending = ascending;
     if (nav->sort_enabled) {
-        fs_nav_sort_items(nav);
+        sort_items(nav);
     }
-    return fs_nav_store_state(nav);
+    return store_state(nav);
 }
 
 fs_nav_sort_mode_t fs_nav_get_sort(const fs_nav_t *nav)
@@ -486,7 +477,7 @@ esp_err_t fs_nav_set_window(fs_nav_t *nav, size_t start, size_t size)
     }
 
     if (nav->total_items == 0) {
-        fs_nav_clear_items(nav);
+        clear_items(nav);
         nav->window_start = 0;
         nav->window_size = size;
         return ESP_OK;
@@ -504,7 +495,7 @@ esp_err_t fs_nav_set_window(fs_nav_t *nav, size_t start, size_t size)
         return ESP_OK;
     }
 
-    fs_nav_clear_items(nav);
+    clear_items(nav);
 
     if (nav->capacity < size) {
         fs_nav_item_t *new_items = heap_caps_realloc(nav->items,
@@ -571,7 +562,7 @@ esp_err_t fs_nav_set_window(fs_nav_t *nav, size_t start, size_t size)
     nav->item_count = idx;
 
     if (load_errno != 0) {
-        fs_nav_clear_items(nav);
+        clear_items(nav);
         ESP_LOGE(TAG, "readdir(%s) failed while loading window: errno=%d", nav->current, load_errno);
         return ESP_FAIL;
     }
@@ -635,7 +626,7 @@ esp_err_t fs_nav_ensure_meta(fs_nav_t *nav, size_t index)
     return ESP_OK;
 }
 
-static bool fs_nav_is_valid_relative(const char *relative)
+static bool is_valid_relative(const char *relative)
 {
     if (!relative || relative[0] == '\0') {
         return true;
@@ -666,7 +657,7 @@ static bool fs_nav_is_valid_relative(const char *relative)
     return true;
 }
 
-static void fs_nav_clear_items(fs_nav_t *nav)
+static void clear_items(fs_nav_t *nav)
 {
     if (!nav || !nav->items) {
         return;
@@ -683,7 +674,7 @@ static void fs_nav_clear_items(fs_nav_t *nav)
     nav->item_count = 0;
 }
 
-static void fs_nav_update_current_path(fs_nav_t *nav)
+static void update_current_path(fs_nav_t *nav)
 {
     if (nav->relative[0] == '\0') {
         strlcpy(nav->current, nav->root, sizeof(nav->current));
@@ -694,7 +685,7 @@ static void fs_nav_update_current_path(fs_nav_t *nav)
     }
 }
 
-static esp_err_t fs_nav_check_storage_ready(const fs_nav_t *nav)
+static esp_err_t check_storage_ready(const fs_nav_t *nav)
 {
     if (!nav) {
         return ESP_ERR_INVALID_ARG;
@@ -714,14 +705,14 @@ static esp_err_t fs_nav_check_storage_ready(const fs_nav_t *nav)
     return ESP_OK;
 }
 
-static esp_err_t fs_nav_set_relative(fs_nav_t *nav, const char *relative)
+static esp_err_t set_relative(fs_nav_t *nav, const char *relative)
 {
     const char *clean = relative ? relative : "";
     while (*clean == '/') {
         clean++;
     }
 
-    if (!fs_nav_is_valid_relative(clean)) {
+    if (!is_valid_relative(clean)) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -741,11 +732,11 @@ static esp_err_t fs_nav_set_relative(fs_nav_t *nav, const char *relative)
         strlcpy(nav->relative, clean, sizeof(nav->relative));
     }
 
-    fs_nav_update_current_path(nav);
+    update_current_path(nav);
     return ESP_OK;
 }
 
-static esp_err_t fs_nav_store_state(const fs_nav_t *nav)
+static esp_err_t store_state(const fs_nav_t *nav)
 {
     nvs_handle_t handle;
     esp_err_t err = nvs_open(FS_NAV_NVS_NAMESPACE, NVS_READWRITE, &handle);
@@ -770,7 +761,7 @@ static esp_err_t fs_nav_store_state(const fs_nav_t *nav)
     return err;
 }
 
-static esp_err_t fs_nav_load_state(fs_nav_t *nav)
+static esp_err_t load_state(fs_nav_t *nav)
 {
     nvs_handle_t handle;
     esp_err_t err = nvs_open(FS_NAV_NVS_NAMESPACE, NVS_READONLY, &handle);
@@ -799,12 +790,12 @@ static esp_err_t fs_nav_load_state(fs_nav_t *nav)
 
     blob.relative[sizeof(blob.relative) - 1] = '\0';
 
-    if (fs_nav_is_valid_relative(blob.relative)) {
-        if (fs_nav_set_relative(nav, blob.relative) != ESP_OK) {
-            fs_nav_set_relative(nav, "");
+    if (is_valid_relative(blob.relative)) {
+        if (set_relative(nav, blob.relative) != ESP_OK) {
+            set_relative(nav, "");
         }
     } else {
-        fs_nav_set_relative(nav, "");
+        set_relative(nav, "");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -815,23 +806,23 @@ static esp_err_t fs_nav_load_state(fs_nav_t *nav)
 
     struct stat st = {0};
     if (stat(nav->current, &st) != 0 || !S_ISDIR(st.st_mode)) {
-        fs_nav_set_relative(nav, "");
+        set_relative(nav, "");
         return ESP_ERR_NOT_FOUND;
     }
     return ESP_OK;
 }
 
-static void fs_nav_sort_items(fs_nav_t *nav)
+static void sort_items(fs_nav_t *nav)
 {
     if (!nav || nav->item_count < 2 || !nav->items || !nav->sort_enabled) {
         return;
     }
     s_cmp_mode = nav->sort_mode;
     s_cmp_ascending = nav->ascending;
-    qsort(nav->items, nav->item_count, sizeof(fs_nav_item_t), fs_nav_item_compare);
+    qsort(nav->items, nav->item_count, sizeof(fs_nav_item_t), item_compare);
 }
 
-static int fs_nav_item_compare(const void *lhs, const void *rhs)
+static int item_compare(const void *lhs, const void *rhs)
 {
     const fs_nav_item_t *a = lhs;
     const fs_nav_item_t *b = rhs;
