@@ -47,7 +47,7 @@ typedef struct
     bool at_top_edge;                           /**< Tracks if the scroll is currently at the top edge */
     bool at_bottom_edge;                        /**< Tracks if the scroll is currently at the bottom edge */
     bool suppress_events;                       /**< Temporarily disable change detection */
-    size_t lasf_file_offset_kb;                 /**< Offset (in KB) used for the last read chunk */
+    size_t last_file_offset_kb;                 /**< Offset (in KB) used for the last read chunk */
     size_t current_file_offset_kb;              /**< Offset (in KB) used for the current/next chunk */
     size_t max_file_offset_kb;                  /**< Maximum readable offset (in KB) for the loaded file */
     lv_obj_t *screen;                           /**< Root LVGL screen object */
@@ -318,7 +318,7 @@ static void on_text_changed(lv_event_t *e);
  * This function writes the contents of the LVGL textarea in @p ctx->text_area
  * into the backing file at @p ctx->path, only within the byte window
  * corresponding to the currently loaded chunks (defined by
- * ctx->lasf_file_offset_kb and ctx->current_file_offset_kb).
+ * ctx->last_file_offset_kb and ctx->current_file_offset_kb).
  *
  * Save strategy:
  * - If @p ctx is NULL, the function returns immediately.
@@ -528,9 +528,101 @@ static void on_confirm(lv_event_t *e);
  */
 static void close_ctx(text_viewer_ctx_t *ctx, bool changed);
 
+/**
+ * @brief Validate open options and determine whether this is a new file.
+ *
+ * @param opts         Open options (must not be NULL).
+ * @param out_new_file Output flag set to true when creating a new file.
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG on validation failure.
+ */
+static esp_err_t validate_open_opts(const text_viewer_open_opts_t *opts, bool *out_new_file);
+
+/**
+ * @brief Load initial content and chunk offsets for the viewer.
+ *
+ * For new files, allocates an empty string. For existing files, reads the first
+ * and (optionally) second chunk and concatenates them.
+ *
+ * @param opts             Open options.
+ * @param new_file         Whether this is a new file.
+ * @param[out] content_out Allocated text buffer (caller frees).
+ * @param[out] file_size_kb File size in KB.
+ * @param[out] first_offset_kb  First chunk offset.
+ * @param[out] second_offset_kb Second chunk offset (may equal first).
+ * @return ESP_OK on success, error code otherwise.
+ */
+static esp_err_t load_initial_content(const text_viewer_open_opts_t *opts, bool new_file, char **content_out,
+                                      size_t *file_size_kb, size_t *first_offset_kb, size_t *second_offset_kb);
+
+static esp_err_t init_empty_content(char **content_out);
+static void compute_file_metadata(const text_viewer_open_opts_t *opts, size_t *file_size_kb, size_t *second_offset_kb);
+static esp_err_t read_initial_chunks(const char *path, size_t second_offset_kb, char **chunk_a, size_t *len_a,
+                                     char **chunk_b, size_t *len_b);
+static esp_err_t join_chunks(char *chunk_a, size_t len_a, char *chunk_b, size_t len_b, char **content_out);
+
+/**
+ * @brief Initialize viewer context state before showing the screen.
+ *
+ * Resets flags, assigns callbacks, offsets, and path/directory labels.
+ *
+ * @param ctx              Viewer context.
+ * @param opts             Open options.
+ * @param new_file         Whether this is a new file.
+ * @param first_offset_kb  First chunk offset.
+ * @param second_offset_kb Second chunk offset.
+ * @param file_size_kb     File size in KB.
+ */
+static void init_viewer_context(text_viewer_ctx_t *ctx, const text_viewer_open_opts_t *opts, bool new_file,
+                                size_t first_offset_kb, size_t second_offset_kb, size_t file_size_kb);
+
 /*********************************************************************************************/
 
 esp_err_t text_viewer_open(const text_viewer_open_opts_t *opts)
+{
+    bool new_file = false;
+    esp_err_t err = validate_open_opts(opts, &new_file);
+    if (err != ESP_OK) return err;
+
+    char *content = NULL;
+    size_t file_size_kb = 0;
+    size_t first_offset_kb = 0;
+    size_t second_offset_kb = 0;
+    err = load_initial_content(opts, new_file, &content, &file_size_kb, &first_offset_kb, &second_offset_kb);
+    if (err != ESP_OK) return err;
+
+    text_viewer_ctx_t *ctx = &s_viewer;
+    if (!ctx->screen)
+    {
+        build_screen(ctx);
+    }
+
+    init_viewer_context(ctx, opts, new_file, first_offset_kb, second_offset_kb, file_size_kb);
+
+    lv_textarea_set_text(ctx->text_area, content);
+    set_original(ctx, content);
+    free(content);
+    ctx->suppress_events = false;
+    if (ctx->new_file)
+    {
+        set_status(ctx, "New TXT");
+    }
+    else
+    {
+        set_status(ctx, ctx->editable ? "Edit mode" : "View mode");
+    }
+    apply_mode(ctx);
+    update_slider(ctx);
+    lv_screen_load(ctx->screen);
+    if (ctx->new_file)
+    {
+        lv_textarea_set_cursor_pos(ctx->text_area, 0);
+        lv_obj_add_state(ctx->text_area, LV_STATE_FOCUSED);
+        show_keyboard(ctx, ctx->text_area);
+    }
+    return ESP_OK;
+}
+
+static esp_err_t validate_open_opts(const text_viewer_open_opts_t *opts, bool *out_new_file)
 {
     if (!opts || !opts->return_screen)
     {
@@ -547,77 +639,118 @@ esp_err_t text_viewer_open(const text_viewer_open_opts_t *opts)
         return ESP_ERR_INVALID_ARG;
     }
 
-    char *content = NULL;
-    size_t file_size_kb = 0;
-    size_t first_offset_kb = 0;
-    size_t second_offset_kb = 0;
+    if (out_new_file)
+    {
+        *out_new_file = new_file;
+    }
+    return ESP_OK;
+}
+
+static esp_err_t load_initial_content(const text_viewer_open_opts_t *opts, bool new_file, char **content_out,
+                                      size_t *file_size_kb, size_t *first_offset_kb, size_t *second_offset_kb)
+{
+    if (!content_out || !file_size_kb || !first_offset_kb || !second_offset_kb)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    *first_offset_kb = 0;
+    *second_offset_kb = 0;
+    *file_size_kb = 0;
+
     if (new_file)
     {
-        content = strdup("");
-        if (!content)
-        {
-            return ESP_ERR_NO_MEM;
-        }
+        return init_empty_content(content_out);
+    }
+
+    char *chunk_a = NULL;
+    char *chunk_b = NULL;
+    size_t len_a = 0;
+    size_t len_b = 0;
+    compute_file_metadata(opts, file_size_kb, second_offset_kb);
+
+    esp_err_t err = read_initial_chunks(opts->path, *second_offset_kb, &chunk_a, &len_a, &chunk_b, &len_b);
+    if (err != ESP_OK)
+    {
+        free(chunk_a);
+        free(chunk_b);
+        return err;
+    }
+
+    err = join_chunks(chunk_a, len_a, chunk_b, len_b, content_out);
+
+    free(chunk_a);
+    free(chunk_b);
+    return err;
+}
+
+static esp_err_t init_empty_content(char **content_out)
+{
+    *content_out = strdup("");
+    return *content_out ? ESP_OK : ESP_ERR_NO_MEM;
+}
+
+static void compute_file_metadata(const text_viewer_open_opts_t *opts, size_t *file_size_kb, size_t *second_offset_kb)
+{
+    struct stat st = {0};
+    if (stat(opts->path, &st) == 0 && S_ISREG(st.st_mode))
+    {
+        *file_size_kb = (st.st_size > 0) ? ((size_t)st.st_size - 1u) / 1024u : 0;
     }
     else
     {
-        char *chunk_a = NULL;
-        char *chunk_b = NULL;
-        size_t len_a = 0;
-        size_t len_b = 0;
-        struct stat st = {0};
-        if (stat(opts->path, &st) == 0 && S_ISREG(st.st_mode))
-        {
-            file_size_kb = (st.st_size > 0) ? ((size_t)st.st_size - 1u) / 1024u : 0;
-        }
-        second_offset_kb = (file_size_kb > 0) ? 1 : 0;
+        *file_size_kb = 0;
+    }
+    *second_offset_kb = (*file_size_kb > 0) ? 1 : 0;
+}
 
-        esp_err_t err = fs_text_read_range(opts->path, first_offset_kb, &chunk_a, &len_a);
+static esp_err_t read_initial_chunks(const char *path, size_t second_offset_kb, char **chunk_a, size_t *len_a,
+                                     char **chunk_b, size_t *len_b)
+{
+    esp_err_t err = fs_text_read_range(path, 0, chunk_a, len_a);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    if (second_offset_kb != 0)
+    {
+        err = fs_text_read_range(path, second_offset_kb, chunk_b, len_b);
         if (err != ESP_OK)
         {
-            free(chunk_a);
             return err;
         }
-
-        if (second_offset_kb != first_offset_kb)
-        {
-            err = fs_text_read_range(opts->path, second_offset_kb, &chunk_b, &len_b);
-            if (err != ESP_OK)
-            {
-                free(chunk_a);
-                free(chunk_b);
-                return err;
-            }
-        }
-
-        size_t total = len_a + len_b;
-        content = (char *)malloc(total + 1);
-        if (!content)
-        {
-            free(chunk_a);
-            free(chunk_b);
-            return ESP_ERR_NO_MEM;
-        }
-        if (len_a)
-        {
-            memcpy(content, chunk_a, len_a);
-        }
-        if (len_b)
-        {
-            memcpy(content + len_a, chunk_b, len_b);
-        }
-        content[total] = '\0';
-
-        free(chunk_a);
-        free(chunk_b);
     }
 
-    text_viewer_ctx_t *ctx = &s_viewer;
-    if (!ctx->screen)
+    return ESP_OK;
+}
+
+static esp_err_t join_chunks(char *chunk_a, size_t len_a, char *chunk_b, size_t len_b, char **content_out)
+{
+    size_t total = len_a + len_b;
+    char *content = (char *)malloc(total + 1);
+    if (!content)
     {
-        build_screen(ctx);
+        return ESP_ERR_NO_MEM;
     }
 
+    if (len_a && chunk_a)
+    {
+        memcpy(content, chunk_a, len_a);
+    }
+    if (len_b && chunk_b)
+    {
+        memcpy(content + len_a, chunk_b, len_b);
+    }
+    content[total] = '\0';
+
+    *content_out = content;
+    return ESP_OK;
+}
+
+static void init_viewer_context(text_viewer_ctx_t *ctx, const text_viewer_open_opts_t *opts, bool new_file,
+                                size_t first_offset_kb, size_t second_offset_kb, size_t file_size_kb)
+{
     close_confirm(ctx);
     ctx->active = true;
     ctx->editable = new_file ? true : opts->editable;
@@ -629,7 +762,7 @@ esp_err_t text_viewer_open(const text_viewer_open_opts_t *opts)
     ctx->close_ctx = opts->user_ctx;
 
     ctx->current_file_offset_kb = second_offset_kb;
-    ctx->lasf_file_offset_kb = first_offset_kb;
+    ctx->last_file_offset_kb = first_offset_kb;
     ctx->max_file_offset_kb = file_size_kb;
 
     ctx->name_dialog = NULL;
@@ -663,29 +796,6 @@ esp_err_t text_viewer_open(const text_viewer_open_opts_t *opts)
         strlcpy(ctx->path, opts->path, sizeof(ctx->path));
         set_path_label(ctx, ctx->path);
     }
-
-    lv_textarea_set_text(ctx->text_area, content);
-    set_original(ctx, content);
-    free(content);
-    ctx->suppress_events = false;
-    if (ctx->new_file)
-    {
-        set_status(ctx, "New TXT");
-    }
-    else
-    {
-        set_status(ctx, ctx->editable ? "Edit mode" : "View mode");
-    }
-    apply_mode(ctx);
-    update_slider(ctx);
-    lv_screen_load(ctx->screen);
-    if (ctx->new_file)
-    {
-        lv_textarea_set_cursor_pos(ctx->text_area, 0);
-        lv_obj_add_state(ctx->text_area, LV_STATE_FOCUSED);
-        show_keyboard(ctx, ctx->text_area);
-    }
-    return ESP_OK;
 }
 
 static void build_screen(text_viewer_ctx_t *ctx)
@@ -971,7 +1081,7 @@ static void update_slider(text_viewer_ctx_t *ctx)
     size_t max_step_index = step ? ((max_start + step - 1) / step) : 0;
     int32_t max_val = (int32_t)max_step_index;
 
-    size_t current_start = ctx->lasf_file_offset_kb;
+    size_t current_start = ctx->last_file_offset_kb;
     if (current_start > max_start) {
         current_start = max_start;
     }
@@ -1053,7 +1163,7 @@ static void on_slider_value_changed(lv_event_t *e)
             target_step = max_step_index;
         }
 
-        size_t current_start = ctx->lasf_file_offset_kb;
+        size_t current_start = ctx->last_file_offset_kb;
         if (current_start > max_start) {
             current_start = max_start;
         }
@@ -1241,10 +1351,10 @@ static void on_text_scrolled(lv_event_t *e)
     {
         ctx->at_top_edge = true;
 
-        if (!ctx->new_file && ctx->lasf_file_offset_kb > 0)
+        if (!ctx->new_file && ctx->last_file_offset_kb > 0)
         {
-            size_t new_first = ctx->lasf_file_offset_kb - 1;
-            size_t new_second = ctx->lasf_file_offset_kb;
+            size_t new_first = ctx->last_file_offset_kb - 1;
+            size_t new_second = ctx->last_file_offset_kb;
             request_chunk_load(ctx, new_first, new_second, true);
         }
     }
@@ -1380,7 +1490,7 @@ static void handle_save(text_viewer_ctx_t *ctx)
     }
 
     const char *dest_path = ctx->path;
-    size_t first_kb = ctx->lasf_file_offset_kb;
+    size_t first_kb = ctx->last_file_offset_kb;
     size_t second_kb = ctx->current_file_offset_kb;
     size_t chunk_count = (second_kb > first_kb) ? (second_kb - first_kb + 1u) : 1u;
 
@@ -1572,9 +1682,9 @@ static void handle_save(text_viewer_ctx_t *ctx)
 
     size_t new_size = prefix_size + text_len + suffix_size;
     ctx->max_file_offset_kb = (new_size > 0) ? ((new_size - 1u) / 1024u) : 0u;
-    if (ctx->lasf_file_offset_kb > ctx->max_file_offset_kb)
+    if (ctx->last_file_offset_kb > ctx->max_file_offset_kb)
     {
-        ctx->lasf_file_offset_kb = ctx->max_file_offset_kb;
+        ctx->last_file_offset_kb = ctx->max_file_offset_kb;
     }
     if (ctx->current_file_offset_kb > ctx->max_file_offset_kb)
     {
@@ -1693,7 +1803,7 @@ static void apply_pending_chunk(text_viewer_ctx_t *ctx)
             lv_textarea_set_cursor_pos(ctx->text_area, (int32_t)READ_CHUNK_SIZE_B - content_h);
             skip_cursor_animation(ctx);
         }
-        ctx->lasf_file_offset_kb = ctx->pending_first_offset_kb;
+        ctx->last_file_offset_kb = ctx->pending_first_offset_kb;
         ctx->current_file_offset_kb = ctx->pending_second_offset_kb;
         ctx->at_top_edge = false;
         ctx->at_bottom_edge = false;
