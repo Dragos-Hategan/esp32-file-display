@@ -22,7 +22,7 @@ enum {
 };
 
 static const char *TAG = "app_main";
-static const char *TAG_HEAP = "--- HEAP INFO---";
+static const char *TAG_HEAP = "--- HEAP INFO --- ";
 
 static const char *COLOR_RESET = "\033[0m";
 static const char *COLOR_CYAN = "\033[1;36m";

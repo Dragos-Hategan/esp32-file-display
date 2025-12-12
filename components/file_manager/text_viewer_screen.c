@@ -277,6 +277,32 @@ static void handle_slider_release(text_viewer_ctx_t *ctx, bool blocked, size_t c
                                   size_t max_step_index, size_t max_start, size_t window_size, size_t step);
 
 /**
+ * @brief Resolve target slider step (pending vs current clamped) within bounds.
+ *
+ * @param ctx            Viewer context.
+ * @param clamped_step   Current clamped slider value.
+ * @param max_step_index Maximum slider step index.
+ * @return Target step after applying bounds.
+ */
+static size_t slider_target_step(const text_viewer_ctx_t *ctx, size_t clamped_step, size_t max_step_index);
+
+/**
+ * @brief Compute first/second chunk offsets for a given target step.
+ *
+ * @param target_step       Target slider step.
+ * @param max_step_index    Maximum slider step index.
+ * @param max_start         Maximum starting chunk index.
+ * @param step              Chunks per slider step.
+ * @param window_size       Chunks per window.
+ * @param max_file_offset_kb Maximum file offset (in KB).
+ * @param[out] first_offset  Computed first chunk offset.
+ * @param[out] second_offset Computed second chunk offset.
+ */
+static void compute_window_offsets(size_t target_step, size_t max_step_index, size_t max_start, size_t step,
+                                   size_t window_size, size_t max_file_offset_kb,
+                                   size_t *first_offset, size_t *second_offset);
+
+/**
  * @brief Handle slider press/drag/release to jump between chunk windows.
  *
  * Tracks the target step while dragging and applies the chunk load on release; no-ops
@@ -1358,19 +1384,9 @@ static void handle_slider_release(text_viewer_ctx_t *ctx, bool blocked, size_t c
         return;
     }
 
-    size_t target_step = (ctx->slider_pending_step != SIZE_MAX) ? ctx->slider_pending_step : clamped_step;
-    if (target_step > max_step_index) {
-        target_step = max_step_index;
-    }
+    size_t target_step = slider_target_step(ctx, clamped_step, max_step_index);
 
-    size_t current_start = ctx->last_file_offset_kb;
-    if (current_start > max_start) {
-        current_start = max_start;
-    }
-    size_t current_step = step ? (current_start / step) : 0;
-    if (current_step > max_step_index) {
-        current_step = max_step_index;
-    }
+    size_t current_step = clamp_current_step(ctx, step, max_start, max_step_index);
 
     if (target_step == current_step) {
         ctx->slider_pending_step = SIZE_MAX;
@@ -1378,24 +1394,46 @@ static void handle_slider_release(text_viewer_ctx_t *ctx, bool blocked, size_t c
         return;
     }
 
-    size_t new_start = (target_step >= max_step_index) ? max_start : (target_step * step);
-    if (new_start > max_start) {
-        new_start = max_start;
-    }
-
-    size_t first_offset = new_start;
-    size_t second_offset = first_offset + (window_size > 1 ? (window_size - 1) : 0);
-    if (second_offset > ctx->max_file_offset_kb) {
-        second_offset = ctx->max_file_offset_kb;
-    }
-    if (window_size > 1 && second_offset == first_offset && first_offset > 0) {
-        first_offset -= 1;
-    }
+    size_t first_offset = 0;
+    size_t second_offset = 0;
+    compute_window_offsets(target_step, max_step_index, max_start, step, window_size,
+                           ctx->max_file_offset_kb, &first_offset, &second_offset);
 
     bool from_top = target_step < current_step;
     ctx->slider_pending_step = SIZE_MAX;
     ctx->flags.slider_drag_active = false;
     request_chunk_load(ctx, first_offset, second_offset, from_top);
+}
+
+static size_t slider_target_step(const text_viewer_ctx_t *ctx, size_t clamped_step, size_t max_step_index)
+{
+    size_t target_step = (ctx->slider_pending_step != SIZE_MAX) ? ctx->slider_pending_step : clamped_step;
+    if (target_step > max_step_index) {
+        target_step = max_step_index;
+    }
+    return target_step;
+}
+
+static void compute_window_offsets(size_t target_step, size_t max_step_index, size_t max_start, size_t step,
+                                   size_t window_size, size_t max_file_offset_kb,
+                                   size_t *first_offset, size_t *second_offset)
+{
+    size_t new_start = (target_step >= max_step_index) ? max_start : (target_step * step);
+    if (new_start > max_start) {
+        new_start = max_start;
+    }
+
+    size_t first = new_start;
+    size_t second = first + (window_size > 1 ? (window_size - 1) : 0);
+    if (second > max_file_offset_kb) {
+        second = max_file_offset_kb;
+    }
+    if (window_size > 1 && second == first && first > 0) {
+        first -= 1;
+    }
+
+    if (first_offset) *first_offset = first;
+    if (second_offset) *second_offset = second;
 }
 
 static esp_err_t load_window(text_viewer_ctx_t *ctx, size_t first_offset_kb, size_t second_offset_kb)
