@@ -30,16 +30,16 @@ static const char *TAG = "sntp";
  *
  * @return ESP_OK on success or an error from esp_netif_sntp_init.
  */
-static esp_err_t sntp_start(void);
+static esp_err_t start_sntp(void);
 
 /**
  * @brief Validate that the current time is beyond a minimum year threshold.
  *
  * @return true if the current time looks valid, false otherwise.
  */
-static bool sntp_time_is_valid(void);
+static bool is_time_valid(void);
 
-esp_err_t wait_for_time_blocking(uint32_t timeout_ms)
+esp_err_t sntp_wait_for_time_blocking(uint32_t timeout_ms)
 {
     const TickType_t max_wait_ticks = pdMS_TO_TICKS(timeout_ms);
     const TickType_t poll_ticks = pdMS_TO_TICKS(SNTP_POLL_STEP_MS);
@@ -47,7 +47,7 @@ esp_err_t wait_for_time_blocking(uint32_t timeout_ms)
 
     while (true) {
         esp_err_t err = esp_netif_sntp_sync_wait(poll_ticks);
-        if (err == ESP_OK && sntp_time_is_valid()) {
+        if (err == ESP_OK && is_time_valid()) {
             ESP_LOGI(TAG, "Time synced");
             return ESP_OK;
         }
@@ -58,7 +58,7 @@ esp_err_t wait_for_time_blocking(uint32_t timeout_ms)
     }
 
     /* Final fallback check in case sync completed just after timeout. */
-    if (sntp_time_is_valid()) {
+    if (is_time_valid()) {
         ESP_LOGI(TAG, "Time looks valid (post-timeout check).");
         return ESP_OK;
     }
@@ -67,26 +67,26 @@ esp_err_t wait_for_time_blocking(uint32_t timeout_ms)
     return ESP_ERR_TIMEOUT;
 }
 
-esp_err_t init_sntp(void)
+esp_err_t sntp_init(void)
 {
-    esp_err_t err = sntp_start();
+    esp_err_t err = start_sntp();
     if (err != ESP_OK){
-        ESP_LOGI(TAG, "sntp_start failed: (%s)", esp_err_to_name(err));
+        ESP_LOGI(TAG, "start_sntp failed: (%s)", esp_err_to_name(err));
         return err;
     }
 
     setenv("TZ", SNTP_DEFAULT_TIMEZONE, 1);
     tzset();
 
-    err = wait_for_time_blocking(10000);
+    err = sntp_wait_for_time_blocking(10000);
     if (err != ESP_OK){
-        ESP_LOGI(TAG, "wait_for_time_blocking failed: (%s)", esp_err_to_name(err));
+        ESP_LOGI(TAG, "sntp_wait_for_time_blocking failed: (%s)", esp_err_to_name(err));
     }   
 
     return err;
 }
 
-static esp_err_t sntp_start(void)
+static esp_err_t start_sntp(void)
 {
     esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
     
@@ -99,7 +99,7 @@ static esp_err_t sntp_start(void)
     return err;
 }
 
-static bool sntp_time_is_valid(void)
+static bool is_time_valid(void)
 {
     time_t now = 0;
     struct tm ti = {0};

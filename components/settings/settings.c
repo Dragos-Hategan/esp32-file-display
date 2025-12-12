@@ -1456,7 +1456,7 @@ static void sntp_connect(void)
 {
     esp_err_t err = wifi_init_sta();
     if (err == ESP_OK){
-        err = init_sntp();    
+        err = sntp_init();    
     }
     s_settings_ctx.settings.time.sntp_last_err = err;
     if (err == ESP_OK){

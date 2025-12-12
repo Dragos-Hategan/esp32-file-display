@@ -15,7 +15,7 @@
  * @param timeout_ms Maximum wait in milliseconds.
  * @return ESP_OK if time is valid, ESP_ERR_TIMEOUT otherwise.
  */
-esp_err_t wait_for_time_blocking(uint32_t timeout_ms);
+esp_err_t sntp_wait_for_time_blocking(uint32_t timeout_ms);
 
 /**
  * @brief Initialize SNTP, set timezone, and wait for synchronization.
@@ -25,6 +25,6 @@ esp_err_t wait_for_time_blocking(uint32_t timeout_ms);
  *
  * @return ESP_OK on success or an esp_err_t from SNTP init/sync.
  */
-esp_err_t init_sntp(void);
+esp_err_t sntp_init(void);
 
 #endif // SNTP_H
