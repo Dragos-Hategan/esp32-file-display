@@ -29,8 +29,8 @@
 
 #define TAG "file_manager"
 
-#define FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT     64
-#define FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT       32
+#define FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT     64      /* May cause OOM errors if larger */
+#define FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT       32      /* May cause OOM errors if larger */
 #define FILE_BROWSER_LIST_WINDOW_STEP_DEFAULT       16
 #define FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT   2000
 #define FILE_BROWSER_ENTRY_SCROLL_DELAY_MS_DEFAULT  FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT
@@ -101,35 +101,35 @@ typedef struct{
 }file_manager_graphics_t;
 
 typedef struct{
-    bool clock_timer_running;
+    bool initialized;
     bool clock_user_set;
-    bool paste_target_valid;
+    bool clock_timer_running;
     bool suppress_click;
     bool pending_go_parent;
+    bool paste_target_valid;
+    bool list_has_paged;
     bool list_at_top_edge;
     bool list_at_bottom_edge;
     bool list_suppress_scroll;
-    bool list_has_paged;
-    bool slider_suppress_change;
     bool slider_drag_active;
+    bool slider_suppress_change;
     bool preserve_window_on_reload;
 }file_manager_flags_t;
 
 typedef struct {
-    fs_nav_t nav;
-    bool initialized;
-    esp_timer_handle_t clock_timer;
-    file_manager_clipboard_t clipboard;
-    file_manager_action_item_t action_item;
     char paste_conflict_path[FS_NAV_MAX_PATH];
     char paste_conflict_name[FS_NAV_MAX_NAME];
     char paste_target_path[FS_NAV_MAX_PATH];    
+    file_manager_action_item_t action_item;
+    file_manager_clipboard_t clipboard;
     file_manager_graphics_t graphics;
-    size_t list_window_start;
-    size_t list_window_size;
+    file_manager_flags_t flags;
+    esp_timer_handle_t clock_timer;
     size_t slider_pending_step;
     size_t reload_anchor_index;    
-    file_manager_flags_t flags;
+    size_t list_window_start;
+    size_t list_window_size;
+    fs_nav_t nav;
 } file_manager_ctx_t;
 
 typedef enum {
@@ -1241,11 +1241,11 @@ esp_err_t file_manager_start(void)
         file_manager_schedule_wait_for_reconnection();
         return nav_err;
     }
-    ctx->initialized = true;
+    ctx->flags.initialized = true;
 
     if (!bsp_display_lock(0)) {
         fs_nav_deinit(&ctx->nav);
-        ctx->initialized = false;
+        ctx->flags.initialized = false;
         ESP_LOGE(TAG_FILE_BROWSER_START, "LVGL display lock cannot be acquired: (%s)", esp_err_to_name(ESP_ERR_TIMEOUT));
         return ESP_ERR_TIMEOUT;
     }
@@ -1639,7 +1639,7 @@ static void file_manager_wait_for_reconnection_task(void* arg)
     if (xSemaphoreTake(reconnection_success, portMAX_DELAY) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to wait for SD reconnection, scheduling retry...");
         schedule_retry = true;
-    } else if (ctx->initialized) {
+    } else if (ctx->flags.initialized) {
         if (ctx->flags.pending_go_parent) {
             ctx->flags.pending_go_parent = false;
             esp_err_t nav_err = fs_nav_go_parent(&ctx->nav);
@@ -2095,7 +2095,7 @@ static void file_manager_handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_
 static esp_err_t file_manager_reload(void)
 {
     file_manager_ctx_t *ctx = &s_browser;
-    if (!ctx->initialized) {
+    if (!ctx->flags.initialized) {
         return ESP_ERR_INVALID_STATE;
     }
 
