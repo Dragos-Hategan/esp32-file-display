@@ -35,52 +35,60 @@ typedef enum
     TEXT_VIEWER_SD_CHUNK,
 } text_viewer_sd_action_t;
 
+typedef struct{
+    lv_obj_t *screen;                           /**< Root LVGL screen object */
+    lv_obj_t *toolbar;                          /**< Toolbar container */
+    lv_obj_t *save_btn;                         /**< Save button (hidden/disabled in view mode) */
+    lv_obj_t *keyboard;                         /**< On-screen keyboard */
+    lv_obj_t *text_area;                        /**< Text area for viewing/editing content */
+    lv_obj_t *chunk_mbox;                       /**< Chunk-change confirmation message box */
+    lv_obj_t *path_label;                       /**< Label showing the file path */
+    lv_obj_t *status_label;                     /**< Label showing transient status messages */
+    lv_obj_t *name_dialog;                      /**< Filename prompt dialog */
+    lv_obj_t *confirm_mbox;                     /**< Confirmation message box (save/discard) */
+    lv_obj_t *chunk_slider;                     /**< Vertical slider for chunk navigation */
+    lv_obj_t *name_textarea;                    /**< Text area used inside filename dialog */
+    lv_obj_t *return_screen;                    /**< Screen to return to on close */
+    lv_timer_t *sd_retry_timer;                 /**< Timer to poll SD reconnection */
+    lv_timer_t *path_scroll_timer;              /**< Timer to delay the scrolling of paths */
+}text_viewer_graphics_t;
+
+typedef struct{
+    bool active;                                /**< True while the viewer screen is active */
+    bool dirty;                                 /**< True if current text differs from original */
+    bool editable;                              /**< True if edit mode is enabled */
+    bool new_file;                              /**< True if creating a new file */
+    bool waiting_sd;                            /**< True while waiting SD reconnection */
+    bool at_top_edge;                           /**< Tracks if the scroll is currently at the top edge */
+    bool pending_chunk;                         /**< True if a chunk load is pending confirmation */
+    bool at_bottom_edge;                        /**< Tracks if the scroll is currently at the bottom edge */
+    bool content_changed;                       /**< True if file was saved during session */
+    bool suppress_events;                       /**< Temporarily disable change detection */
+    bool pending_scroll_up;                     /**< True if pending load comes from top edge */
+    bool slider_drag_active;                    /**< True while slider knob is dragged */
+    bool slider_suppress_change;                /**< Guard slider callbacks while syncing */
+}text_viewer_flags_t;
+
 /**
  * @brief Runtime state for the singleton text viewer/editor screen.
  */
 typedef struct
 {
-    bool active;                                /**< True while the viewer screen is active */
-    bool dirty;                                 /**< True if current text differs from original */
-    bool editable;                              /**< True if edit mode is enabled */
-    bool new_file;                              /**< True if creating a new file */
-    bool at_top_edge;                           /**< Tracks if the scroll is currently at the top edge */
-    bool at_bottom_edge;                        /**< Tracks if the scroll is currently at the bottom edge */
-    bool suppress_events;                       /**< Temporarily disable change detection */
-    size_t last_file_offset_kb;                 /**< Offset (in KB) used for the last read chunk */
-    size_t current_file_offset_kb;              /**< Offset (in KB) used for the current/next chunk */
-    size_t max_file_offset_kb;                  /**< Maximum readable offset (in KB) for the loaded file */
-    lv_obj_t *screen;                           /**< Root LVGL screen object */
-    lv_obj_t *toolbar;                          /**< Toolbar container */
-    lv_obj_t *path_label;                       /**< Label showing the file path */
-    lv_obj_t *status_label;                     /**< Label showing transient status messages */
-    lv_obj_t *save_btn;                         /**< Save button (hidden/disabled in view mode) */
-    lv_obj_t *text_area;                        /**< Text area for viewing/editing content */
-    lv_obj_t *keyboard;                         /**< On-screen keyboard */
-    lv_obj_t *chunk_slider;                     /**< Vertical slider for chunk navigation */
-    lv_obj_t *return_screen;                    /**< Screen to return to on close */
-    lv_obj_t *confirm_mbox;                     /**< Confirmation message box (save/discard) */
-    lv_obj_t *chunk_mbox;                       /**< Chunk-change confirmation message box */
-    lv_obj_t *name_dialog;                      /**< Filename prompt dialog */
-    lv_obj_t *name_textarea;                    /**< Text area used inside filename dialog */
-    lv_timer_t *sd_retry_timer;                 /**< Timer to poll SD reconnection */
-    lv_timer_t *path_scroll_timer;              /**< Timer to delay the scrolling of paths */
-    text_viewer_close_cb_t close_cb;            /**< Optional close callback */
     void *close_ctx;                            /**< User context for close callback */
+    char *original_text;                        /**< Snapshot of text at load/save time */
     char path[FS_TEXT_MAX_PATH];                /**< Current file path */
     char directory[FS_TEXT_MAX_PATH];           /**< Directory used for new files */
     char pending_name[FS_NAV_MAX_NAME];         /**< Suggested filename for new files */
-    char *original_text;                        /**< Snapshot of text at load/save time */
+    size_t slider_pending_step;                 /**< Pending slider step during drag */
+    size_t max_file_offset_kb;                  /**< Maximum readable offset (in KB) for the loaded file */
+    size_t last_file_offset_kb;                 /**< Offset (in KB) used for the last read chunk */
+    size_t current_file_offset_kb;              /**< Offset (in KB) used for the current/next chunk */
     size_t pending_first_offset_kb;             /**< Pending first chunk offset when prompting */
     size_t pending_second_offset_kb;            /**< Pending second chunk offset when prompting */
-    bool pending_scroll_up;                     /**< True if pending load comes from top edge */
-    bool pending_chunk;                         /**< True if a chunk load is pending confirmation */
-    bool waiting_sd;                            /**< True while waiting SD reconnection */
+    text_viewer_flags_t flags;                  /**< All purpose flags for the text viewer context */
+    text_viewer_graphics_t graphics;            /**< LVGL UI objects used for drawing */
+    text_viewer_close_cb_t close_cb;            /**< Optional close callback */
     text_viewer_sd_action_t sd_retry_action;    /**< Pending action after SD reconnect */
-    bool content_changed;                       /**< True if file was saved during session */
-    bool slider_suppress_change;                /**< Guard slider callbacks while syncing */
-    bool slider_drag_active;                    /**< True while slider knob is dragged */
-    size_t slider_pending_step;                 /**< Pending slider step during drag */
 } text_viewer_ctx_t;
 
 /**
@@ -315,7 +323,7 @@ static void on_text_changed(lv_event_t *e);
 /**
  * @brief Save the currently loaded text chunk back to the underlying file.
  *
- * This function writes the contents of the LVGL textarea in @p ctx->text_area
+ * This function writes the contents of the LVGL textarea in @p ctx->graphics.text_area
  * into the backing file at @p ctx->path, only within the byte window
  * corresponding to the currently loaded chunks (defined by
  * ctx->last_file_offset_kb and ctx->current_file_offset_kb).
@@ -346,7 +354,7 @@ static void on_text_changed(lv_event_t *e);
  *
  * On success:
  * - Updates the "original" text snapshot via set_original().
- * - Clears @p ctx->dirty (sets it to false).
+ * - Clears @p ctx->flags.dirty (sets it to false).
  * - Sets status to "Saved".
  *
  * @param ctx Pointer to the text viewer context. May be NULL, in which case
@@ -636,33 +644,33 @@ esp_err_t text_viewer_open(const text_viewer_open_opts_t *opts)
     if (err != ESP_OK) return err;
 
     text_viewer_ctx_t *ctx = &s_viewer;
-    if (!ctx->screen)
+    if (!ctx->graphics.screen)
     {
         build_screen(ctx);
     }
 
     init_viewer_context(ctx, opts, new_file, first_offset_kb, second_offset_kb, file_size_kb);
 
-    lv_textarea_set_text(ctx->text_area, content);
+    lv_textarea_set_text(ctx->graphics.text_area, content);
     set_original(ctx, content);
     free(content);
-    ctx->suppress_events = false;
-    if (ctx->new_file)
+    ctx->flags.suppress_events = false;
+    if (ctx->flags.new_file)
     {
         set_status(ctx, "New TXT");
     }
     else
     {
-        set_status(ctx, ctx->editable ? "Edit mode" : "View mode");
+        set_status(ctx, ctx->flags.editable ? "Edit mode" : "View mode");
     }
     apply_mode(ctx);
     update_slider(ctx);
-    lv_screen_load(ctx->screen);
-    if (ctx->new_file)
+    lv_screen_load(ctx->graphics.screen);
+    if (ctx->flags.new_file)
     {
-        lv_textarea_set_cursor_pos(ctx->text_area, 0);
-        lv_obj_add_state(ctx->text_area, LV_STATE_FOCUSED);
-        show_keyboard(ctx, ctx->text_area);
+        lv_textarea_set_cursor_pos(ctx->graphics.text_area, 0);
+        lv_obj_add_state(ctx->graphics.text_area, LV_STATE_FOCUSED);
+        show_keyboard(ctx, ctx->graphics.text_area);
     }
     return ESP_OK;
 }
@@ -797,12 +805,12 @@ static void init_viewer_context(text_viewer_ctx_t *ctx, const text_viewer_open_o
                                 size_t first_offset_kb, size_t second_offset_kb, size_t file_size_kb)
 {
     close_confirm(ctx);
-    ctx->active = true;
-    ctx->editable = new_file ? true : opts->editable;
-    ctx->new_file = new_file;
-    ctx->dirty = new_file ? true : false;
-    ctx->suppress_events = true;
-    ctx->return_screen = opts->return_screen;
+    ctx->flags.active = true;
+    ctx->flags.editable = new_file ? true : opts->editable;
+    ctx->flags.new_file = new_file;
+    ctx->flags.dirty = new_file ? true : false;
+    ctx->flags.suppress_events = true;
+    ctx->graphics.return_screen = opts->return_screen;
     ctx->close_cb = opts->on_close;
     ctx->close_ctx = opts->user_ctx;
 
@@ -810,21 +818,21 @@ static void init_viewer_context(text_viewer_ctx_t *ctx, const text_viewer_open_o
     ctx->last_file_offset_kb = first_offset_kb;
     ctx->max_file_offset_kb = file_size_kb;
 
-    ctx->name_dialog = NULL;
-    ctx->name_textarea = NULL;
-    ctx->chunk_mbox = NULL;
-    ctx->sd_retry_timer = NULL;
-    ctx->at_top_edge = false;
-    ctx->at_bottom_edge = false;
-    ctx->pending_chunk = false;
+    ctx->graphics.name_dialog = NULL;
+    ctx->graphics.name_textarea = NULL;
+    ctx->graphics.chunk_mbox = NULL;
+    ctx->graphics.sd_retry_timer = NULL;
+    ctx->flags.at_top_edge = false;
+    ctx->flags.at_bottom_edge = false;
+    ctx->flags.pending_chunk = false;
     ctx->pending_first_offset_kb = 0;
     ctx->pending_second_offset_kb = 0;
-    ctx->pending_scroll_up = false;
-    ctx->waiting_sd = false;
+    ctx->flags.pending_scroll_up = false;
+    ctx->flags.waiting_sd = false;
     ctx->sd_retry_action = TEXT_VIEWER_SD_NONE;
-    ctx->content_changed = false;
-    ctx->slider_suppress_change = false;
-    ctx->slider_drag_active = false;
+    ctx->flags.content_changed = false;
+    ctx->flags.slider_suppress_change = false;
+    ctx->flags.slider_drag_active = false;
     ctx->slider_pending_step = SIZE_MAX;
 
     if (new_file)
@@ -854,7 +862,7 @@ static void build_screen(text_viewer_ctx_t *ctx)
     lv_obj_set_flex_flow(scr, LV_FLEX_FLOW_COLUMN);
     lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(scr, on_screen_clicked, LV_EVENT_CLICKED, ctx);
-    ctx->screen = scr;
+    ctx->graphics.screen = scr;
 
     lv_obj_t *toolbar = lv_obj_create(scr);
     lv_obj_remove_style_all(toolbar);
@@ -864,7 +872,7 @@ static void build_screen(text_viewer_ctx_t *ctx)
     lv_obj_set_flex_align(toolbar, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     styles_set_card_color(toolbar, 0);
     lv_obj_set_style_bg_opa(toolbar, LV_OPA_COVER, 0);
-    ctx->toolbar = toolbar;
+    ctx->graphics.toolbar = toolbar;
 
     lv_obj_t *back_btn = lv_button_create(toolbar);
     lv_obj_set_style_radius(back_btn, 6, 0);
@@ -875,12 +883,12 @@ static void build_screen(text_viewer_ctx_t *ctx)
     lv_label_set_text(back_lbl, LV_SYMBOL_LEFT " Back");
     lv_obj_center(back_lbl);
 
-    ctx->save_btn = lv_button_create(toolbar);
-    lv_obj_set_style_radius(ctx->save_btn, 6, 0);
-    lv_obj_set_style_pad_all(ctx->save_btn, 6, 0);     
-    styles_set_button(ctx->save_btn);   
-    lv_obj_add_event_cb(ctx->save_btn, on_save, LV_EVENT_CLICKED, ctx);
-    lv_obj_t *save_lbl = lv_label_create(ctx->save_btn);
+    ctx->graphics.save_btn = lv_button_create(toolbar);
+    lv_obj_set_style_radius(ctx->graphics.save_btn, 6, 0);
+    lv_obj_set_style_pad_all(ctx->graphics.save_btn, 6, 0);     
+    styles_set_button(ctx->graphics.save_btn);   
+    lv_obj_add_event_cb(ctx->graphics.save_btn, on_save, LV_EVENT_CLICKED, ctx);
+    lv_obj_t *save_lbl = lv_label_create(ctx->graphics.save_btn);
     lv_label_set_text(save_lbl, LV_SYMBOL_SAVE " Save");
     lv_obj_center(save_lbl);
 
@@ -889,16 +897,16 @@ static void build_screen(text_viewer_ctx_t *ctx)
     lv_obj_set_flex_grow(status_spacer_left, 1);
     lv_obj_set_height(status_spacer_left, 1);
 
-    ctx->status_label = lv_label_create(toolbar);
-    lv_label_set_text(ctx->status_label, "");
-    lv_label_set_long_mode(ctx->status_label, LV_LABEL_LONG_CLIP);
-    lv_obj_set_style_text_align(ctx->status_label, LV_TEXT_ALIGN_CENTER, 0);
-    styles_set_text_color(ctx->status_label, 0);
-    lv_obj_set_style_text_font(ctx->status_label, &Domine_16, 0);
-    const lv_font_t *status_font = lv_obj_get_style_text_font(ctx->status_label, LV_PART_MAIN);
+    ctx->graphics.status_label = lv_label_create(toolbar);
+    lv_label_set_text(ctx->graphics.status_label, "");
+    lv_label_set_long_mode(ctx->graphics.status_label, LV_LABEL_LONG_CLIP);
+    lv_obj_set_style_text_align(ctx->graphics.status_label, LV_TEXT_ALIGN_CENTER, 0);
+    styles_set_text_color(ctx->graphics.status_label, 0);
+    lv_obj_set_style_text_font(ctx->graphics.status_label, &Domine_16, 0);
+    const lv_font_t *status_font = lv_obj_get_style_text_font(ctx->graphics.status_label, LV_PART_MAIN);
     lv_coord_t status_height = status_font ? status_font->line_height : 18;
-    lv_obj_set_style_min_height(ctx->status_label, status_height, 0);
-    lv_obj_set_style_max_height(ctx->status_label, status_height, 0);
+    lv_obj_set_style_min_height(ctx->graphics.status_label, status_height, 0);
+    lv_obj_set_style_max_height(ctx->graphics.status_label, status_height, 0);
 
     lv_obj_t *status_spacer_right = lv_obj_create(toolbar);
     lv_obj_remove_style_all(status_spacer_right);
@@ -915,12 +923,12 @@ static void build_screen(text_viewer_ctx_t *ctx)
     lv_label_set_text(path_prefix, "Path: ");
     lv_obj_set_style_text_align(path_prefix, LV_TEXT_ALIGN_LEFT, 0);
 
-    ctx->path_label = lv_label_create(path_row);
-    lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_obj_set_flex_grow(ctx->path_label, 1);
-    lv_obj_set_width(ctx->path_label, LV_PCT(100));
-    lv_obj_set_style_text_align(ctx->path_label, LV_TEXT_ALIGN_LEFT, 0);
-    lv_label_set_text(ctx->path_label, "");
+    ctx->graphics.path_label = lv_label_create(path_row);
+    lv_label_set_long_mode(ctx->graphics.path_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_flex_grow(ctx->graphics.path_label, 1);
+    lv_obj_set_width(ctx->graphics.path_label, LV_PCT(100));
+    lv_obj_set_style_text_align(ctx->graphics.path_label, LV_TEXT_ALIGN_LEFT, 0);
+    lv_label_set_text(ctx->graphics.path_label, "");
 
     lv_coord_t slider_gap = 6;
 
@@ -933,17 +941,17 @@ static void build_screen(text_viewer_ctx_t *ctx)
     lv_obj_set_style_pad_right(text_row, slider_gap, 0);
     lv_obj_set_flex_grow(text_row, 1);    
 
-    ctx->text_area = lv_textarea_create(text_row);
-    lv_obj_set_flex_grow(ctx->text_area, 1);
-    lv_obj_set_height(ctx->text_area, LV_PCT(100));
-    lv_obj_set_style_pad_all(ctx->text_area, 0, 0);
-    styles_set_textarea(ctx->text_area);
-    lv_textarea_set_cursor_click_pos(ctx->text_area, false);
-    lv_obj_set_scrollbar_mode(ctx->text_area, LV_SCROLLBAR_MODE_AUTO);
-    styles_set_textarea(ctx->text_area);
-    lv_obj_add_event_cb(ctx->text_area, on_text_changed, LV_EVENT_VALUE_CHANGED, ctx);
-    lv_obj_add_event_cb(ctx->text_area, on_text_area_clicked, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->text_area, on_text_scrolled, LV_EVENT_SCROLL, ctx);
+    ctx->graphics.text_area = lv_textarea_create(text_row);
+    lv_obj_set_flex_grow(ctx->graphics.text_area, 1);
+    lv_obj_set_height(ctx->graphics.text_area, LV_PCT(100));
+    lv_obj_set_style_pad_all(ctx->graphics.text_area, 0, 0);
+    styles_set_textarea(ctx->graphics.text_area);
+    lv_textarea_set_cursor_click_pos(ctx->graphics.text_area, false);
+    lv_obj_set_scrollbar_mode(ctx->graphics.text_area, LV_SCROLLBAR_MODE_AUTO);
+    styles_set_textarea(ctx->graphics.text_area);
+    lv_obj_add_event_cb(ctx->graphics.text_area, on_text_changed, LV_EVENT_VALUE_CHANGED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.text_area, on_text_area_clicked, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.text_area, on_text_scrolled, LV_EVENT_SCROLL, ctx);
     
     lv_obj_t *list_slider = lv_slider_create(text_row);
     lv_slider_set_orientation(list_slider, LV_SLIDER_ORIENTATION_VERTICAL);
@@ -971,51 +979,51 @@ static void build_screen(text_viewer_ctx_t *ctx)
     lv_obj_add_event_cb(list_slider, on_slider_value_changed, LV_EVENT_RELEASED, ctx);
     lv_obj_add_event_cb(list_slider, on_slider_value_changed, LV_EVENT_PRESS_LOST, ctx);
     lv_obj_clear_flag(list_slider, LV_OBJ_FLAG_SCROLL_CHAIN);
-    ctx->chunk_slider = list_slider;
+    ctx->graphics.chunk_slider = list_slider;
     
-    ctx->keyboard = lv_keyboard_create(scr);
-    styles_set_keyboard(ctx->keyboard);
-    lv_keyboard_set_textarea(ctx->keyboard, ctx->text_area);
-    lv_obj_add_flag(ctx->keyboard, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_event_cb(ctx->keyboard, on_keyboard_cancel, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->keyboard, on_keyboard_ready, LV_EVENT_READY, ctx);
+    ctx->graphics.keyboard = lv_keyboard_create(scr);
+    styles_set_keyboard(ctx->graphics.keyboard);
+    lv_keyboard_set_textarea(ctx->graphics.keyboard, ctx->graphics.text_area);
+    lv_obj_add_flag(ctx->graphics.keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(ctx->graphics.keyboard, on_keyboard_cancel, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.keyboard, on_keyboard_ready, LV_EVENT_READY, ctx);
 }
 
 static void apply_mode(text_viewer_ctx_t *ctx)
 {
-    if (ctx->editable)
+    if (ctx->flags.editable)
     {
-        lv_obj_clear_state(ctx->text_area, LV_STATE_DISABLED);
-        lv_textarea_set_cursor_click_pos(ctx->text_area, true);
-        lv_obj_add_flag(ctx->text_area, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+        lv_obj_clear_state(ctx->graphics.text_area, LV_STATE_DISABLED);
+        lv_textarea_set_cursor_click_pos(ctx->graphics.text_area, true);
+        lv_obj_add_flag(ctx->graphics.text_area, LV_OBJ_FLAG_CLICK_FOCUSABLE);
         hide_keyboard(ctx);
-        lv_obj_clear_flag(ctx->save_btn, LV_OBJ_FLAG_HIDDEN);
-        lv_textarea_set_cursor_pos(ctx->text_area, 0);
+        lv_obj_clear_flag(ctx->graphics.save_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_textarea_set_cursor_pos(ctx->graphics.text_area, 0);
     }
     else
     {
-        lv_textarea_set_cursor_click_pos(ctx->text_area, false);
-        lv_obj_clear_flag(ctx->text_area, LV_OBJ_FLAG_CLICK_FOCUSABLE);
+        lv_textarea_set_cursor_click_pos(ctx->graphics.text_area, false);
+        lv_obj_clear_flag(ctx->graphics.text_area, LV_OBJ_FLAG_CLICK_FOCUSABLE);
         hide_keyboard(ctx);
-        lv_obj_add_flag(ctx->save_btn, LV_OBJ_FLAG_HIDDEN);
-        lv_textarea_clear_selection(ctx->text_area);
-        lv_textarea_set_cursor_pos(ctx->text_area, 0);
+        lv_obj_add_flag(ctx->graphics.save_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_textarea_clear_selection(ctx->graphics.text_area);
+        lv_textarea_set_cursor_pos(ctx->graphics.text_area, 0);
     }
-    lv_obj_scroll_to_y(ctx->text_area, 0, LV_ANIM_OFF);
+    lv_obj_scroll_to_y(ctx->graphics.text_area, 0, LV_ANIM_OFF);
     update_buttons(ctx);
 }
 
 static void set_status(text_viewer_ctx_t *ctx, const char *msg)
 {
-    if (ctx->status_label && msg)
+    if (ctx->graphics.status_label && msg)
     {
-        lv_label_set_text(ctx->status_label, msg);
+        lv_label_set_text(ctx->graphics.status_label, msg);
     }
 }
 
 static void set_path_label(text_viewer_ctx_t *ctx, const char *path)
 {
-    if (!ctx || !ctx->path_label)
+    if (!ctx || !ctx->graphics.path_label)
     {
         return;
     }
@@ -1044,7 +1052,7 @@ static void set_path_label(text_viewer_ctx_t *ctx, const char *path)
         snprintf(display, sizeof(display), "%s", path ? path : "");
     }
 
-    lv_label_set_text(ctx->path_label, display);
+    lv_label_set_text(ctx->graphics.path_label, display);
     restart_path_scroll(ctx);
 }
 
@@ -1052,9 +1060,9 @@ static void path_scroll_timer_cb(lv_timer_t *timer)
 {
     text_viewer_ctx_t *ctx = (text_viewer_ctx_t *)lv_timer_get_user_data(timer);
     if (ctx) {
-        ctx->path_scroll_timer = NULL;
-        if (ctx->path_label && lv_obj_is_valid(ctx->path_label)) {
-            lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+        ctx->graphics.path_scroll_timer = NULL;
+        if (ctx->graphics.path_label && lv_obj_is_valid(ctx->graphics.path_label)) {
+            lv_label_set_long_mode(ctx->graphics.path_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
         }
     }
     lv_timer_del(timer);
@@ -1062,20 +1070,20 @@ static void path_scroll_timer_cb(lv_timer_t *timer)
 
 static void restart_path_scroll(text_viewer_ctx_t *ctx)
 {
-    if (!ctx || !ctx->path_label) {
+    if (!ctx || !ctx->graphics.path_label) {
         return;
     }
 
-    if (ctx->path_scroll_timer) {
-        lv_timer_del(ctx->path_scroll_timer);
-        ctx->path_scroll_timer = NULL;
+    if (ctx->graphics.path_scroll_timer) {
+        lv_timer_del(ctx->graphics.path_scroll_timer);
+        ctx->graphics.path_scroll_timer = NULL;
     }
 
     /* Start clipped, then enable scroll after a short delay. */
-    lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_CLIP);
-    ctx->path_scroll_timer = lv_timer_create(path_scroll_timer_cb, TEXT_VIEWER_PATH_SCROLL_DELAY_MS, ctx);
-    if (ctx->path_scroll_timer) {
-        lv_timer_set_repeat_count(ctx->path_scroll_timer, 1);
+    lv_label_set_long_mode(ctx->graphics.path_label, LV_LABEL_LONG_CLIP);
+    ctx->graphics.path_scroll_timer = lv_timer_create(path_scroll_timer_cb, TEXT_VIEWER_PATH_SCROLL_DELAY_MS, ctx);
+    if (ctx->graphics.path_scroll_timer) {
+        lv_timer_set_repeat_count(ctx->graphics.path_scroll_timer, 1);
     }
 }
 
@@ -1097,7 +1105,7 @@ static void get_slider_params(text_viewer_ctx_t *ctx, size_t *window_size, size_
 
 static void update_slider(text_viewer_ctx_t *ctx)
 {
-    if (!ctx || !ctx->chunk_slider) {
+    if (!ctx || !ctx->graphics.chunk_slider) {
         return;
     }
 
@@ -1111,14 +1119,14 @@ static void update_slider(text_viewer_ctx_t *ctx)
     }
 
     if (total_chunks <= window_size) {
-        bool prev = ctx->slider_suppress_change;
-        ctx->slider_suppress_change = true;
-        lv_slider_set_range(ctx->chunk_slider, 0, 0);
-        lv_slider_set_value(ctx->chunk_slider, 0, LV_ANIM_OFF);
-        ctx->slider_suppress_change = prev;
+        bool prev = ctx->flags.slider_suppress_change;
+        ctx->flags.slider_suppress_change = true;
+        lv_slider_set_range(ctx->graphics.chunk_slider, 0, 0);
+        lv_slider_set_value(ctx->graphics.chunk_slider, 0, LV_ANIM_OFF);
+        ctx->flags.slider_suppress_change = prev;
         ctx->slider_pending_step = 0;
-        ctx->slider_drag_active = false;
-        lv_obj_add_state(ctx->chunk_slider, LV_STATE_DISABLED);
+        ctx->flags.slider_drag_active = false;
+        lv_obj_add_state(ctx->graphics.chunk_slider, LV_STATE_DISABLED);
         return;
     }
 
@@ -1135,24 +1143,24 @@ static void update_slider(text_viewer_ctx_t *ctx)
         current_step = max_step_index;
     }
 
-    bool prev = ctx->slider_suppress_change;
-    ctx->slider_suppress_change = true;
-    lv_slider_set_range(ctx->chunk_slider, max_val, 0); /* min at top, max at bottom */
-    lv_slider_set_value(ctx->chunk_slider, (int32_t)current_step, LV_ANIM_OFF);
-    ctx->slider_suppress_change = prev;
+    bool prev = ctx->flags.slider_suppress_change;
+    ctx->flags.slider_suppress_change = true;
+    lv_slider_set_range(ctx->graphics.chunk_slider, max_val, 0); /* min at top, max at bottom */
+    lv_slider_set_value(ctx->graphics.chunk_slider, (int32_t)current_step, LV_ANIM_OFF);
+    ctx->flags.slider_suppress_change = prev;
     ctx->slider_pending_step = current_step;
-    lv_obj_remove_state(ctx->chunk_slider, LV_STATE_DISABLED);
+    lv_obj_remove_state(ctx->graphics.chunk_slider, LV_STATE_DISABLED);
 }
 
 static void on_slider_value_changed(lv_event_t *e)
 {
     text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || ctx->slider_suppress_change) {
+    if (!ctx || ctx->flags.slider_suppress_change) {
         return;
     }
 
     lv_event_code_t code = lv_event_get_code(e);
-    bool blocked = ctx->waiting_sd || ctx->chunk_mbox || ctx->pending_chunk;
+    bool blocked = ctx->flags.waiting_sd || ctx->graphics.chunk_mbox || ctx->flags.pending_chunk;
 
     size_t window_size = 1;
     size_t step = 1;
@@ -1182,7 +1190,7 @@ static void on_slider_value_changed(lv_event_t *e)
         if (blocked) {
             return;
         }
-        ctx->slider_drag_active = true;
+        ctx->flags.slider_drag_active = true;
         ctx->slider_pending_step = clamped_step;
         return;
     }
@@ -1198,7 +1206,7 @@ static void on_slider_value_changed(lv_event_t *e)
     if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
         if (blocked) {
             ctx->slider_pending_step = SIZE_MAX;
-            ctx->slider_drag_active = false;
+            ctx->flags.slider_drag_active = false;
             update_slider(ctx);
             return;
         }
@@ -1219,7 +1227,7 @@ static void on_slider_value_changed(lv_event_t *e)
 
         if (target_step == current_step) {
             ctx->slider_pending_step = SIZE_MAX;
-            ctx->slider_drag_active = false;
+            ctx->flags.slider_drag_active = false;
             return;
         }
 
@@ -1239,7 +1247,7 @@ static void on_slider_value_changed(lv_event_t *e)
 
         bool from_top = target_step < current_step;
         ctx->slider_pending_step = SIZE_MAX;
-        ctx->slider_drag_active = false;
+        ctx->flags.slider_drag_active = false;
         request_chunk_load(ctx, first_offset, second_offset, from_top);
     }
 }
@@ -1290,14 +1298,14 @@ static esp_err_t load_window(text_viewer_ctx_t *ctx, size_t first_offset_kb, siz
     }
     joined[total] = '\0';
 
-    bool prev_suppress = ctx->suppress_events;
-    ctx->suppress_events = true;
-    lv_textarea_set_text(ctx->text_area, joined);
+    bool prev_suppress = ctx->flags.suppress_events;
+    ctx->flags.suppress_events = true;
+    lv_textarea_set_text(ctx->graphics.text_area, joined);
     set_original(ctx, joined);
-    ctx->dirty = false;
+    ctx->flags.dirty = false;
     update_buttons(ctx);
 
-    ctx->suppress_events = prev_suppress;
+    ctx->flags.suppress_events = prev_suppress;
 
 cleanup:
     free(joined);
@@ -1308,35 +1316,35 @@ cleanup:
 
 static void update_buttons(text_viewer_ctx_t *ctx)
 {
-    if (!ctx->editable)
+    if (!ctx->flags.editable)
     {
         return;
     }
-    if (ctx->dirty)
+    if (ctx->flags.dirty)
     {
-        lv_obj_clear_state(ctx->save_btn, LV_STATE_DISABLED);
+        lv_obj_clear_state(ctx->graphics.save_btn, LV_STATE_DISABLED);
     }
     else
     {
-        lv_obj_add_state(ctx->save_btn, LV_STATE_DISABLED);
+        lv_obj_add_state(ctx->graphics.save_btn, LV_STATE_DISABLED);
     }
 }
 
 static void show_keyboard(text_viewer_ctx_t *ctx, lv_obj_t *target)
 {
-    if (!ctx || !ctx->editable)
+    if (!ctx || !ctx->flags.editable)
     {
         return;
     }
     if (target)
     {
-        lv_keyboard_set_textarea(ctx->keyboard, target);
+        lv_keyboard_set_textarea(ctx->graphics.keyboard, target);
     }
-    else if (!lv_keyboard_get_textarea(ctx->keyboard))
+    else if (!lv_keyboard_get_textarea(ctx->graphics.keyboard))
     {
-        lv_keyboard_set_textarea(ctx->keyboard, ctx->text_area);
+        lv_keyboard_set_textarea(ctx->graphics.keyboard, ctx->graphics.text_area);
     }
-    lv_obj_clear_flag(ctx->keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ctx->graphics.keyboard, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void hide_keyboard(text_viewer_ctx_t *ctx)
@@ -1345,32 +1353,32 @@ static void hide_keyboard(text_viewer_ctx_t *ctx)
     {
         return;
     }
-    if (!lv_obj_has_flag(ctx->keyboard, LV_OBJ_FLAG_HIDDEN))
+    if (!lv_obj_has_flag(ctx->graphics.keyboard, LV_OBJ_FLAG_HIDDEN))
     {
-        lv_obj_add_flag(ctx->keyboard, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ctx->graphics.keyboard, LV_OBJ_FLAG_HIDDEN);
     }
-    if (lv_keyboard_get_textarea(ctx->keyboard))
+    if (lv_keyboard_get_textarea(ctx->graphics.keyboard))
     {
-        lv_keyboard_set_textarea(ctx->keyboard, NULL);
+        lv_keyboard_set_textarea(ctx->graphics.keyboard, NULL);
     }
 }
 
 static void on_text_area_clicked(lv_event_t *e)
 {
     text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->editable)
+    if (!ctx || !ctx->flags.editable)
     {
         return;
     }
-    show_keyboard(ctx, ctx->text_area);
+    show_keyboard(ctx, ctx->graphics.text_area);
 }
 
 static void skip_cursor_animation(text_viewer_ctx_t *ctx)
 {
     // Jump to the new cursor position immediately (skip the default scroll animation)
     lv_point_t target_scroll = {0};
-    lv_obj_get_scroll_end(ctx->text_area, &target_scroll);
-    lv_obj_scroll_to(ctx->text_area, target_scroll.x, target_scroll.y, LV_ANIM_OFF);    
+    lv_obj_get_scroll_end(ctx->graphics.text_area, &target_scroll);
+    lv_obj_scroll_to(ctx->graphics.text_area, target_scroll.x, target_scroll.y, LV_ANIM_OFF);    
 }
 
 static void on_text_scrolled(lv_event_t *e)
@@ -1380,23 +1388,23 @@ static void on_text_scrolled(lv_event_t *e)
     {
         return;
     }
-    if (ctx->waiting_sd)
+    if (ctx->flags.waiting_sd)
     {
         return;
     }
-    if (ctx->chunk_mbox || ctx->pending_chunk)
+    if (ctx->graphics.chunk_mbox || ctx->flags.pending_chunk)
     {
         return;
     }
 
-    bool at_top = lv_obj_get_scroll_top(ctx->text_area) <= 0;
-    bool at_bottom = lv_obj_get_scroll_bottom(ctx->text_area) <= 0;
+    bool at_top = lv_obj_get_scroll_top(ctx->graphics.text_area) <= 0;
+    bool at_bottom = lv_obj_get_scroll_bottom(ctx->graphics.text_area) <= 0;
 
-    if (at_top && !ctx->at_top_edge)
+    if (at_top && !ctx->flags.at_top_edge)
     {
-        ctx->at_top_edge = true;
+        ctx->flags.at_top_edge = true;
 
-        if (!ctx->new_file && ctx->last_file_offset_kb > 0)
+        if (!ctx->flags.new_file && ctx->last_file_offset_kb > 0)
         {
             size_t new_first = ctx->last_file_offset_kb - 1;
             size_t new_second = ctx->last_file_offset_kb;
@@ -1405,14 +1413,14 @@ static void on_text_scrolled(lv_event_t *e)
     }
     else if (!at_top)
     {
-        ctx->at_top_edge = false;
+        ctx->flags.at_top_edge = false;
     }
 
-    if (at_bottom && !ctx->at_bottom_edge)
+    if (at_bottom && !ctx->flags.at_bottom_edge)
     {
-        ctx->at_bottom_edge = true;
+        ctx->flags.at_bottom_edge = true;
 
-        if (!ctx->new_file && ctx->current_file_offset_kb < ctx->max_file_offset_kb)
+        if (!ctx->flags.new_file && ctx->current_file_offset_kb < ctx->max_file_offset_kb)
         {
             size_t next_offset = ctx->current_file_offset_kb + 1;
             size_t first_offset = ctx->current_file_offset_kb;
@@ -1421,7 +1429,7 @@ static void on_text_scrolled(lv_event_t *e)
     }
     else if (!at_bottom)
     {
-        ctx->at_bottom_edge = false;
+        ctx->flags.at_bottom_edge = false;
     }
 }
 
@@ -1438,23 +1446,23 @@ static void on_keyboard_cancel(lv_event_t *e)
 static void on_name_textarea_clicked(lv_event_t *e)
 {
     text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->name_textarea)
+    if (!ctx || !ctx->graphics.name_textarea)
     {
         return;
     }
-    show_keyboard(ctx, ctx->name_textarea);
+    show_keyboard(ctx, ctx->graphics.name_textarea);
 }
 
 static void on_keyboard_ready(lv_event_t *e)
 {
     text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->editable)
+    if (!ctx || !ctx->flags.editable)
     {
         return;
     }
 
-    lv_obj_t *target = ctx->keyboard ? lv_keyboard_get_textarea(ctx->keyboard) : NULL;
-    if (ctx->name_dialog && target && target == ctx->name_textarea)
+    lv_obj_t *target = ctx->graphics.keyboard ? lv_keyboard_get_textarea(ctx->graphics.keyboard) : NULL;
+    if (ctx->graphics.name_dialog && target && target == ctx->graphics.name_textarea)
     {
         confirm_name_dialog(ctx);
         return;
@@ -1466,21 +1474,21 @@ static void on_keyboard_ready(lv_event_t *e)
 static void on_screen_clicked(lv_event_t *e)
 {
     text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->editable)
+    if (!ctx || !ctx->flags.editable)
     {
         return;
     }
-    if (ctx->name_dialog)
+    if (ctx->graphics.name_dialog)
     {
         return;
     }
-    if (lv_obj_has_flag(ctx->keyboard, LV_OBJ_FLAG_HIDDEN))
+    if (lv_obj_has_flag(ctx->graphics.keyboard, LV_OBJ_FLAG_HIDDEN))
     {
         return;
     }
     lv_obj_t *target = lv_event_get_target(e);
-    if (target_in(ctx->text_area, target) ||
-        target_in(ctx->keyboard, target))
+    if (target_in(ctx->graphics.text_area, target) ||
+        target_in(ctx->graphics.keyboard, target))
     {
         return;
     }
@@ -1490,16 +1498,16 @@ static void on_screen_clicked(lv_event_t *e)
 static void on_text_changed(lv_event_t *e)
 {
     text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->editable || ctx->suppress_events)
+    if (!ctx || !ctx->flags.editable || ctx->flags.suppress_events)
     {
         return;
     }
-    const char *text = lv_textarea_get_text(ctx->text_area);
+    const char *text = lv_textarea_get_text(ctx->graphics.text_area);
     const char *orig = ctx->original_text ? ctx->original_text : "";
     bool dirty = strcmp(text, orig) != 0;
-    if (dirty != ctx->dirty)
+    if (dirty != ctx->flags.dirty)
     {
-        ctx->dirty = dirty;
+        ctx->flags.dirty = dirty;
         update_buttons(ctx);
         set_status(ctx, dirty ? "Modified" : "Saved");
     }
@@ -1511,18 +1519,18 @@ static void handle_save(text_viewer_ctx_t *ctx)
     {
         return;
     }
-    if (ctx->waiting_sd)
+    if (ctx->flags.waiting_sd)
     {
         set_status(ctx, "Reconnect SD");
         return;
     }
-    if (ctx->new_file && ctx->path[0] == '\0')
+    if (ctx->flags.new_file && ctx->path[0] == '\0')
     {
         show_name_dialog(ctx);
         return;
     }
 
-    const char *text = lv_textarea_get_text(ctx->text_area);
+    const char *text = lv_textarea_get_text(ctx->graphics.text_area);
     if (!text)
     {
         text = "";
@@ -1735,12 +1743,12 @@ static void handle_save(text_viewer_ctx_t *ctx)
     {
         ctx->current_file_offset_kb = ctx->max_file_offset_kb;
     }
-    ctx->at_top_edge = false;
-    ctx->at_bottom_edge = false;
+    ctx->flags.at_top_edge = false;
+    ctx->flags.at_bottom_edge = false;
 
     set_original(ctx, text);
-    ctx->dirty = false;
-    ctx->content_changed = true;
+    ctx->flags.dirty = false;
+    ctx->flags.content_changed = true;
     set_status(ctx, "Saved");
     update_slider(ctx);
     return;
@@ -1770,7 +1778,7 @@ static void on_back(lv_event_t *e)
     {
         return;
     }
-    if (ctx->editable && ctx->dirty)
+    if (ctx->flags.editable && ctx->flags.dirty)
     {
         show_confirm(ctx);
         return;
@@ -1780,14 +1788,14 @@ static void on_back(lv_event_t *e)
 
 static void show_chunk_prompt(text_viewer_ctx_t *ctx)
 {
-    if (!ctx || ctx->chunk_mbox || !ctx->pending_chunk)
+    if (!ctx || ctx->graphics.chunk_mbox || !ctx->flags.pending_chunk)
     {
         return;
     }
-    lv_obj_t *mbox = lv_msgbox_create(ctx->screen);
+    lv_obj_t *mbox = lv_msgbox_create(ctx->graphics.screen);
     styles_set_msgbox(mbox);
     lv_obj_add_flag(mbox, LV_OBJ_FLAG_FLOATING);
-    ctx->chunk_mbox = mbox;
+    ctx->graphics.chunk_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_set_width(mbox, LV_PCT(80));
     lv_obj_center(mbox);
@@ -1816,20 +1824,20 @@ static void show_chunk_prompt(text_viewer_ctx_t *ctx)
 
 static void close_chunk_prompt(text_viewer_ctx_t *ctx)
 {
-    if (ctx && ctx->chunk_mbox)
+    if (ctx && ctx->graphics.chunk_mbox)
     {
-        lv_msgbox_close(ctx->chunk_mbox);
-        ctx->chunk_mbox = NULL;
+        lv_msgbox_close(ctx->graphics.chunk_mbox);
+        ctx->graphics.chunk_mbox = NULL;
     }
 }
 
 static void apply_pending_chunk(text_viewer_ctx_t *ctx)
 {
-    if (!ctx || !ctx->pending_chunk)
+    if (!ctx || !ctx->flags.pending_chunk)
     {
         return;
     }
-    if (ctx->waiting_sd)
+    if (ctx->flags.waiting_sd)
     {
         return;
     }
@@ -1837,32 +1845,32 @@ static void apply_pending_chunk(text_viewer_ctx_t *ctx)
     esp_err_t err = load_window(ctx, ctx->pending_first_offset_kb, ctx->pending_second_offset_kb);
     if (err == ESP_OK)
     {
-        lv_coord_t content_h = lv_obj_get_content_height(ctx->text_area);
-        if (ctx->pending_scroll_up)
+        lv_coord_t content_h = lv_obj_get_content_height(ctx->graphics.text_area);
+        if (ctx->flags.pending_scroll_up)
         {
-            lv_textarea_set_cursor_pos(ctx->text_area, (int32_t)READ_CHUNK_SIZE_B + content_h);
+            lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)READ_CHUNK_SIZE_B + content_h);
             skip_cursor_animation(ctx);
         }
         else
         {
-            lv_textarea_set_cursor_pos(ctx->text_area, (int32_t)READ_CHUNK_SIZE_B - content_h);
+            lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)READ_CHUNK_SIZE_B - content_h);
             skip_cursor_animation(ctx);
         }
         ctx->last_file_offset_kb = ctx->pending_first_offset_kb;
         ctx->current_file_offset_kb = ctx->pending_second_offset_kb;
-        ctx->at_top_edge = false;
-        ctx->at_bottom_edge = false;
+        ctx->flags.at_top_edge = false;
+        ctx->flags.at_bottom_edge = false;
         update_slider(ctx);
     }
     else
     {
         ESP_LOGE(TAG, "Failed to load chunk: %s", esp_err_to_name(err));
         schedule_sd_retry(ctx, TEXT_VIEWER_SD_CHUNK);
-        ctx->at_top_edge = false;
-        ctx->at_bottom_edge = false;
+        ctx->flags.at_top_edge = false;
+        ctx->flags.at_bottom_edge = false;
         return;
     }
-    ctx->pending_chunk = false;
+    ctx->flags.pending_chunk = false;
 }
 
 static void on_chunk_prompt(lv_event_t *e)
@@ -1878,54 +1886,54 @@ static void on_chunk_prompt(lv_event_t *e)
     if (ud == (void *)TEXT_VIEWER_CHUNK_SAVE)
     {
         handle_save(ctx);
-        if (!ctx->dirty)
+        if (!ctx->flags.dirty)
         {
             apply_pending_chunk(ctx);
         }
-        else if (!ctx->waiting_sd)
+        else if (!ctx->flags.waiting_sd)
         {
-            ctx->pending_chunk = false;
-            ctx->at_top_edge = false;
-            ctx->at_bottom_edge = false;
+            ctx->flags.pending_chunk = false;
+            ctx->flags.at_top_edge = false;
+            ctx->flags.at_bottom_edge = false;
             update_slider(ctx);
         }
     }
     else if (ud == (void *)TEXT_VIEWER_CHUNK_DISCARD)
     {
-        ctx->dirty = false;
+        ctx->flags.dirty = false;
         update_buttons(ctx);
         apply_pending_chunk(ctx);
     }
     else
     {
-        ctx->pending_chunk = false; // Cancel
-        ctx->at_top_edge = false;
-        ctx->at_bottom_edge = false;
+        ctx->flags.pending_chunk = false; // Cancel
+        ctx->flags.at_top_edge = false;
+        ctx->flags.at_bottom_edge = false;
         update_slider(ctx);
     }
 }
 
 static void request_chunk_load(text_viewer_ctx_t *ctx, size_t first_offset_kb, size_t second_offset_kb, bool from_top)
 {
-    if (!ctx || ctx->chunk_mbox)
+    if (!ctx || ctx->graphics.chunk_mbox)
     {
         return;
     }
-    if (ctx->waiting_sd)
+    if (ctx->flags.waiting_sd)
     {
         ctx->pending_first_offset_kb = first_offset_kb;
         ctx->pending_second_offset_kb = second_offset_kb;
-        ctx->pending_scroll_up = from_top;
-        ctx->pending_chunk = true;
+        ctx->flags.pending_scroll_up = from_top;
+        ctx->flags.pending_chunk = true;
         return;
     }
 
     ctx->pending_first_offset_kb = first_offset_kb;
     ctx->pending_second_offset_kb = second_offset_kb;
-    ctx->pending_scroll_up = from_top;
-    ctx->pending_chunk = true;
+    ctx->flags.pending_scroll_up = from_top;
+    ctx->flags.pending_chunk = true;
 
-    if (ctx->dirty)
+    if (ctx->flags.dirty)
     {
         show_chunk_prompt(ctx);
     }
@@ -1938,7 +1946,7 @@ static void request_chunk_load(text_viewer_ctx_t *ctx, size_t first_offset_kb, s
 static void on_sd_retry_timer(lv_timer_t *timer)
 {
     text_viewer_ctx_t *ctx = lv_timer_get_user_data(timer);
-    if (!ctx || !ctx->waiting_sd)
+    if (!ctx || !ctx->flags.waiting_sd)
     {
         return;
     }
@@ -1953,7 +1961,7 @@ static void on_sd_retry_timer(lv_timer_t *timer)
         return;
     }
 
-    ctx->waiting_sd = false;
+    ctx->flags.waiting_sd = false;
     text_viewer_sd_action_t action = ctx->sd_retry_action;
     ctx->sd_retry_action = TEXT_VIEWER_SD_NONE;
     set_status(ctx, "SD reconnected");
@@ -1961,7 +1969,7 @@ static void on_sd_retry_timer(lv_timer_t *timer)
     if (action == TEXT_VIEWER_SD_SAVE)
     {
         handle_save(ctx);
-        if (ctx->pending_chunk && !ctx->dirty && !ctx->waiting_sd)
+        if (ctx->flags.pending_chunk && !ctx->flags.dirty && !ctx->flags.waiting_sd)
         {
             apply_pending_chunk(ctx);
         }
@@ -1978,19 +1986,19 @@ static void schedule_sd_retry(text_viewer_ctx_t *ctx, text_viewer_sd_action_t ac
     {
         return;
     }
-    if (ctx->waiting_sd)
+    if (ctx->flags.waiting_sd)
     {
         ctx->sd_retry_action = action;
         return;
     }
-    ctx->waiting_sd = true;
+    ctx->flags.waiting_sd = true;
     ctx->sd_retry_action = action;
     set_status(ctx, "Reconnect SD");
     sd_card_schedule_retry();
 
-    if (!ctx->sd_retry_timer)
+    if (!ctx->graphics.sd_retry_timer)
     {
-        ctx->sd_retry_timer = lv_timer_create(on_sd_retry_timer, 250, ctx);
+        ctx->graphics.sd_retry_timer = lv_timer_create(on_sd_retry_timer, 250, ctx);
     }
 }
 
@@ -2077,13 +2085,13 @@ static bool path_exists(const char *path)
 
 static void show_name_dialog(text_viewer_ctx_t *ctx)
 {
-    if (!ctx || !ctx->new_file || !ctx->editable || ctx->name_dialog)
+    if (!ctx || !ctx->flags.new_file || !ctx->flags.editable || ctx->graphics.name_dialog)
     {
         return;
     }
-    lv_obj_t *dlg = lv_msgbox_create(ctx->screen);
+    lv_obj_t *dlg = lv_msgbox_create(ctx->graphics.screen);
     styles_set_msgbox(dlg);
-    ctx->name_dialog = dlg;
+    ctx->graphics.name_dialog = dlg;
     lv_obj_add_flag(dlg, LV_OBJ_FLAG_FLOATING);
     lv_obj_set_style_max_width(dlg, LV_PCT(65), 0);
     lv_obj_set_width(dlg, LV_PCT(65));
@@ -2095,18 +2103,18 @@ static void show_name_dialog(text_viewer_ctx_t *ctx)
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, 0);
 
-    ctx->name_textarea = lv_textarea_create(content);
-    lv_textarea_set_one_line(ctx->name_textarea, true);
-    lv_textarea_set_max_length(ctx->name_textarea, FS_NAV_MAX_NAME - 1);
+    ctx->graphics.name_textarea = lv_textarea_create(content);
+    lv_textarea_set_one_line(ctx->graphics.name_textarea, true);
+    lv_textarea_set_max_length(ctx->graphics.name_textarea, FS_NAV_MAX_NAME - 1);
     const char *initial = ctx->pending_name[0] ? ctx->pending_name : ".txt";
-    lv_textarea_set_text(ctx->name_textarea, initial);
-    lv_textarea_set_cursor_pos(ctx->name_textarea, 0);
-    lv_obj_add_state(ctx->name_textarea, LV_STATE_FOCUSED);
-    lv_obj_clear_state(ctx->text_area, LV_STATE_FOCUSED);
-    lv_obj_add_state(ctx->text_area, LV_STATE_DISABLED);
-    styles_set_textarea(ctx->name_textarea);
-    lv_obj_set_width(ctx->name_textarea, LV_PCT(100));
-    lv_textarea_set_cursor_click_pos(ctx->text_area, false);
+    lv_textarea_set_text(ctx->graphics.name_textarea, initial);
+    lv_textarea_set_cursor_pos(ctx->graphics.name_textarea, 0);
+    lv_obj_add_state(ctx->graphics.name_textarea, LV_STATE_FOCUSED);
+    lv_obj_clear_state(ctx->graphics.text_area, LV_STATE_FOCUSED);
+    lv_obj_add_state(ctx->graphics.text_area, LV_STATE_DISABLED);
+    styles_set_textarea(ctx->graphics.name_textarea);
+    lv_obj_set_width(ctx->graphics.name_textarea, LV_PCT(100));
+    lv_textarea_set_cursor_click_pos(ctx->graphics.text_area, false);
 
     lv_obj_t *save_btn = lv_msgbox_add_footer_button(dlg, "Save");
     lv_obj_set_user_data(save_btn, (void *)1);
@@ -2118,12 +2126,12 @@ static void show_name_dialog(text_viewer_ctx_t *ctx)
     styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, on_name_dialog, LV_EVENT_CLICKED, ctx);
 
-    show_keyboard(ctx, ctx->name_textarea);
-    lv_obj_add_event_cb(ctx->name_textarea, on_name_textarea_clicked, LV_EVENT_CLICKED, ctx);
+    show_keyboard(ctx, ctx->graphics.name_textarea);
+    lv_obj_add_event_cb(ctx->graphics.name_textarea, on_name_textarea_clicked, LV_EVENT_CLICKED, ctx);
 
-    lv_obj_update_layout(ctx->keyboard);
+    lv_obj_update_layout(ctx->graphics.keyboard);
     lv_obj_update_layout(dlg);
-    lv_coord_t keyboard_top = lv_obj_get_y(ctx->keyboard);
+    lv_coord_t keyboard_top = lv_obj_get_y(ctx->graphics.keyboard);
     lv_coord_t dialog_h = lv_obj_get_height(dlg);
     lv_coord_t margin = 10;
     if (keyboard_top > dialog_h)
@@ -2139,34 +2147,34 @@ static void show_name_dialog(text_viewer_ctx_t *ctx)
 
 static void close_name_dialog(text_viewer_ctx_t *ctx)
 {
-    if (!ctx || !ctx->name_dialog)
+    if (!ctx || !ctx->graphics.name_dialog)
     {
         return;
     }
-    if (ctx->name_textarea)
+    if (ctx->graphics.name_textarea)
     {
-        const char *current = lv_textarea_get_text(ctx->name_textarea);
+        const char *current = lv_textarea_get_text(ctx->graphics.name_textarea);
         if (current)
         {
             strlcpy(ctx->pending_name, current, sizeof(ctx->pending_name));
         }
     }
-    lv_msgbox_close(ctx->name_dialog);
-    ctx->name_dialog = NULL;
-    ctx->name_textarea = NULL;
-    lv_obj_clear_state(ctx->text_area, LV_STATE_DISABLED);
-    lv_textarea_set_cursor_click_pos(ctx->text_area, true);
+    lv_msgbox_close(ctx->graphics.name_dialog);
+    ctx->graphics.name_dialog = NULL;
+    ctx->graphics.name_textarea = NULL;
+    lv_obj_clear_state(ctx->graphics.text_area, LV_STATE_DISABLED);
+    lv_textarea_set_cursor_click_pos(ctx->graphics.text_area, true);
     hide_keyboard(ctx);
 }
 
 static bool confirm_name_dialog(text_viewer_ctx_t *ctx)
 {
-    if (!ctx || !ctx->name_dialog)
+    if (!ctx || !ctx->graphics.name_dialog)
     {
         return false;
     }
 
-    const char *raw = ctx->name_textarea ? lv_textarea_get_text(ctx->name_textarea) : "";
+    const char *raw = ctx->graphics.name_textarea ? lv_textarea_get_text(ctx->graphics.name_textarea) : "";
     char name_buf[FS_NAV_MAX_NAME];
     strlcpy(name_buf, raw ? raw : "", sizeof(name_buf));
     ensure_txt_extension(name_buf, sizeof(name_buf));
@@ -2189,7 +2197,7 @@ static bool confirm_name_dialog(text_viewer_ctx_t *ctx)
 
     strlcpy(ctx->pending_name, name_buf, sizeof(ctx->pending_name));
     ctx->directory[0] = '\0';
-    ctx->new_file = false;
+    ctx->flags.new_file = false;
     set_path_label(ctx, ctx->path);
     close_name_dialog(ctx);
     handle_save(ctx);
@@ -2199,7 +2207,7 @@ static bool confirm_name_dialog(text_viewer_ctx_t *ctx)
 static void on_name_dialog(lv_event_t *e)
 {
     text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->name_dialog)
+    if (!ctx || !ctx->graphics.name_dialog)
     {
         return;
     }
@@ -2215,14 +2223,14 @@ static void on_name_dialog(lv_event_t *e)
 
 static void show_confirm(text_viewer_ctx_t *ctx)
 {
-    if (ctx->confirm_mbox)
+    if (ctx->graphics.confirm_mbox)
     {
         return;
     }
-    lv_obj_t *mbox = lv_msgbox_create(ctx->screen);
+    lv_obj_t *mbox = lv_msgbox_create(ctx->graphics.screen);
     styles_set_msgbox(mbox);
     lv_obj_add_flag(mbox, LV_OBJ_FLAG_FLOATING);
-    ctx->confirm_mbox = mbox;
+    ctx->graphics.confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_set_width(mbox, LV_PCT(80));
     lv_obj_center(mbox);
@@ -2267,10 +2275,10 @@ static bool target_in(lv_obj_t *parent, lv_obj_t *target)
 
 static void close_confirm(text_viewer_ctx_t *ctx)
 {
-    if (ctx->confirm_mbox)
+    if (ctx->graphics.confirm_mbox)
     {
-        lv_msgbox_close(ctx->confirm_mbox);
-        ctx->confirm_mbox = NULL;
+        lv_msgbox_close(ctx->graphics.confirm_mbox);
+        ctx->graphics.confirm_mbox = NULL;
     }
 }
 
@@ -2298,41 +2306,41 @@ static void close_ctx(text_viewer_ctx_t *ctx, bool changed)
     close_confirm(ctx);
     close_chunk_prompt(ctx);
     close_name_dialog(ctx);
-    if (ctx->sd_retry_timer)
+    if (ctx->graphics.sd_retry_timer)
     {
-        lv_timer_del(ctx->sd_retry_timer);
-        ctx->sd_retry_timer = NULL;
+        lv_timer_del(ctx->graphics.sd_retry_timer);
+        ctx->graphics.sd_retry_timer = NULL;
     }
-    ctx->active = false;
-    ctx->editable = false;
-    ctx->dirty = false;
-    ctx->suppress_events = false;
-    ctx->new_file = false;
+    ctx->flags.active = false;
+    ctx->flags.editable = false;
+    ctx->flags.dirty = false;
+    ctx->flags.suppress_events = false;
+    ctx->flags.new_file = false;
     ctx->directory[0] = '\0';
     ctx->pending_name[0] = '\0';
-    ctx->pending_chunk = false;
-    ctx->waiting_sd = false;
+    ctx->flags.pending_chunk = false;
+    ctx->flags.waiting_sd = false;
     ctx->sd_retry_action = TEXT_VIEWER_SD_NONE;
-    ctx->content_changed = false;
-    lv_keyboard_set_textarea(ctx->keyboard, NULL);
-    lv_obj_add_flag(ctx->keyboard, LV_OBJ_FLAG_HIDDEN);
+    ctx->flags.content_changed = false;
+    lv_keyboard_set_textarea(ctx->graphics.keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.keyboard, LV_OBJ_FLAG_HIDDEN);
     /* Drop heavy UI tree (text area buffer) so large files release heap after close. */
-    if (ctx->screen) {
-        lv_obj_del(ctx->screen);
-        ctx->screen = NULL;
-        ctx->toolbar = NULL;
-        ctx->path_label = NULL;
-        ctx->status_label = NULL;
-        ctx->save_btn = NULL;
-        ctx->text_area = NULL;
-        ctx->keyboard = NULL;
-        ctx->chunk_slider = NULL;
+    if (ctx->graphics.screen) {
+        lv_obj_del(ctx->graphics.screen);
+        ctx->graphics.screen = NULL;
+        ctx->graphics.toolbar = NULL;
+        ctx->graphics.path_label = NULL;
+        ctx->graphics.status_label = NULL;
+        ctx->graphics.save_btn = NULL;
+        ctx->graphics.text_area = NULL;
+        ctx->graphics.keyboard = NULL;
+        ctx->graphics.chunk_slider = NULL;
     }
     free(ctx->original_text);
     ctx->original_text = NULL;
-    if (ctx->return_screen)
+    if (ctx->graphics.return_screen)
     {
-        lv_screen_load(ctx->return_screen);
+        lv_screen_load(ctx->graphics.return_screen);
     }
     if (ctx->close_cb)
     {
