@@ -210,6 +210,28 @@ static esp_err_t refresh_sorted(fs_nav_t *nav, size_t total);
 static esp_err_t allocate_items(fs_nav_t *nav, size_t target);
 
 /**
+ * @brief Create a navigator item from a dirent.
+ *
+ * @param dent Directory entry.
+ * @param dest Destination item to populate.
+ * @return ESP_OK on success; ESP_ERR_NO_MEM on allocation failure.
+ */
+static esp_err_t create_nav_item_from_dirent(const struct dirent *dent, fs_nav_item_t *dest);
+
+/**
+ * @brief Process a single directory entry during load.
+ *
+ * Skips "." and "..", creates item, increments index, and propagates error code.
+ *
+ * @param dent       Current dirent.
+ * @param nav        Navigator context.
+ * @param idx        In/out index of next slot.
+ * @param load_errno Out errno-like error to set on allocation failure.
+ * @return ESP_OK on success; ESP_FAIL/ESP_ERR_NO_MEM otherwise.
+ */
+static esp_err_t load_directory_entry(struct dirent *dent, fs_nav_t *nav, size_t *idx, int *load_errno);
+
+/**
  * @brief Load all directory entries into the item array (sorted mode).
  *
  * @param nav Navigator context (expects capacity reserved).
@@ -956,6 +978,41 @@ static esp_err_t allocate_items(fs_nav_t *nav, size_t target)
     return ESP_OK;
 }
 
+static esp_err_t create_nav_item_from_dirent(const struct dirent *dent, fs_nav_item_t *dest)
+{
+    memset(dest, 0, sizeof(*dest));
+
+    size_t name_len = strnlen(dent->d_name, FS_NAV_MAX_NAME - 1);
+    dest->name = (char *)heap_caps_malloc(name_len + 1, MALLOC_CAP_8BIT);
+    if (!dest->name) {
+        ESP_LOGE(TAG, "Out of memory duplicating item name");
+        return ESP_ERR_NO_MEM;
+    }
+    memcpy(dest->name, dent->d_name, name_len);
+    dest->name[name_len] = '\0';
+
+    dest->needs_stat = true;
+    dest->is_dir = (dent->d_type == DT_DIR);
+    dest->size_bytes = 0;
+    dest->modified = 0;
+    return ESP_OK;
+}
+
+static esp_err_t load_directory_entry(struct dirent *dent, fs_nav_t *nav, size_t *idx, int *load_errno)
+{
+    if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
+        return ESP_OK;
+    }
+    fs_nav_item_t *dest = &nav->items[*idx];
+    esp_err_t err = create_nav_item_from_dirent(dent, dest);
+    if (err != ESP_OK) {
+        *load_errno = ENOMEM;
+        return err;
+    }
+    (*idx)++;
+    return ESP_OK;
+}
+
 static esp_err_t load_directory_items(fs_nav_t *nav)
 {
     DIR *dir = opendir(nav->current);
@@ -970,28 +1027,9 @@ static esp_err_t load_directory_items(fs_nav_t *nav)
     struct dirent *dent = NULL;
     errno = 0;
     while ((dent = readdir(dir)) != NULL) {
-        if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
-            continue;
-        }
-        fs_nav_item_t *dest = &nav->items[idx];
-        memset(dest, 0, sizeof(*dest));
-
-        size_t name_len = strnlen(dent->d_name, FS_NAV_MAX_NAME - 1);
-        dest->name = (char *)heap_caps_malloc(name_len + 1, MALLOC_CAP_8BIT);
-        if (!dest->name) {
-            load_errno = ENOMEM;
-            ESP_LOGE(TAG, "Out of memory duplicating item name");
+        if (load_directory_entry(dent, nav, &idx, &load_errno) != ESP_OK) {
             break;
         }
-        memcpy(dest->name, dent->d_name, name_len);
-        dest->name[name_len] = '\0';
-
-        dest->needs_stat = true;
-        dest->is_dir = (dent->d_type == DT_DIR);
-        dest->size_bytes = 0;
-        dest->modified = 0;
-
-        idx++;
     }
     load_errno = errno;
     closedir(dir);
