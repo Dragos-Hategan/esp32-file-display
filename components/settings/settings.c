@@ -997,6 +997,43 @@ static void settings_dim_timer_cb(void *arg);
 static void settings_fade_brightness(int target_pct, uint32_t duration_ms);
 
 /**
+ * @brief Handle instant fades (duration 0 or no delta); returns true if handled.
+ *
+ * Applies brightness immediately when no animation is needed. Clears wake-in-progress
+ * for downward fades.
+ *
+ * @param duration_ms Fade duration in milliseconds.
+ * @param target_pct Target brightness percent.
+ * @param start Current brightness percent.
+ * @param rising True if fading upward.
+ * @param ctx Active settings context.
+ * @return true if the fade was handled instantly; false otherwise.
+ */
+static bool fade_handle_instant_update(uint32_t duration_ms, int target_pct, int start, bool rising, settings_ctx_t *ctx);
+
+/**
+ * @brief Ensure the fade timer exists and is stopped; returns false on failure.
+ *
+ * Creates the timer on demand; stops any previous run before reuse.
+ *
+ * @return true if the timer is ready; false on creation failure.
+ */
+static bool fade_ensure_timer_ready(void);
+
+/**
+ * @brief Configure fade globals; returns false if no steps are needed.
+ *
+ * Sets target, direction, and remaining steps; applies immediate brightness when
+ * already at target.
+ *
+ * @param target_pct Target brightness percent.
+ * @param start Current brightness percent.
+ * @param ctx Active settings context.
+ * @return true if steps were configured and animation should proceed; false if no steps.
+ */
+static bool fade_setup_steps(int target_pct, int start, settings_ctx_t *ctx);
+
+/**
  * @brief Fade step timer callback for brightness animation.
  * @param arg Unused.
  */
@@ -3178,29 +3215,8 @@ static void settings_off_timer_cb(void *arg)
     settings_fade_brightness(0, SETTINGS_OFF_FADE_MS);
 }
 
-static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
+static bool fade_ensure_timer_ready(void)
 {
-    if (target_pct > 100) target_pct = 100;
-    if (target_pct < 0) target_pct = 0;
-
-    settings_ctx_t *ctx = &s_settings_ctx;
-    int start = ctx->settings.display.brightness;
-    bool rising = target_pct > start;
-    if (duration_ms == 0 || start == target_pct) {
-        ctx->settings.display.brightness = target_pct;
-        bsp_display_brightness_set(target_pct);
-        settings_sync_brightness_ui(ctx, target_pct);
-        if (!rising) {
-            s_wake_in_progress = false;
-        }
-        return;
-    }
-
-    if (rising) {
-        s_wake_in_progress = true;
-    }
-
-    /* Stop existing fade timer */
     if (s_fade_timer) {
         esp_timer_stop(s_fade_timer);
     } else {
@@ -3212,10 +3228,15 @@ static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
         };
         if (esp_timer_create(&args, &s_fade_timer) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to create fade timer");
-            return;
+            return false;
         }
     }
 
+    return true;
+}
+
+static bool fade_setup_steps(int target_pct, int start, settings_ctx_t *ctx)
+{
     s_fade_target = target_pct;
     s_fade_direction = (target_pct > start) ? 1 : -1;
     s_fade_steps_left = (start > target_pct) ? (start - target_pct) : (target_pct - start);
@@ -3223,8 +3244,41 @@ static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
         ctx->settings.display.brightness = target_pct;
         bsp_display_brightness_set(target_pct);
         settings_sync_brightness_ui(ctx, target_pct);
-        return;
+        return false;
     }
+
+    return true;
+}
+
+static bool fade_handle_instant_update(uint32_t duration_ms, int target_pct, int start, bool rising, settings_ctx_t *ctx)
+{
+    if (duration_ms == 0 || start == target_pct) {
+        ctx->settings.display.brightness = target_pct;
+        bsp_display_brightness_set(target_pct);
+        settings_sync_brightness_ui(ctx, target_pct);
+        if (!rising) {
+            s_wake_in_progress = false;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
+{
+    settings_ctx_t *ctx = &s_settings_ctx;
+    if (target_pct > 100) target_pct = 100;
+    if (target_pct < 0) target_pct = 0;
+    int start = ctx->settings.display.brightness;
+    bool rising = target_pct > start;
+
+    if (fade_handle_instant_update(duration_ms, target_pct, start, rising, ctx)) return;
+    if (rising) {
+        s_wake_in_progress = true;
+    }
+    if (!fade_ensure_timer_ready()) return;
+    if (!fade_setup_steps(target_pct, start, ctx)) return;
 
     int64_t interval_us = (duration_ms * 1000ULL) / s_fade_steps_left;
     if (interval_us < 1000) interval_us = 1000;
