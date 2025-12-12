@@ -297,6 +297,22 @@ static esp_err_t compose_next_relative_path(const char *prev_relative, const fs_
  */
 static esp_err_t commit_enter_and_refresh(fs_nav_t *nav, const char *prev_relative, const char *next_relative);
 
+/**
+ * @brief Validate ability to move to parent directory.
+ *
+ * @param nav Navigator context.
+ * @return ESP_OK if parent navigation is allowed; ESP_ERR_INVALID_STATE otherwise.
+ */
+static esp_err_t validate_go_parent(const fs_nav_t *nav);
+
+/**
+ * @brief Compose parent relative path from the current relative path.
+ *
+ * @param prev_relative Current relative path.
+ * @param new_relative  Out buffer sized for FS_NAV_MAX_PATH.
+ */
+static void compose_parent_relative(const char prev_relative[FS_NAV_MAX_PATH], char new_relative[FS_NAV_MAX_PATH]);
+
 esp_err_t fs_nav_init(fs_nav_t *nav, const fs_nav_config_t *cfg)
 {
     esp_err_t err = init_nav_defaults(nav, cfg);
@@ -418,36 +434,18 @@ esp_err_t fs_nav_enter(fs_nav_t *nav, size_t index)
 
 esp_err_t fs_nav_go_parent(fs_nav_t *nav)
 {
-    if (!fs_nav_can_go_parent(nav)) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    char prev_relative[FS_NAV_MAX_PATH];
-    strlcpy(prev_relative, nav->relative, sizeof(prev_relative));
-
-    char new_relative[FS_NAV_MAX_PATH];
-    strlcpy(new_relative, prev_relative, sizeof(new_relative));
-
-    char *slash = strrchr(new_relative, '/');
-    if (slash) {
-        *slash = '\0';
-    } else {
-        new_relative[0] = '\0';
-    }
-
-    esp_err_t err = set_relative(nav, new_relative);
+    esp_err_t err = validate_go_parent(nav);
     if (err != ESP_OK) {
         return err;
     }
 
-    err = fs_nav_refresh(nav);
-    if (err == ESP_OK) {
-        store_state(nav);
-    } else {
-        // Restore previous relative path so navigation state doesn't drift
-        set_relative(nav, prev_relative);
-    }
-    return err;
+    char prev_relative[FS_NAV_MAX_PATH];
+    snapshot_relative_path(nav, prev_relative);
+
+    char new_relative[FS_NAV_MAX_PATH];
+    compose_parent_relative(prev_relative, new_relative);
+
+    return commit_enter_and_refresh(nav, prev_relative, new_relative);
 }
 
 esp_err_t fs_nav_set_sort(fs_nav_t *nav, fs_nav_sort_mode_t mode, bool ascending)
@@ -1157,4 +1155,21 @@ static esp_err_t commit_enter_and_refresh(fs_nav_t *nav, const char *prev_relati
         set_relative(nav, prev_relative);
     }
     return err;
+}
+
+static esp_err_t validate_go_parent(const fs_nav_t *nav)
+{
+    return fs_nav_can_go_parent(nav) ? ESP_OK : ESP_ERR_INVALID_STATE;
+}
+
+static void compose_parent_relative(const char prev_relative[FS_NAV_MAX_PATH], char new_relative[FS_NAV_MAX_PATH])
+{
+    strlcpy(new_relative, prev_relative, FS_NAV_MAX_PATH);
+
+    char *slash = strrchr(new_relative, '/');
+    if (slash) {
+        *slash = '\0';
+    } else {
+        new_relative[0] = '\0';
+    }
 }
