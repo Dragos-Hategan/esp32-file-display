@@ -92,6 +92,8 @@ static void main_task(void *arg)
         esp_restart();
     }
 
+    settings_start_screensaver_timers();
+
     vTaskDelete(NULL);
 }
 
