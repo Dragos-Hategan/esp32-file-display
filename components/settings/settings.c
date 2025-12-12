@@ -1,29 +1,31 @@
 #include "settings.h"
 
-#include <sys/time.h>
-#include <string.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <time.h>
+#include <sys/time.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "bsp/esp-bsp.h"
-#include "sntp_header.h"
 #include "esp_system.h"
-#include "Domine_14.h"
-#include "Domine_16.h"
-#include "nvs_flash.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
+
+#include "bsp/esp-bsp.h"
+#include "Domine_14.h"
+#include "Domine_16.h"
+#include "nvs_flash.h"
 #include "wifi.h"
 #include "nvs.h"
 
 #include "calibration_xpt2046.h"
 #include "touch_xpt2046.h"
+#include "sntp_header.h"
 #include "styles.h"
 
 #define SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY   "refresh_sntp"
@@ -72,6 +74,20 @@
 #define SETTINGS_DIM_FADE_MS             500
 #define SETTINGS_OFF_FADE_MS             500
 #define SETTINGS_UP_FADE_MS              250
+
+_Static_assert(SETTINGS_CALIBRATION_TASK_STACK > 0, "Calibration task stack must be positive");
+_Static_assert(SETTINGS_CALIBRATION_TASK_PRIO > 0, "Calibration task priority must be positive");
+_Static_assert(SETTINGS_CALIBRATION_TASK_PRIO < configMAX_PRIORITIES, "Calibration task priority exceeds configMAX_PRIORITIES");
+_Static_assert(SETTINGS_AP_SSID_MAX_LEN > 0, "AP SSID max length must be positive");
+_Static_assert(SETTINGS_AP_PWD_MAX_LEN > 0, "AP password max length must be positive");
+_Static_assert(SETTINGS_ROTATION_STEPS > 0, "Rotation steps must be positive");
+_Static_assert((SETTINGS_DEFAULT_ROTATION_STEP >= 0) && (SETTINGS_DEFAULT_ROTATION_STEP < SETTINGS_ROTATION_STEPS),
+               "Default rotation step out of range");
+_Static_assert((SETTINGS_DEFAULT_BRIGHTNESS >= SETTINGS_MINIMUM_BRIGHTNESS) && (SETTINGS_DEFAULT_BRIGHTNESS <= 100),
+               "Default brightness must be between minimum and 100");
+_Static_assert(SETTINGS_DIM_FADE_MS > 0, "Dim fade time must be positive");
+_Static_assert(SETTINGS_OFF_FADE_MS > 0, "Off fade time must be positive");
+_Static_assert(SETTINGS_UP_FADE_MS > 0, "Up fade time must be positive");
 
 #define STR_HELPER(x)               #x
 #define STR(x)                      STR_HELPER(x)
@@ -190,6 +206,14 @@ static void startup_splash_screen(void);
 static void get_sntp_time(void);
 
 /**
+ * @brief Connect to Wi-Fi (STA), perform SNTP sync, and persist the outcome.
+ *
+ * Attempts to start the station Wi-Fi stack, then runs SNTP. Updates
+ * in-memory status flags and persists the last SNTP result/error code.
+ */
+static void sntp_connect(void);
+
+/**
  * @brief Build the settings screen (header + scrollable settings list).
  *
  * Creates the root screen, toolbar (Back/About), and the scrollable list of settings.
@@ -250,6 +274,15 @@ static void settings_close(settings_ctx_t *ctx);
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
 static void settings_restart(lv_event_t *e);
+
+/**
+ * @brief Read brightness slider value, clamp to safe bounds, and cache it in context.
+ *
+ * This only updates the in-memory brightness; callers decide if/when to persist.
+ *
+ * @param ctx Active settings context.
+ */
+static void update_brightness_value(settings_ctx_t *ctx);
 
 /**
  * @brief Handler for confirming restart from the overlay.
@@ -1259,6 +1292,15 @@ static void get_sntp_time(void)
     }
     bsp_display_stop();
 
+    sntp_connect();
+
+    s_settings_ctx.settings.manual_restart = false;
+    persist_manual_restart();
+    esp_restart();
+}
+
+static void sntp_connect(void)
+{
     esp_err_t err = wifi_init_sta();
     if (err == ESP_OK){
         err = init_sntp();    
@@ -1271,9 +1313,6 @@ static void get_sntp_time(void)
         s_settings_ctx.settings.time.sntp_success = false;
     }
     persist_sntp_result();
-    s_settings_ctx.settings.manual_restart = false;
-    persist_manual_restart();
-    esp_restart();
 }
 
 static void backlight_on_without_wipe_effect(void)
@@ -1612,10 +1651,7 @@ static void settings_on_back(lv_event_t *e)
 static void settings_close(settings_ctx_t *ctx)
 {
     if (ctx && ctx->graphics.brightness_slider) {
-        int val = lv_slider_get_value(ctx->graphics.brightness_slider);
-        if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
-        if (val > 100) val = 100;
-        ctx->settings.display.brightness = val;
+        update_brightness_value(ctx);
         s_settings_ctx.changing_brightness = false; 
         if (ctx->settings.display.brightness != ctx->settings.display.saved_brightness) {
             persist_brightness_to_nvs();
@@ -3543,10 +3579,7 @@ static void settings_on_brightness_changed(lv_event_t *e)
         return;
     }
 
-    int val = lv_slider_get_value(ctx->graphics.brightness_slider);
-    if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
-    if (val > 100) val = 100;
-    ctx->settings.display.brightness = val;
+    update_brightness_value(ctx);
     
     /* Stop any screensaver dim/off fade using the latest brightness value. */
     screensaver_dim_stop();
@@ -3554,10 +3587,10 @@ static void settings_on_brightness_changed(lv_event_t *e)
     s_settings_ctx.changing_brightness = true;
 
     char txt[32];
-    lv_snprintf(txt, sizeof(txt), "Brightness: %d%%", val);
+    lv_snprintf(txt, sizeof(txt), "Brightness: %d%%", ctx->settings.display.brightness);
     lv_label_set_text(ctx->graphics.brightness_label, txt);
 
-    bsp_display_brightness_set(val);
+    bsp_display_brightness_set(ctx->settings.display.brightness);
 }
 
 static void settings_restart(lv_event_t *e)
@@ -3591,15 +3624,20 @@ static void settings_restart(lv_event_t *e)
     lv_obj_add_event_cb(cancel_btn, settings_close_restart, LV_EVENT_CLICKED, ctx);
 }
 
+static void update_brightness_value(settings_ctx_t *ctx)
+{
+    int val = lv_slider_get_value(ctx->graphics.brightness_slider);
+    if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
+    if (val > 100) val = 100;
+    ctx->settings.display.brightness = val;
+}
+
 static void settings_restart_confirm(lv_event_t *e)
 {
     bsp_display_backlight_off();
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (ctx && ctx->graphics.brightness_slider) {
-        int val = lv_slider_get_value(ctx->graphics.brightness_slider);
-        if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
-        if (val > 100) val = 100;
-        ctx->settings.display.brightness = val;
+        update_brightness_value(ctx);
         if (ctx->settings.display.brightness != ctx->settings.display.saved_brightness) {
             persist_brightness_to_nvs();
         }
