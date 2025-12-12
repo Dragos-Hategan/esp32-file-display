@@ -292,6 +292,21 @@ static void handle_slider_release(text_viewer_ctx_t *ctx, bool blocked, size_t c
 static void on_slider_value_changed(lv_event_t *e);
 
 /**
+ * @brief Route slider events (press/drag/release) to update pending step or load chunks.
+ *
+ * Delegates to helper for release; tracks drag state and pending step on press/value change.
+ *
+ * @param e             LVGL slider event.
+ * @param ctx           Viewer context.
+ * @param window_size   Chunks per window.
+ * @param step          Chunks per step.
+ * @param total_chunks  Total chunks available.
+ * @param max_start     Maximum starting chunk index.
+ * @param max_step_index Maximum slider step index.
+ */
+static void handle_slider_event(lv_event_t *e, text_viewer_ctx_t *ctx, size_t window_size, size_t step, size_t total_chunks, size_t max_start, size_t max_step_index);
+
+/**
  * @brief Load two consecutive chunks into the textarea and position the cursor at the boundary.
  *
  * @param ctx             Viewer context.
@@ -1257,9 +1272,6 @@ static void on_slider_value_changed(lv_event_t *e)
         return;
     }
 
-    lv_event_code_t code = lv_event_get_code(e);
-    bool blocked = slider_is_blocked(ctx);
-
     size_t window_size = 1;
     size_t step = 1;
     size_t total_chunks = 0;
@@ -1269,6 +1281,13 @@ static void on_slider_value_changed(lv_event_t *e)
         return; /* Nothing to scroll */
     }
 
+    handle_slider_event(e, ctx, window_size, step, total_chunks, max_start, max_step_index);
+}
+
+static void handle_slider_event(lv_event_t *e, text_viewer_ctx_t *ctx, size_t window_size, size_t step, size_t total_chunks, size_t max_start, size_t max_step_index)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    bool blocked = slider_is_blocked(ctx);
     size_t clamped_step = clamp_slider_value(e, max_step_index);
 
     if (code == LV_EVENT_PRESSED) {
