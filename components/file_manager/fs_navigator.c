@@ -372,6 +372,64 @@ static DIR *open_directory_for_window(fs_nav_t *nav);
  */
 static esp_err_t load_window_entries(fs_nav_t *nav, DIR *dir, size_t start, size_t size);
 
+/**
+ * @brief Read persisted state blob from NVS.
+ *
+ * @param blob      Out blob destination.
+ * @param blob_size In/out size (initialized by caller).
+ * @return ESP_OK on success; ESP_ERR_NVS_* on failures.
+ */
+static esp_err_t read_state_blob(fs_nav_state_blob_t *blob, size_t *blob_size);
+
+/**
+ * @brief Validate blob size and version/magic.
+ *
+ * @param blob_size Size returned by NVS read.
+ * @param blob      Blob to inspect.
+ * @return ESP_OK if valid; ESP_ERR_INVALID_SIZE or ESP_ERR_INVALID_VERSION otherwise.
+ */
+static esp_err_t validate_state_blob_size_version(size_t blob_size, const fs_nav_state_blob_t *blob);
+
+/**
+ * @brief Validate blob CRC32.
+ *
+ * @param blob Blob to inspect.
+ * @return ESP_OK if CRC matches; ESP_ERR_INVALID_CRC otherwise.
+ */
+static esp_err_t validate_state_blob_crc(const fs_nav_state_blob_t *blob);
+
+/**
+ * @brief Ensure blob relative path is null-terminated.
+ *
+ * @param blob Blob to sanitize.
+ */
+static void finalize_blob_relative(fs_nav_state_blob_t *blob);
+
+/**
+ * @brief Apply relative path from blob, falling back to root on errors.
+ *
+ * @param nav  Navigator context.
+ * @param blob Blob to read from.
+ * @return ESP_OK on success; ESP_ERR_INVALID_ARG if relative is invalid.
+ */
+static esp_err_t apply_relative_from_blob(fs_nav_t *nav, const fs_nav_state_blob_t *blob);
+
+/**
+ * @brief Apply sort settings from blob to navigator.
+ *
+ * @param nav  Navigator context.
+ * @param blob Blob to read from.
+ */
+static void apply_sort_from_blob(fs_nav_t *nav, const fs_nav_state_blob_t *blob);
+
+/**
+ * @brief Verify restored current path is accessible.
+ *
+ * @param nav Navigator context.
+ * @return ESP_OK if current exists; ESP_ERR_NOT_FOUND otherwise (resets to root).
+ */
+static esp_err_t verify_restored_path(fs_nav_t *nav);
+
 esp_err_t fs_nav_init(fs_nav_t *nav, const fs_nav_config_t *cfg)
 {
     esp_err_t err = init_nav_defaults(nav, cfg);
@@ -764,53 +822,33 @@ static esp_err_t store_state(const fs_nav_t *nav)
 
 static esp_err_t load_state(fs_nav_t *nav)
 {
-    nvs_handle_t handle;
-    esp_err_t err = nvs_open(FS_NAV_NVS_NAMESPACE, NVS_READONLY, &handle);
-    if (err != ESP_OK) {
-        return err;
-    }
-
     fs_nav_state_blob_t blob = {0};
     size_t blob_size = sizeof(blob);
-    err = nvs_get_blob(handle, FS_NAV_NVS_KEY, &blob, &blob_size);
-    nvs_close(handle);
+    esp_err_t err = read_state_blob(&blob, &blob_size);
     if (err != ESP_OK) {
         return err;
     }
-    if (blob_size != sizeof(blob)) {
-        return ESP_ERR_INVALID_SIZE;
-    }
-    if (blob.magic != FS_NAV_STATE_MAGIC || blob.version != FS_NAV_STATE_VERSION) {
-        return ESP_ERR_INVALID_VERSION;
+
+    err = validate_state_blob_size_version(blob_size, &blob);
+    if (err != ESP_OK) {
+        return err;
     }
 
-    uint32_t crc = esp_crc32_le(0, (const uint8_t *)&blob, sizeof(blob) - sizeof(blob.crc32));
-    if (crc != blob.crc32) {
-        return ESP_ERR_INVALID_CRC;
+    err = validate_state_blob_crc(&blob);
+    if (err != ESP_OK) {
+        return err;
     }
 
-    blob.relative[sizeof(blob.relative) - 1] = '\0';
+    finalize_blob_relative(&blob);
 
-    if (is_valid_relative(blob.relative)) {
-        if (set_relative(nav, blob.relative) != ESP_OK) {
-            set_relative(nav, "");
-        }
-    } else {
-        set_relative(nav, "");
-        return ESP_ERR_INVALID_ARG;
+    err = apply_relative_from_blob(nav, &blob);
+    if (err != ESP_OK) {
+        return err;
     }
 
-    if (blob.sort_mode < FS_NAV_SORT_COUNT) {
-        nav->sort_mode = blob.sort_mode;
-    }
-    nav->ascending = blob.ascending != 0;
+    apply_sort_from_blob(nav, &blob);
 
-    struct stat st = {0};
-    if (stat(nav->current, &st) != 0 || !S_ISDIR(st.st_mode)) {
-        set_relative(nav, "");
-        return ESP_ERR_NOT_FOUND;
-    }
-    return ESP_OK;
+    return verify_restored_path(nav);
 }
 
 static void sort_items(fs_nav_t *nav)
@@ -1166,6 +1204,71 @@ static void compose_parent_relative(const char prev_relative[FS_NAV_MAX_PATH], c
     } else {
         new_relative[0] = '\0';
     }
+}
+
+static esp_err_t read_state_blob(fs_nav_state_blob_t *blob, size_t *blob_size)
+{
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(FS_NAV_NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    esp_err_t get_err = nvs_get_blob(handle, FS_NAV_NVS_KEY, blob, blob_size);
+    nvs_close(handle);
+    return get_err;
+}
+
+static esp_err_t validate_state_blob_size_version(size_t blob_size, const fs_nav_state_blob_t *blob)
+{
+    if (blob_size != sizeof(*blob)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+    if (blob->magic != FS_NAV_STATE_MAGIC || blob->version != FS_NAV_STATE_VERSION) {
+        return ESP_ERR_INVALID_VERSION;
+    }
+    return ESP_OK;
+}
+
+static esp_err_t validate_state_blob_crc(const fs_nav_state_blob_t *blob)
+{
+    uint32_t crc = esp_crc32_le(0, (const uint8_t *)blob, sizeof(*blob) - sizeof(blob->crc32));
+    return (crc == blob->crc32) ? ESP_OK : ESP_ERR_INVALID_CRC;
+}
+
+static void finalize_blob_relative(fs_nav_state_blob_t *blob)
+{
+    blob->relative[sizeof(blob->relative) - 1] = '\0';
+}
+
+static esp_err_t apply_relative_from_blob(fs_nav_t *nav, const fs_nav_state_blob_t *blob)
+{
+    if (is_valid_relative(blob->relative)) {
+        if (set_relative(nav, blob->relative) != ESP_OK) {
+            set_relative(nav, "");
+        }
+        return ESP_OK;
+    }
+    set_relative(nav, "");
+    return ESP_ERR_INVALID_ARG;
+}
+
+static void apply_sort_from_blob(fs_nav_t *nav, const fs_nav_state_blob_t *blob)
+{
+    if (blob->sort_mode < FS_NAV_SORT_COUNT) {
+        nav->sort_mode = blob->sort_mode;
+    }
+    nav->ascending = blob->ascending != 0;
+}
+
+static esp_err_t verify_restored_path(fs_nav_t *nav)
+{
+    struct stat st = {0};
+    if (stat(nav->current, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        set_relative(nav, "");
+        return ESP_ERR_NOT_FOUND;
+    }
+    return ESP_OK;
 }
 
 static esp_err_t validate_window_request(const fs_nav_t *nav, size_t size)
