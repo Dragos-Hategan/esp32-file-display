@@ -402,7 +402,7 @@ static bool save_prechecks(text_viewer_ctx_t *ctx, const char **text_out);
  * @param[out] file_size     Destination file size in bytes.
  * @return true on success; false on overflow/error.
  */
-static bool compute_save_window(const text_viewer_ctx_t *ctx, size_t *window_start, size_t *window_end,
+static bool compute_save_window(text_viewer_ctx_t *ctx, size_t *window_start, size_t *window_end,
                                 size_t *prefix_size, size_t *suffix_start, size_t *suffix_size,
                                 bool *have_existing, size_t *file_size);
 
@@ -2055,7 +2055,7 @@ static bool save_prechecks(text_viewer_ctx_t *ctx, const char **text_out)
     return true;
 }
 
-static bool compute_save_window(const text_viewer_ctx_t *ctx, size_t *window_start, size_t *window_end,
+static bool compute_save_window(text_viewer_ctx_t *ctx, size_t *window_start, size_t *window_end,
                                 size_t *prefix_size, size_t *suffix_start, size_t *suffix_size,
                                 bool *have_existing, size_t *file_size)
 {
