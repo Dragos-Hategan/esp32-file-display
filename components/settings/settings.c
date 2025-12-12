@@ -774,6 +774,18 @@ static void save_time_data(void);
 static void settings_apply_date_time(lv_event_t *e);
 
 /**
+ * @brief Parse date/time inputs from the dialog, validate, and return as time_t.
+ *
+ * Reads all date/time text fields, validates ranges and calendar date, persists
+ * the "time valid" flag, updates the in-memory time fields, and notifies listeners.
+ * Returns -1 and shows an "Incorrect Input" message box on validation failure.
+ *
+ * @param ctx Active settings context.
+ * @return time_t seconds since epoch (UTC) on success, -1 on failure.
+ */
+static time_t build_date_time_data(settings_ctx_t *ctx);
+
+/**
  * @brief Close handler for the date&time dialog (Cancel or overlay tap).
  *
  * Deletes the overlay and clears dialog-related pointers in the settings context.
@@ -873,6 +885,27 @@ static void settings_on_dim_switch_changed(lv_event_t *e);
  * @param enabled True to enable fields, false to disable.
  */
 static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabled);
+
+/**
+ * @brief Toggle label style/opacity based on enabled state.
+ *
+ * Applies disabled styling when @p enabled is false; no-op if label is NULL.
+ *
+ * @param lbl Label object to update (nullable).
+ * @param enabled True to show as enabled, false to dim/disable.
+ */
+static void update_label(lv_obj_t *lbl, bool enabled);
+
+/**
+ * @brief Toggle textarea enabled state and style.
+ *
+ * Disables input, clears focus, and applies disabled style when @p enabled is false.
+ * No-op if textarea is NULL.
+ *
+ * @param ta Textarea object to update (nullable).
+ * @param enabled True to enable input, false to disable.
+ */
+static void update_textarea(lv_obj_t *ta, bool enabled);
 
 /**
  * @brief Hide the screensaver keyboard and detach it from any textarea.
@@ -1742,9 +1775,7 @@ static void sntp_restart_flow(void)
     if (s_settings_ctx.settings.time.sntp_success){
         show_connection_result_message(ESP_OK);
     }else{
-        if (last_err == ESP_OK) {
-            last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
-        }
+        last_err = (last_err == ESP_OK) ? SETTINGS_DEFAULT_SNTP_ERR_CODE : last_err;
         show_connection_result_message(last_err);
     }
     backlight_on_without_wipe_effect();
@@ -1892,10 +1923,10 @@ static void persist_brightness_to_nvs(void)
         /* Adjust dim level to stay within saved brightness and above minimum. */
         if (s_settings_ctx.settings.display.dim_level >= 0) {
             int max_level = s_settings_ctx.settings.display.saved_brightness;
+            int clamped = s_settings_ctx.settings.display.dim_level;
             if (max_level < SETTINGS_MINIMUM_BRIGHTNESS) {
                 max_level = SETTINGS_MINIMUM_BRIGHTNESS;
             }
-            int clamped = s_settings_ctx.settings.display.dim_level;
             if (clamped > max_level) {
                 clamped = max_level;
             }
@@ -2381,35 +2412,34 @@ static void settings_close_set_date_time(lv_event_t *e)
     }    
 }
 
-static void settings_apply_date_time(lv_event_t *e)
+static time_t build_date_time_data(settings_ctx_t *ctx)
 {
-    settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx) {
-        return;
-    }
-
-    int month, day, year, hour, minute;
+    int month;
+    int day;
+    int year;
+    int hour;
+    int minute;
     const char *month_txt = ctx->graphics.dt_month_ta ? lv_textarea_get_text(ctx->graphics.dt_month_ta) : NULL;
     const char *day_txt = ctx->graphics.dt_day_ta ? lv_textarea_get_text(ctx->graphics.dt_day_ta) : NULL;
     const char *year_txt = ctx->graphics.dt_year_ta ? lv_textarea_get_text(ctx->graphics.dt_year_ta) : NULL;
     const char *hour_txt = ctx->graphics.dt_hour_ta ? lv_textarea_get_text(ctx->graphics.dt_hour_ta) : NULL;
     const char *min_txt = ctx->graphics.dt_min_ta ? lv_textarea_get_text(ctx->graphics.dt_min_ta) : NULL;
-
+    
     if (!settings_parse_int_range(month_txt, 1, 12, &month) ||
         !settings_parse_int_range(day_txt, 1, 31, &day) ||
         !settings_parse_int_range(year_txt, 0, 99, &year) ||
         !settings_parse_int_range(hour_txt, 0, 23, &hour) ||
         !settings_parse_int_range(min_txt, 0, 59, &minute)) {
         settings_show_invalid_input();
-        return;
+        return -1;
     }
-
+    
     int year_full = 2000 + year;
     if (!settings_is_valid_date(year_full, month, day)) {
         settings_show_invalid_input();
-        return;
+        return -1;
     }
-
+    
     ctx->settings.display.time_valid = true;
     persist_valid_time_flag_to_nvs();
     ctx->settings.time.dt_day = day;
@@ -2418,8 +2448,7 @@ static void settings_apply_date_time(lv_event_t *e)
     ctx->settings.time.dt_month = month;
     ctx->settings.time.dt_minute = minute;
     settings_notify_time_set();
-
-    /* Set system time from the provided fields (no persistence). */
+    
     struct tm tm_set = {
         .tm_year = year_full - 1900, /* YY -> 20YY */
         .tm_mon = month - 1,
@@ -2437,7 +2466,20 @@ static void settings_apply_date_time(lv_event_t *e)
         settimeofday(&tv, NULL);
     }
 
-    persist_time_to_nvs(t);
+    return t;
+}
+
+static void settings_apply_date_time(lv_event_t *e)
+{
+    settings_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx) {
+        return;
+    }
+
+    time_t t = build_date_time_data(ctx);
+    if (t != -1){
+        persist_time_to_nvs(t);
+    }
 
     if (ctx->graphics.datetime_overlay) {
         lv_obj_del(ctx->graphics.datetime_overlay);
@@ -2951,6 +2993,42 @@ static void settings_on_off_switch_changed(lv_event_t *e)
     settings_update_off_controls_enabled(ctx, enabled);
 }
 
+static void update_label(lv_obj_t *lbl, bool enabled)
+{
+    if (!lbl) {
+        return;
+    }
+    if (enabled) {
+        lv_obj_clear_state(lbl, LV_STATE_DISABLED);
+        lv_obj_set_style_text_opa(lbl, LV_OPA_COVER, LV_PART_MAIN);
+    } else {
+        lv_obj_add_state(lbl, LV_STATE_DISABLED);
+        lv_obj_set_style_text_opa(lbl, LV_OPA_60, LV_PART_MAIN);
+    }
+}
+
+static void update_textarea(lv_obj_t *ta, bool enabled)
+{
+    if (!ta) {
+        return;
+    }
+    if (enabled) {
+        lv_obj_clear_state(ta, LV_STATE_DISABLED);
+        lv_obj_set_style_text_opa(ta, LV_OPA_COVER, LV_PART_MAIN);
+        /* If empty, restore from placeholder so last value shows when re-enabled. */
+        const char *txt = lv_textarea_get_text(ta);
+        const char *ph = lv_textarea_get_placeholder_text(ta);
+        if (txt && txt[0] == '\0' && ph && ph[0] != '\0') {
+            lv_textarea_set_text(ta, ph);
+        }
+    } else {
+        lv_obj_add_state(ta, LV_STATE_DISABLED);
+        lv_obj_set_style_text_opa(ta, LV_OPA_60, LV_PART_MAIN);
+        /* Clear text so placeholder (last known value) is visible while disabled. */
+        lv_textarea_set_text(ta, "");
+    }
+}
+
 static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabled)
 {
     if (!ctx) {
@@ -2965,16 +3043,7 @@ static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabl
     };
     for (size_t i = 0; i < sizeof(labels)/sizeof(labels[0]); i++) {
         lv_obj_t *lbl = labels[i];
-        if (!lbl) {
-            continue;
-        }
-        if (enabled) {
-            lv_obj_clear_state(lbl, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(lbl, LV_OPA_COVER, LV_PART_MAIN);
-        } else {
-            lv_obj_add_state(lbl, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(lbl, LV_OPA_60, LV_PART_MAIN);
-        }
+        update_label(lbl, enabled);
     }
 
     lv_obj_t *textareas[] = {
@@ -2983,24 +3052,7 @@ static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabl
     };
     for (size_t i = 0; i < sizeof(textareas)/sizeof(textareas[0]); i++) {
         lv_obj_t *ta = textareas[i];
-        if (!ta) {
-            continue;
-        }
-        if (enabled) {
-            lv_obj_clear_state(ta, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(ta, LV_OPA_COVER, LV_PART_MAIN);
-            /* If empty, restore from placeholder so last value shows when re-enabled. */
-            const char *txt = lv_textarea_get_text(ta);
-            const char *ph = lv_textarea_get_placeholder_text(ta);
-            if (txt && txt[0] == '\0' && ph && ph[0] != '\0') {
-                lv_textarea_set_text(ta, ph);
-            }
-        } else {
-            lv_obj_add_state(ta, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(ta, LV_OPA_60, LV_PART_MAIN);
-            /* Clear text so placeholder (last known value) is visible while disabled. */
-            lv_textarea_set_text(ta, "");
-        }
+        update_textarea(ta, enabled);
     }
 
     if (!enabled && ctx->graphics.ss_keyboard) {
@@ -3024,32 +3076,11 @@ static void settings_update_off_controls_enabled(settings_ctx_t *ctx, bool enabl
     };
     for (size_t i = 0; i < sizeof(labels)/sizeof(labels[0]); i++) {
         lv_obj_t *lbl = labels[i];
-        if (!lbl) {
-            continue;
-        }
-        if (enabled) {
-            lv_obj_clear_state(lbl, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(lbl, LV_OPA_COVER, LV_PART_MAIN);
-        } else {
-            lv_obj_add_state(lbl, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(lbl, LV_OPA_60, LV_PART_MAIN);
-        }
+        update_label(lbl, enabled);
     }
 
     if (ctx->graphics.ss_off_after_ta) {
-        if (enabled) {
-            lv_obj_clear_state(ctx->graphics.ss_off_after_ta, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(ctx->graphics.ss_off_after_ta, LV_OPA_COVER, LV_PART_MAIN);
-            const char *txt = lv_textarea_get_text(ctx->graphics.ss_off_after_ta);
-            const char *ph = lv_textarea_get_placeholder_text(ctx->graphics.ss_off_after_ta);
-            if (txt && txt[0] == '\0' && ph && ph[0] != '\0') {
-                lv_textarea_set_text(ctx->graphics.ss_off_after_ta, ph);
-            }
-        } else {
-            lv_obj_add_state(ctx->graphics.ss_off_after_ta, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(ctx->graphics.ss_off_after_ta, LV_OPA_60, LV_PART_MAIN);
-            lv_textarea_set_text(ctx->graphics.ss_off_after_ta, "");
-        }
+        update_textarea(ctx->graphics.ss_off_after_ta, enabled);
     }
 
     if (!enabled && ctx->graphics.ss_keyboard) {
