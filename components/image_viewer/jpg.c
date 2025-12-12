@@ -44,31 +44,31 @@ static jpg_viewer_ctx_t s_jpg_viewer;
  * @brief Destroy the currently active JPG viewer screen and reset its context.
  *
  * This helper deletes the LVGL screen associated with the viewer (if any)
- * under a display lock, then calls jpg_viewer_reset() to clear the context.
+ * under a display lock, then calls reset_ctx() to clear the context.
  * If the context is NULL or not active, it simply resets the context. When
  * the lock cannot be acquired, the context is reset without deleting the
  * LVGL screen.
  *
  * @param ctx Pointer to the viewer context to destroy.
  */
-static void jpg_viewer_destroy_active(jpg_viewer_ctx_t *ctx);
+static void destroy_active_context(jpg_viewer_ctx_t *ctx);
 
 /**
  * @brief Build the LVGL UI for the JPG viewer.
  *
  * This creates a new LVGL screen with a black transparent background,
  * an image object centered on the screen and a close button aligned
- * in the top-right corner. The close button is wired to jpg_viewer_on_close().
+ * in the top-right corner. The close button is wired to on_close().
  *
  * @param ctx  Pointer to the viewer context to populate.
  */
-static void jpg_viewer_build_ui(jpg_viewer_ctx_t *ctx);
+static void build_ui(jpg_viewer_ctx_t *ctx);
 
 /**
  * @brief Render the JPEG at the given path to the display panel.
  *
  * This function validates the LVGL image object and path, retrieves the
- * display panel from the BSP and calls jpg_draw_striped() to decode and
+ * display panel from the BSP and calls draw_striped_jpg() to decode and
  * draw the JPEG in stripes.
  *
  * @param img  LVGL image object associated with the viewer (not used for
@@ -82,7 +82,7 @@ static void jpg_viewer_build_ui(jpg_viewer_ctx_t *ctx);
  *      - ESP_ERR_NOT_SUPPORTED if the jpg file is corrupted or it's specific type is not supported
  *      - ESP_ERR_INVALID_SIZE if the image can't fit in the screen even after the downscale
  */
-static esp_err_t jpg_handler_set_src(lv_obj_t *img, const char *path);
+static esp_err_t set_src(lv_obj_t *img, const char *path);
 
 /**
  * @brief Reset the JPG viewer context to a clean state.
@@ -93,7 +93,7 @@ static esp_err_t jpg_handler_set_src(lv_obj_t *img, const char *path);
  *
  * @param ctx Pointer to the viewer context to reset.
  */
-static void jpg_viewer_reset(jpg_viewer_ctx_t *ctx);
+static void reset_ctx(jpg_viewer_ctx_t *ctx);
 
 /**
  * @brief Delete the viewer screen, unlock the display, and reset context.
@@ -102,7 +102,7 @@ static void jpg_viewer_reset(jpg_viewer_ctx_t *ctx);
  *
  * @param ctx Pointer to the viewer context to clean up.
  */
-static void jpg_viewer_cleanup_locked(jpg_viewer_ctx_t *ctx);
+static void cleanup_locked(jpg_viewer_ctx_t *ctx);
 
 /**
  * @brief LVGL event callback used to close the JPG viewer.
@@ -115,7 +115,7 @@ static void jpg_viewer_cleanup_locked(jpg_viewer_ctx_t *ctx);
  *
  * @param e Pointer to the LVGL event descriptor.
  */
-static void jpg_viewer_on_close(lv_event_t *e);
+static void on_close(lv_event_t *e);
 
 /**
  * @brief TJpgDec input callback for reading from LVGL filesystem.
@@ -169,7 +169,7 @@ static int output_cb(JDEC *jd, void *bitmap, JRECT *rect);
  *      - ESP_ERR_NOT_SUPPORTED if the jpg file is corrupted or it's specific type is not supported
  *      - ESP_ERR_INVALID_SIZE if the image can't fit in the screen even after the downscale
  */
-static esp_err_t jpg_draw_striped(const char *path, esp_lcd_panel_handle_t panel);
+static esp_err_t draw_striped_jpg(const char *path, esp_lcd_panel_handle_t panel);
 
 esp_err_t jpg_viewer_open(const jpg_viewer_open_opts_t *opts)
 {
@@ -180,7 +180,7 @@ esp_err_t jpg_viewer_open(const jpg_viewer_open_opts_t *opts)
     jpg_viewer_ctx_t *ctx = &s_jpg_viewer;
 
     if (ctx->active) {
-        jpg_viewer_destroy_active(ctx);
+        destroy_active_context(ctx);
     }
 
     ctx->return_screen = opts->return_screen;
@@ -193,25 +193,25 @@ esp_err_t jpg_viewer_open(const jpg_viewer_open_opts_t *opts)
     ctx->panel = bsp_display_get_panel();
     if (!ctx->panel) {
         bsp_display_unlock();
-        jpg_viewer_reset(ctx);
+        reset_ctx(ctx);
         return ESP_ERR_INVALID_STATE;
     }
 
     ctx->previous_screen = lv_screen_active();
-    jpg_viewer_build_ui(ctx);
+    build_ui(ctx);
 
     /* Load the screen before drawing so LVGL flushes its background/UI first */
     lv_screen_load(ctx->screen);
     /* Force a refresh now so subsequent LVGL cycles don't clear our direct draw */
     lv_refr_now(NULL);
 
-    esp_err_t err = jpg_handler_set_src(ctx->image, opts->path);
+    esp_err_t err = set_src(ctx->image, opts->path);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to render image: (%s)", esp_err_to_name(err));
         if (ctx->previous_screen) {
             lv_screen_load(ctx->previous_screen);
         }
-        jpg_viewer_cleanup_locked(ctx);
+        cleanup_locked(ctx);
         return err;
     }
 
@@ -223,22 +223,22 @@ esp_err_t jpg_viewer_open(const jpg_viewer_open_opts_t *opts)
     return ESP_OK;
 }
 
-static void jpg_viewer_destroy_active(jpg_viewer_ctx_t *ctx)
+static void destroy_active_context(jpg_viewer_ctx_t *ctx)
 {
     if (!ctx || !ctx->active) {
-        jpg_viewer_reset(ctx);
+        reset_ctx(ctx);
         return;
     }
 
     if (bsp_display_lock(0)) {
-        jpg_viewer_cleanup_locked(ctx);
+        cleanup_locked(ctx);
         return;
     }
 
-    jpg_viewer_reset(ctx);
+    reset_ctx(ctx);
 }
 
-static void jpg_viewer_build_ui(jpg_viewer_ctx_t *ctx)
+static void build_ui(jpg_viewer_ctx_t *ctx)
 {
     ctx->screen = lv_obj_create(NULL);
     styles_set_screen(ctx->screen);
@@ -261,13 +261,13 @@ static void jpg_viewer_build_ui(jpg_viewer_ctx_t *ctx)
     lv_color_t base_bg = lv_obj_get_style_bg_color(close_btn, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(close_btn, lv_color_darken(base_bg, 80), LV_PART_MAIN | LV_STATE_PRESSED);
     lv_obj_set_style_bg_opa(close_btn, LV_OPA_COVER, LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_add_event_cb(close_btn, jpg_viewer_on_close, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(close_btn, on_close, LV_EVENT_CLICKED, ctx);
     lv_obj_t *close_lbl = lv_label_create(close_btn);
     lv_label_set_text(close_lbl, LV_SYMBOL_CLOSE);
     lv_obj_center(close_lbl);
 }
 
-static esp_err_t jpg_handler_set_src(lv_obj_t *img, const char *path)
+static esp_err_t set_src(lv_obj_t *img, const char *path)
 {
     if (!img || !path || path[0] == '\0') {
         return ESP_ERR_INVALID_ARG;
@@ -278,12 +278,12 @@ static esp_err_t jpg_handler_set_src(lv_obj_t *img, const char *path)
         return ESP_ERR_INVALID_STATE;
     }
     
-    esp_err_t err = jpg_draw_striped(path, ctx->panel);
+    esp_err_t err = draw_striped_jpg(path, ctx->panel);
 
     return err;
 }
 
-static void jpg_viewer_reset(jpg_viewer_ctx_t *ctx)
+static void reset_ctx(jpg_viewer_ctx_t *ctx)
 {
     if (!ctx) {
         return;
@@ -291,17 +291,17 @@ static void jpg_viewer_reset(jpg_viewer_ctx_t *ctx)
     memset(ctx, 0, sizeof(*ctx));
 }
 
-static void jpg_viewer_cleanup_locked(jpg_viewer_ctx_t *ctx)
+static void cleanup_locked(jpg_viewer_ctx_t *ctx)
 {
     if (ctx && ctx->screen) {
         lv_obj_del(ctx->screen);
         ctx->screen = NULL;
     }
     bsp_display_unlock();
-    jpg_viewer_reset(ctx);
+    reset_ctx(ctx);
 }
 
-static void jpg_viewer_on_close(lv_event_t *e)
+static void on_close(lv_event_t *e)
 {
     jpg_viewer_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->active) {
@@ -319,7 +319,7 @@ static void jpg_viewer_on_close(lv_event_t *e)
         lv_screen_load(target);
     }
 
-    jpg_viewer_cleanup_locked(ctx);
+    cleanup_locked(ctx);
 }
 
 static size_t input_cb(JDEC *jd, uint8_t *buff, size_t nbytes)
@@ -414,7 +414,7 @@ static int output_cb(JDEC *jd, void *bitmap, JRECT *rect)
     return 1; /* continue */
 }
 
-static esp_err_t jpg_draw_striped(const char *path, esp_lcd_panel_handle_t panel)
+static esp_err_t draw_striped_jpg(const char *path, esp_lcd_panel_handle_t panel)
 {
     esp_err_t err = ESP_OK;
     jpg_stripe_ctx_t ctx = {

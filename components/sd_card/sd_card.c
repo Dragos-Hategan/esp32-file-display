@@ -151,42 +151,6 @@ static display_lock_guard_t display_lock_guard_acquire(const char *reason);
  */
 static void display_lock_guard_release(display_lock_guard_t *guard);
 
-static bool sd_state_lock(TickType_t timeout_ticks)
-{
-    if (!s_sd_state_lock) {
-        s_sd_state_lock = xSemaphoreCreateMutex();
-        if (!s_sd_state_lock) {
-            ESP_LOGE(TAG, "Failed to create SD state lock");
-            return false;
-        }
-    }
-    return xSemaphoreTake(s_sd_state_lock, timeout_ticks) == pdTRUE;
-}
-
-static void sd_state_unlock(void)
-{
-    if (s_sd_state_lock) {
-        xSemaphoreGive(s_sd_state_lock);
-    }
-}
-
-static display_lock_guard_t display_lock_guard_acquire(const char *reason)
-{
-    display_lock_guard_t guard = { .locked = bsp_display_lock(0) };
-    if (!guard.locked && reason) {
-        ESP_LOGW(TAG, "Unable to acquire display lock: %s", reason);
-    }
-    return guard;
-}
-
-static void display_lock_guard_release(display_lock_guard_t *guard)
-{
-    if (guard && guard->locked) {
-        bsp_display_unlock();
-        guard->locked = false;
-    }
-}
-
 esp_err_t sd_card_init(void)
 {
     esp_err_t err = ESP_OK;
@@ -326,6 +290,43 @@ void sd_card_schedule_retry(void)
     }
 
     sd_state_unlock();
+}
+
+
+static bool sd_state_lock(TickType_t timeout_ticks)
+{
+    if (!s_sd_state_lock) {
+        s_sd_state_lock = xSemaphoreCreateMutex();
+        if (!s_sd_state_lock) {
+            ESP_LOGE(TAG, "Failed to create SD state lock");
+            return false;
+        }
+    }
+    return xSemaphoreTake(s_sd_state_lock, timeout_ticks) == pdTRUE;
+}
+
+static void sd_state_unlock(void)
+{
+    if (s_sd_state_lock) {
+        xSemaphoreGive(s_sd_state_lock);
+    }
+}
+
+static display_lock_guard_t display_lock_guard_acquire(const char *reason)
+{
+    display_lock_guard_t guard = { .locked = bsp_display_lock(0) };
+    if (!guard.locked && reason) {
+        ESP_LOGW(TAG, "Unable to acquire display lock: %s", reason);
+    }
+    return guard;
+}
+
+static void display_lock_guard_release(display_lock_guard_t *guard)
+{
+    if (guard && guard->locked) {
+        bsp_display_unlock();
+        guard->locked = false;
+    }
 }
 
 static void retry_task(void *param)
