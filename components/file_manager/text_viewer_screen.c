@@ -711,6 +711,41 @@ static void show_chunk_prompt(text_viewer_ctx_t *ctx);
 static void close_chunk_prompt(text_viewer_ctx_t *ctx);
 
 /**
+ * @brief Check whether a pending chunk can be applied now.
+ *
+ * @param ctx Viewer context.
+ * @return true if a pending chunk exists and SD is available; false otherwise.
+ */
+static bool should_apply_pending_chunk(const text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Position cursor and skip animation after loading a pending chunk.
+ *
+ * @param ctx        Viewer context.
+ * @param content_h  Current textarea content height.
+ */
+static void update_cursor_after_chunk(text_viewer_ctx_t *ctx, lv_coord_t content_h);
+
+/**
+ * @brief Finalize state after successfully applying a pending chunk.
+ *
+ * Updates offsets, clears edge flags, refreshes slider, and clears the pending flag.
+ *
+ * @param ctx Viewer context.
+ */
+static void finalize_pending_chunk_success(text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Handle failure when applying a pending chunk.
+ *
+ * Logs the error, schedules SD retry, and clears edge flags.
+ *
+ * @param ctx Viewer context.
+ * @param err Error code returned by load_window.
+ */
+static void handle_pending_chunk_failure(text_viewer_ctx_t *ctx, esp_err_t err);
+
+/**
  * @brief Handle chunk-change prompt buttons.
  *
  * @param e LVGL event.
@@ -2311,46 +2346,59 @@ static void close_chunk_prompt(text_viewer_ctx_t *ctx)
     }
 }
 
+static bool should_apply_pending_chunk(const text_viewer_ctx_t *ctx)
+{
+    return ctx && ctx->flags.pending_chunk && !ctx->flags.waiting_sd;
+}
+
+static void update_cursor_after_chunk(text_viewer_ctx_t *ctx, lv_coord_t content_h)
+{
+    if (ctx->flags.pending_scroll_up)
+    {
+        lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)READ_CHUNK_SIZE_B + content_h);
+    }
+    else
+    {
+        lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)READ_CHUNK_SIZE_B - content_h);
+    }
+    skip_cursor_animation(ctx);
+}
+
+static void finalize_pending_chunk_success(text_viewer_ctx_t *ctx)
+{
+    ctx->last_file_offset_kb = ctx->pending_first_offset_kb;
+    ctx->current_file_offset_kb = ctx->pending_second_offset_kb;
+    ctx->flags.at_top_edge = false;
+    ctx->flags.at_bottom_edge = false;
+    update_slider(ctx);
+    ctx->flags.pending_chunk = false;
+}
+
+static void handle_pending_chunk_failure(text_viewer_ctx_t *ctx, esp_err_t err)
+{
+    ESP_LOGE(TAG, "Failed to load chunk: %s", esp_err_to_name(err));
+    schedule_sd_retry(ctx, TEXT_VIEWER_SD_CHUNK);
+    ctx->flags.at_top_edge = false;
+    ctx->flags.at_bottom_edge = false;
+}
+
 static void apply_pending_chunk(text_viewer_ctx_t *ctx)
 {
-    if (!ctx || !ctx->flags.pending_chunk)
-    {
-        return;
-    }
-    if (ctx->flags.waiting_sd)
+    if (!should_apply_pending_chunk(ctx))
     {
         return;
     }
 
     esp_err_t err = load_window(ctx, ctx->pending_first_offset_kb, ctx->pending_second_offset_kb);
-    if (err == ESP_OK)
+    if (err != ESP_OK)
     {
-        lv_coord_t content_h = lv_obj_get_content_height(ctx->graphics.text_area);
-        if (ctx->flags.pending_scroll_up)
-        {
-            lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)READ_CHUNK_SIZE_B + content_h);
-            skip_cursor_animation(ctx);
-        }
-        else
-        {
-            lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)READ_CHUNK_SIZE_B - content_h);
-            skip_cursor_animation(ctx);
-        }
-        ctx->last_file_offset_kb = ctx->pending_first_offset_kb;
-        ctx->current_file_offset_kb = ctx->pending_second_offset_kb;
-        ctx->flags.at_top_edge = false;
-        ctx->flags.at_bottom_edge = false;
-        update_slider(ctx);
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Failed to load chunk: %s", esp_err_to_name(err));
-        schedule_sd_retry(ctx, TEXT_VIEWER_SD_CHUNK);
-        ctx->flags.at_top_edge = false;
-        ctx->flags.at_bottom_edge = false;
+        handle_pending_chunk_failure(ctx, err);
         return;
     }
-    ctx->flags.pending_chunk = false;
+
+    lv_coord_t content_h = lv_obj_get_content_height(ctx->graphics.text_area);
+    update_cursor_after_chunk(ctx, content_h);
+    finalize_pending_chunk_success(ctx);
 }
 
 static void on_chunk_prompt(lv_event_t *e)
