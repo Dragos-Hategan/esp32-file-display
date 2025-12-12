@@ -502,6 +502,53 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx);
 static void settings_apply_screensaver(lv_event_t *e);
 
 /**
+ * @brief Validate dim inputs and populate parsed values.
+ *
+ * Parses dim delay and level text fields, enforcing allowed ranges; shows
+ * an "Incorrect Input" message on failure.
+ *
+ * @param[out] new_dim_time Parsed dim delay (seconds).
+ * @param[out] new_dim_level Parsed dim level percent.
+ * @param[in]  ctx Settings context.
+ * @return true if parsing succeeds; false otherwise.
+ */
+static bool dim_valid(int *new_dim_time, int *new_dim_level, settings_ctx_t *ctx);
+
+/**
+ * @brief Validate off input and populate parsed value.
+ *
+ * Parses screen-off delay field; shows an "Incorrect Input" message on failure.
+ *
+ * @param[out] new_off_time Parsed off delay (seconds).
+ * @param[in]  ctx Settings context.
+ * @return true if parsing succeeds; false otherwise.
+ */
+static bool off_valid(int *new_off_time, settings_ctx_t *ctx);
+
+/**
+ * @brief Apply dim values to in-memory settings with clamping.
+ *
+ * Updates dim flags/time/level in the context and clamps level to brightness bounds.
+ *
+ * @param ctx Settings context.
+ * @param dim_on Whether dimming is enabled.
+ * @param new_dim_level Parsed dim level (in/out, clamped).
+ * @param new_dim_time Parsed dim delay (seconds).
+ */
+static void apply_in_memory_state(settings_ctx_t *ctx, bool dim_on, int *new_dim_level, int new_dim_time);
+
+/**
+ * @brief Collect and validate screensaver values from the dialog.
+ *
+ * Reads UI controls for dim/off, validates inputs, applies clamped values to
+ * the settings context, and returns success/failure.
+ *
+ * @param ctx Settings context.
+ * @return true on success; false if validation failed.
+ */
+static bool obtain_screensaver_values(settings_ctx_t *ctx);
+
+/**
  * @brief Persist Access Point credentials from the dialog and close it.
  *
  * Copies SSID/password text, saves to NVS, and dismisses the AP dialog.
@@ -4745,6 +4792,70 @@ static void settings_apply_screensaver(lv_event_t *e)
         return;
     }
 
+    if (!obtain_screensaver_values(ctx)){
+        return;
+    }
+
+    persist_screensaver_to_nvs();
+    settings_start_screensaver_timers();
+    settings_close_screensaver(e);
+}
+
+static bool dim_valid(int *new_dim_time, int *new_dim_level, settings_ctx_t *ctx)
+{
+    const char *dim_time_txt = ctx->graphics.ss_dim_after_ta ? lv_textarea_get_text(ctx->graphics.ss_dim_after_ta) : NULL;
+    const char *dim_level_txt = ctx->graphics.ss_dim_pct_ta ? lv_textarea_get_text(ctx->graphics.ss_dim_pct_ta) : NULL;
+    int parsed_time = 0;
+    int parsed_level = 0;
+
+    /* dim time: 1..9999 (textarea limited to 3 chars) */
+    if (!settings_parse_int_range(dim_time_txt, 1, 9999, &parsed_time)) {
+        settings_show_invalid_input();
+        return false;
+    }
+
+    /* Accept any 0..100 value, clamp later against brightness/minimum. */
+    if (!settings_parse_int_range(dim_level_txt, 0, 100, &parsed_level)) {
+        settings_show_invalid_input();
+        return false;
+    }
+
+    *new_dim_time = parsed_time;
+    *new_dim_level = parsed_level;
+
+    return true;
+}
+
+static bool off_valid(int *new_off_time, settings_ctx_t *ctx)
+{
+    const char *off_time_txt = ctx->graphics.ss_off_after_ta ? lv_textarea_get_text(ctx->graphics.ss_off_after_ta) : NULL;
+    int parsed_off = 0;
+    if (!settings_parse_int_range(off_time_txt, 1, 99999, &parsed_off)) {
+        settings_show_invalid_input();
+        return false;
+    }
+    *new_off_time = parsed_off;
+
+    return true;
+}
+
+static void apply_in_memory_state(settings_ctx_t *ctx, bool dim_on, int *new_dim_level, int new_dim_time)
+{
+    ctx->settings.display.screen_dim = dim_on;
+    ctx->settings.display.dim_time = new_dim_time;
+
+    if (*new_dim_level >= 0) {
+        int max_level = ctx->settings.display.saved_brightness > 0 ? ctx->settings.display.saved_brightness : SETTINGS_DEFAULT_BRIGHTNESS;
+        if (max_level < SETTINGS_MINIMUM_BRIGHTNESS) {
+            max_level = SETTINGS_MINIMUM_BRIGHTNESS;
+        }
+        if (*new_dim_level > max_level) *new_dim_level = max_level;
+        if (*new_dim_level < SETTINGS_MINIMUM_BRIGHTNESS) *new_dim_level = SETTINGS_MINIMUM_BRIGHTNESS;
+    }
+}
+
+static bool obtain_screensaver_values(settings_ctx_t *ctx)
+{
     bool dim_on = ctx->graphics.ss_dim_switch && lv_obj_has_state(ctx->graphics.ss_dim_switch, LV_STATE_CHECKED);
     bool off_on = ctx->graphics.ss_off_switch && lv_obj_has_state(ctx->graphics.ss_off_switch, LV_STATE_CHECKED);
 
@@ -4752,61 +4863,25 @@ static void settings_apply_screensaver(lv_event_t *e)
     int new_dim_level = ctx->settings.display.dim_level;
     int new_off_time = ctx->settings.display.off_time;
 
-    /* Validate dim when enabled. */
     if (dim_on) {
-        const char *dim_time_txt = ctx->graphics.ss_dim_after_ta ? lv_textarea_get_text(ctx->graphics.ss_dim_after_ta) : NULL;
-        const char *dim_level_txt = ctx->graphics.ss_dim_pct_ta ? lv_textarea_get_text(ctx->graphics.ss_dim_pct_ta) : NULL;
-        int parsed_time = 0;
-        int parsed_level = 0;
-
-        /* dim time: 1..9999 (textarea limited to 3 chars) */
-        if (!settings_parse_int_range(dim_time_txt, 1, 9999, &parsed_time)) {
-            settings_show_invalid_input();
-            return;
-        }
-
-        /* Accept any 0..100 value, clamp later against brightness/minimum. */
-        if (!settings_parse_int_range(dim_level_txt, 0, 100, &parsed_level)) {
-            settings_show_invalid_input();
-            return;
-        }
-
-        new_dim_time = parsed_time;
-        new_dim_level = parsed_level;
+        if (!dim_valid(&new_dim_time, &new_dim_level, ctx)){
+            return false;
+        }    
     }
 
-    /* Validate off when enabled. */
     if (off_on) {
-        const char *off_time_txt = ctx->graphics.ss_off_after_ta ? lv_textarea_get_text(ctx->graphics.ss_off_after_ta) : NULL;
-        int parsed_off = 0;
-        if (!settings_parse_int_range(off_time_txt, 1, 99999, &parsed_off)) {
-            settings_show_invalid_input();
-            return;
+        if (!off_valid(&new_off_time, ctx)){
+            return false;
         }
-        new_off_time = parsed_off;
     }
 
-    /* Apply in-memory state. Keep last valid values even when feature is off. */
-    ctx->settings.display.screen_dim = dim_on;
-    ctx->settings.display.dim_time = new_dim_time;
-    /* Clamp dim level to brightness bounds even if feature disabled. */
-    if (new_dim_level >= 0) {
-        int max_level = ctx->settings.display.saved_brightness > 0 ? ctx->settings.display.saved_brightness : SETTINGS_DEFAULT_BRIGHTNESS;
-        if (max_level < SETTINGS_MINIMUM_BRIGHTNESS) {
-            max_level = SETTINGS_MINIMUM_BRIGHTNESS;
-        }
-        if (new_dim_level > max_level) new_dim_level = max_level;
-        if (new_dim_level < SETTINGS_MINIMUM_BRIGHTNESS) new_dim_level = SETTINGS_MINIMUM_BRIGHTNESS;
-    }
+    apply_in_memory_state(ctx, dim_on, &new_dim_level, new_dim_time);
 
     ctx->settings.display.dim_level = new_dim_level;
     ctx->settings.display.screen_off = off_on;
     ctx->settings.display.off_time = new_off_time;
 
-    /* Persist */
-    persist_screensaver_to_nvs();
-    settings_start_screensaver_timers();
-    settings_close_screensaver(e);
+    return true;
 }
 
 static void settings_apply_ap_data(lv_event_t *e)
