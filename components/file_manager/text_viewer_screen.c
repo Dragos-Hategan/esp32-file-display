@@ -301,6 +301,59 @@ static size_t slider_target_step(const text_viewer_ctx_t *ctx, size_t clamped_st
 static void compute_window_offsets(size_t target_step, size_t max_step_index, size_t max_start, size_t step,
                                    size_t window_size, size_t max_file_offset_kb,
                                    size_t *first_offset, size_t *second_offset);
+/**
+ * @brief Read one or two chunks for the current window.
+ *
+ * @param ctx              Viewer context.
+ * @param first_offset_kb  First chunk offset.
+ * @param second_offset_kb Second chunk offset.
+ * @param[out] chunk_a     Buffer for first chunk.
+ * @param[out] len_a       Length of first chunk.
+ * @param[out] chunk_b     Buffer for second chunk.
+ * @param[out] len_b       Length of second chunk.
+ * @return ESP_OK on success; error code otherwise.
+ */
+static esp_err_t read_window_chunks(text_viewer_ctx_t *ctx, size_t first_offset_kb, size_t second_offset_kb,
+                                    char **chunk_a, size_t *len_a, char **chunk_b, size_t *len_b);
+/**
+ * @brief Join up to two chunks into a single null-terminated buffer.
+ *
+ * @param chunk_a    First chunk buffer.
+ * @param len_a      Length of first chunk.
+ * @param chunk_b    Second chunk buffer.
+ * @param len_b      Length of second chunk.
+ * @param[out] joined_out Allocated joined buffer (caller frees).
+ * @return ESP_OK on success; ESP_ERR_NO_MEM on allocation failure.
+ */
+static esp_err_t join_window_chunks(char *chunk_a, size_t len_a, char *chunk_b, size_t len_b, char **joined_out);
+/**
+ * @brief Apply joined text to textarea, reset dirty/original, and update buttons.
+ *
+ * @param ctx   Viewer context.
+ * @param joined Joined text buffer.
+ */
+static void apply_joined_window(text_viewer_ctx_t *ctx, const char *joined);
+/**
+ * @brief Check whether scroll handling should be skipped (e.g., blocked).
+ *
+ * @param ctx Viewer context.
+ * @return true if scroll events should be ignored.
+ */
+static bool text_scroll_should_ignore(const text_viewer_ctx_t *ctx);
+/**
+ * @brief Handle reaching/leaving the top edge of the text area.
+ *
+ * @param ctx    Viewer context.
+ * @param at_top True if currently at the top.
+ */
+static void handle_scroll_top_edge(text_viewer_ctx_t *ctx, bool at_top);
+/**
+ * @brief Handle reaching/leaving the bottom edge of the text area.
+ *
+ * @param ctx       Viewer context.
+ * @param at_bottom True if currently at the bottom.
+ */
+static void handle_scroll_bottom_edge(text_viewer_ctx_t *ctx, bool at_bottom);
 
 /**
  * @brief Handle slider press/drag/release to jump between chunk windows.
@@ -1436,6 +1489,55 @@ static void compute_window_offsets(size_t target_step, size_t max_step_index, si
     if (second_offset) *second_offset = second;
 }
 
+static esp_err_t read_window_chunks(text_viewer_ctx_t *ctx, size_t first_offset_kb, size_t second_offset_kb,
+                                    char **chunk_a, size_t *len_a, char **chunk_b, size_t *len_b)
+{
+    esp_err_t err = fs_text_read_range(ctx->path, first_offset_kb, chunk_a, len_a);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    if (second_offset_kb != first_offset_kb) {
+        err = fs_text_read_range(ctx->path, second_offset_kb, chunk_b, len_b);
+        if (err != ESP_OK) {
+            return err;
+        }
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t join_window_chunks(char *chunk_a, size_t len_a, char *chunk_b, size_t len_b, char **joined_out)
+{
+    size_t total = len_a + len_b;
+    char *joined = (char *)malloc(total + 1);
+    if (!joined) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    if (len_a && chunk_a) {
+        memcpy(joined, chunk_a, len_a);
+    }
+    if (len_b && chunk_b) {
+        memcpy(joined + len_a, chunk_b, len_b);
+    }
+    joined[total] = '\0';
+
+    *joined_out = joined;
+    return ESP_OK;
+}
+
+static void apply_joined_window(text_viewer_ctx_t *ctx, const char *joined)
+{
+    bool prev_suppress = ctx->flags.suppress_events;
+    ctx->flags.suppress_events = true;
+    lv_textarea_set_text(ctx->graphics.text_area, joined);
+    set_original(ctx, joined);
+    ctx->flags.dirty = false;
+    update_buttons(ctx);
+    ctx->flags.suppress_events = prev_suppress;
+}
+
 static esp_err_t load_window(text_viewer_ctx_t *ctx, size_t first_offset_kb, size_t second_offset_kb)
 {
     if (!ctx || ctx->path[0] == '\0')
@@ -1449,47 +1551,19 @@ static esp_err_t load_window(text_viewer_ctx_t *ctx, size_t first_offset_kb, siz
     size_t len_a = 0;
     size_t len_b = 0;
 
-    esp_err_t err = fs_text_read_range(ctx->path, first_offset_kb, &chunk_a, &len_a);
+    esp_err_t err = read_window_chunks(ctx, first_offset_kb, second_offset_kb, &chunk_a, &len_a, &chunk_b, &len_b);
     if (err != ESP_OK)
     {
         goto cleanup;
     }
 
-    if (second_offset_kb != first_offset_kb)
+    err = join_window_chunks(chunk_a, len_a, chunk_b, len_b, &joined);
+    if (err != ESP_OK)
     {
-        err = fs_text_read_range(ctx->path, second_offset_kb, &chunk_b, &len_b);
-        if (err != ESP_OK)
-        {
-            goto cleanup;
-        }
-    }
-
-    size_t total = len_a + len_b;
-    joined = (char *)malloc(total + 1);
-    if (!joined)
-    {
-        err = ESP_ERR_NO_MEM;
         goto cleanup;
     }
 
-    if (len_a)
-    {
-        memcpy(joined, chunk_a, len_a);
-    }
-    if (len_b)
-    {
-        memcpy(joined + len_a, chunk_b, len_b);
-    }
-    joined[total] = '\0';
-
-    bool prev_suppress = ctx->flags.suppress_events;
-    ctx->flags.suppress_events = true;
-    lv_textarea_set_text(ctx->graphics.text_area, joined);
-    set_original(ctx, joined);
-    ctx->flags.dirty = false;
-    update_buttons(ctx);
-
-    ctx->flags.suppress_events = prev_suppress;
+    apply_joined_window(ctx, joined);
 
 cleanup:
     free(joined);
@@ -1572,11 +1646,7 @@ static void on_text_scrolled(lv_event_t *e)
     {
         return;
     }
-    if (ctx->flags.waiting_sd)
-    {
-        return;
-    }
-    if (ctx->graphics.chunk_mbox || ctx->flags.pending_chunk)
+    if (text_scroll_should_ignore(ctx))
     {
         return;
     }
@@ -1584,6 +1654,17 @@ static void on_text_scrolled(lv_event_t *e)
     bool at_top = lv_obj_get_scroll_top(ctx->graphics.text_area) <= 0;
     bool at_bottom = lv_obj_get_scroll_bottom(ctx->graphics.text_area) <= 0;
 
+    handle_scroll_top_edge(ctx, at_top);
+    handle_scroll_bottom_edge(ctx, at_bottom);
+}
+
+static bool text_scroll_should_ignore(const text_viewer_ctx_t *ctx)
+{
+    return ctx->flags.waiting_sd || ctx->graphics.chunk_mbox || ctx->flags.pending_chunk;
+}
+
+static void handle_scroll_top_edge(text_viewer_ctx_t *ctx, bool at_top)
+{
     if (at_top && !ctx->flags.at_top_edge)
     {
         ctx->flags.at_top_edge = true;
@@ -1599,7 +1680,10 @@ static void on_text_scrolled(lv_event_t *e)
     {
         ctx->flags.at_top_edge = false;
     }
+}
 
+static void handle_scroll_bottom_edge(text_viewer_ctx_t *ctx, bool at_bottom)
+{
     if (at_bottom && !ctx->flags.at_bottom_edge)
     {
         ctx->flags.at_bottom_edge = true;
