@@ -1124,6 +1124,33 @@ static void persist_ap_credentials_to_nvs(void);
 static void load_ap_credentials_from_nvs(void);
 
 /**
+ * @brief Load the stored AP SSID into the settings context.
+ *
+ * @param h Open NVS handle for @ref SETTINGS_NVS_NS.
+ */
+static void load_ap_ssid(nvs_handle_t h);
+
+/**
+ * @brief Load the stored AP password into the settings context.
+ *
+ * @param h Open NVS handle for @ref SETTINGS_NVS_NS.
+ */
+static void load_ap_pwd(nvs_handle_t h);
+
+/**
+ * @brief Helper to load an NVS string value into a caller-provided buffer.
+ *
+ * Allocates a temporary buffer if the stored string is larger than @p buf_size,
+ * then copies/truncates into the destination and null-terminates.
+ *
+ * @param h        Open NVS handle for @ref SETTINGS_NVS_NS.
+ * @param key      NVS key to read (e.g., @ref SETTINGS_NVS_AP_SSID_KEY).
+ * @param buf      Destination buffer.
+ * @param buf_size Size of @p buf in bytes.
+ */
+static void load_user_data(nvs_handle_t h, const char *key, char *buf, size_t buf_size);
+
+/**
  * @brief Persist the SNTP refresh-on-startup preference to NVS.
  */
 static void persist_sntp_refresh(void);
@@ -3540,33 +3567,40 @@ static void load_ap_credentials_from_nvs(void)
         return;
     }
 
-    size_t len = sizeof(s_settings_ctx.settings.ap_ssid);
-    esp_err_t res = nvs_get_str(h, SETTINGS_NVS_AP_SSID_KEY, s_settings_ctx.settings.ap_ssid, &len);
-    if (res == ESP_ERR_NVS_INVALID_LENGTH) {
-        char *tmp = (char *)malloc(len);
-        if (tmp && nvs_get_str(h, SETTINGS_NVS_AP_SSID_KEY, tmp, &len) == ESP_OK) {
-            strncpy(s_settings_ctx.settings.ap_ssid, tmp, sizeof(s_settings_ctx.settings.ap_ssid) - 1);
-            s_settings_ctx.settings.ap_ssid[sizeof(s_settings_ctx.settings.ap_ssid) - 1] = '\0';
-        }
-        free(tmp);
-    } else if (res != ESP_OK) {
-        s_settings_ctx.settings.ap_ssid[0] = '\0';
-    }
-
-    len = sizeof(s_settings_ctx.settings.ap_pwd);
-    res = nvs_get_str(h, SETTINGS_NVS_AP_PWD_KEY, s_settings_ctx.settings.ap_pwd, &len);
-    if (res == ESP_ERR_NVS_INVALID_LENGTH) {
-        char *tmp = (char *)malloc(len);
-        if (tmp && nvs_get_str(h, SETTINGS_NVS_AP_PWD_KEY, tmp, &len) == ESP_OK) {
-            strncpy(s_settings_ctx.settings.ap_pwd, tmp, sizeof(s_settings_ctx.settings.ap_pwd) - 1);
-            s_settings_ctx.settings.ap_pwd[sizeof(s_settings_ctx.settings.ap_pwd) - 1] = '\0';
-        }
-        free(tmp);
-    } else if (res != ESP_OK) {
-        s_settings_ctx.settings.ap_pwd[0] = '\0';
-    }
+    load_ap_ssid(h);
+    load_ap_pwd(h);
 
     nvs_close(h);
+}
+
+static void load_ap_ssid(nvs_handle_t h)
+{
+    load_user_data(h, SETTINGS_NVS_AP_SSID_KEY, s_settings_ctx.settings.ap_ssid,
+                   sizeof(s_settings_ctx.settings.ap_ssid));
+}
+
+static void load_ap_pwd(nvs_handle_t h)
+{
+    load_user_data(h, SETTINGS_NVS_AP_PWD_KEY, s_settings_ctx.settings.ap_pwd,
+                   sizeof(s_settings_ctx.settings.ap_pwd));
+}
+
+static void load_user_data(nvs_handle_t h, const char *key, char *buf, size_t buf_size)
+{
+    size_t len = buf_size;
+    esp_err_t res = nvs_get_str(h, key, buf, &len);
+    if (res == ESP_ERR_NVS_INVALID_LENGTH) {
+        char *tmp = (char *)malloc(len);
+        if (tmp && nvs_get_str(h, key, tmp, &len) == ESP_OK) {
+            strncpy(buf, tmp, buf_size - 1);
+            buf[buf_size - 1] = '\0';
+        }
+        if (tmp) {
+            free(tmp);
+        }
+    } else if (res != ESP_OK) {
+        buf[0] = '\0';
+    }
 }
 
 static void load_sntp_result_from_nvs(void)
