@@ -232,10 +232,60 @@ static void update_slider_range(text_viewer_ctx_t *ctx, size_t window_size, size
 static size_t clamp_current_step(const text_viewer_ctx_t *ctx, size_t step, size_t max_start, size_t max_step_index);
 
 /**
+ * @brief Return whether slider actions are blocked (SD wait, dialogs, pending chunk).
+ *
+ * @param ctx Viewer context.
+ * @return true if slider interactions should be ignored; false otherwise.
+ */
+static bool slider_is_blocked(const text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Compute slider bounds (window/step/total/max values); returns false if no scroll.
+ *
+ * @param ctx             Viewer context.
+ * @param[out] window_size Chunks per window.
+ * @param[out] step        Chunks per step.
+ * @param[out] total_chunks Total chunk count (>=1).
+ * @param[out] max_start    Max starting chunk.
+ * @param[out] max_step_index Max slider index.
+ * @return true if scrolling is possible; false if slider should no-op.
+ */
+static bool get_slider_bounds(text_viewer_ctx_t *ctx, size_t *window_size, size_t *step, size_t *total_chunks,
+                              size_t *max_start, size_t *max_step_index);
+
+/**
+ * @brief Clamp slider value to valid range.
+ *
+ * @param e LVGL event containing slider target.
+ * @param max_step_index Maximum allowed step index.
+ * @return Clamped step value.
+ */
+static size_t clamp_slider_value(lv_event_t *e, size_t max_step_index);
+
+/**
+ * @brief Handle slider release to trigger chunk load or reset.
+ *
+ * @param ctx            Viewer context.
+ * @param blocked        True if operations are blocked (timer/dialog).
+ * @param clamped_step   Current clamped slider step.
+ * @param max_step_index Maximum slider step index.
+ * @param max_start      Maximum starting chunk index.
+ * @param window_size    Chunks per window.
+ * @param step           Chunks per slider step.
+ */
+static void handle_slider_release(text_viewer_ctx_t *ctx, bool blocked, size_t clamped_step,
+                                  size_t max_step_index, size_t max_start, size_t window_size, size_t step);
+
+/**
  * @brief Handle slider press/drag/release to jump between chunk windows.
  *
  * Tracks the target step while dragging and applies the chunk load on release; no-ops
  * if blocked or if the knob returns to the current step.
+ *
+ * Events:
+ * - LV_EVENT_PRESSED: record drag start unless blocked.
+ * - LV_EVENT_VALUE_CHANGED: update pending step while dragging (if not blocked).
+ * - LV_EVENT_RELEASED/PRESS_LOST: trigger chunk load or reset if blocked.
  *
  * @param e LVGL slider event with user data = text_viewer_ctx_t*.
  */
@@ -1208,31 +1258,18 @@ static void on_slider_value_changed(lv_event_t *e)
     }
 
     lv_event_code_t code = lv_event_get_code(e);
-    bool blocked = ctx->flags.waiting_sd || ctx->graphics.chunk_mbox || ctx->flags.pending_chunk;
+    bool blocked = slider_is_blocked(ctx);
 
     size_t window_size = 1;
     size_t step = 1;
-    get_slider_params(ctx, &window_size, &step);
-    size_t total_chunks = ctx->max_file_offset_kb + 1;
-    if (total_chunks == 0) {
-        total_chunks = 1;
-    }
-    if (total_chunks <= window_size) {
+    size_t total_chunks = 0;
+    size_t max_start = 0;
+    size_t max_step_index = 0;
+    if (!get_slider_bounds(ctx, &window_size, &step, &total_chunks, &max_start, &max_step_index)) {
         return; /* Nothing to scroll */
     }
 
-    size_t max_start = total_chunks - window_size;
-    size_t max_step_index = step ? ((max_start + step - 1) / step) : 0;
-
-    int32_t slider_val = lv_slider_get_value(lv_event_get_target(e));
-    if (slider_val < 0) {
-        slider_val = 0;
-    }
-
-    size_t clamped_step = (size_t)slider_val;
-    if (clamped_step > max_step_index) {
-        clamped_step = max_step_index;
-    }
+    size_t clamped_step = clamp_slider_value(e, max_step_index);
 
     if (code == LV_EVENT_PRESSED) {
         if (blocked) {
@@ -1252,52 +1289,94 @@ static void on_slider_value_changed(lv_event_t *e)
     }
 
     if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
-        if (blocked) {
-            ctx->slider_pending_step = SIZE_MAX;
-            ctx->flags.slider_drag_active = false;
-            update_slider(ctx);
-            return;
-        }
+        handle_slider_release(ctx, blocked, clamped_step, max_step_index, max_start, window_size, step);
+    }
+}
 
-        size_t target_step = (ctx->slider_pending_step != SIZE_MAX) ? ctx->slider_pending_step : clamped_step;
-        if (target_step > max_step_index) {
-            target_step = max_step_index;
-        }
+static bool slider_is_blocked(const text_viewer_ctx_t *ctx)
+{
+    return ctx->flags.waiting_sd || ctx->graphics.chunk_mbox || ctx->flags.pending_chunk;
+}
 
-        size_t current_start = ctx->last_file_offset_kb;
-        if (current_start > max_start) {
-            current_start = max_start;
-        }
-        size_t current_step = step ? (current_start / step) : 0;
-        if (current_step > max_step_index) {
-            current_step = max_step_index;
-        }
+static bool get_slider_bounds(text_viewer_ctx_t *ctx, size_t *window_size, size_t *step, size_t *total_chunks,
+                              size_t *max_start, size_t *max_step_index)
+{
+    get_slider_params(ctx, window_size, step);
+    *total_chunks = ctx->max_file_offset_kb + 1;
+    if (*total_chunks == 0) {
+        *total_chunks = 1;
+    }
+    if (*total_chunks <= *window_size) {
+        return false;
+    }
 
-        if (target_step == current_step) {
-            ctx->slider_pending_step = SIZE_MAX;
-            ctx->flags.slider_drag_active = false;
-            return;
-        }
+    *max_start = *total_chunks - *window_size;
+    *max_step_index = *step ? ((*max_start + *step - 1) / *step) : 0;
+    return true;
+}
 
-        size_t new_start = (target_step >= max_step_index) ? max_start : (target_step * step);
-        if (new_start > max_start) {
-            new_start = max_start;
-        }
+static size_t clamp_slider_value(lv_event_t *e, size_t max_step_index)
+{
+    int32_t slider_val = lv_slider_get_value(lv_event_get_target(e));
+    if (slider_val < 0) {
+        slider_val = 0;
+    }
 
-        size_t first_offset = new_start;
-        size_t second_offset = first_offset + (window_size > 1 ? (window_size - 1) : 0);
-        if (second_offset > ctx->max_file_offset_kb) {
-            second_offset = ctx->max_file_offset_kb;
-        }
-        if (window_size > 1 && second_offset == first_offset && first_offset > 0) {
-            first_offset -= 1;
-        }
+    size_t clamped_step = (size_t)slider_val;
+    if (clamped_step > max_step_index) {
+        clamped_step = max_step_index;
+    }
+    return clamped_step;
+}
 
-        bool from_top = target_step < current_step;
+static void handle_slider_release(text_viewer_ctx_t *ctx, bool blocked, size_t clamped_step,
+                                  size_t max_step_index, size_t max_start, size_t window_size, size_t step)
+{
+    if (blocked) {
         ctx->slider_pending_step = SIZE_MAX;
         ctx->flags.slider_drag_active = false;
-        request_chunk_load(ctx, first_offset, second_offset, from_top);
+        update_slider(ctx);
+        return;
     }
+
+    size_t target_step = (ctx->slider_pending_step != SIZE_MAX) ? ctx->slider_pending_step : clamped_step;
+    if (target_step > max_step_index) {
+        target_step = max_step_index;
+    }
+
+    size_t current_start = ctx->last_file_offset_kb;
+    if (current_start > max_start) {
+        current_start = max_start;
+    }
+    size_t current_step = step ? (current_start / step) : 0;
+    if (current_step > max_step_index) {
+        current_step = max_step_index;
+    }
+
+    if (target_step == current_step) {
+        ctx->slider_pending_step = SIZE_MAX;
+        ctx->flags.slider_drag_active = false;
+        return;
+    }
+
+    size_t new_start = (target_step >= max_step_index) ? max_start : (target_step * step);
+    if (new_start > max_start) {
+        new_start = max_start;
+    }
+
+    size_t first_offset = new_start;
+    size_t second_offset = first_offset + (window_size > 1 ? (window_size - 1) : 0);
+    if (second_offset > ctx->max_file_offset_kb) {
+        second_offset = ctx->max_file_offset_kb;
+    }
+    if (window_size > 1 && second_offset == first_offset && first_offset > 0) {
+        first_offset -= 1;
+    }
+
+    bool from_top = target_step < current_step;
+    ctx->slider_pending_step = SIZE_MAX;
+    ctx->flags.slider_drag_active = false;
+    request_chunk_load(ctx, first_offset, second_offset, from_top);
 }
 
 static esp_err_t load_window(text_viewer_ctx_t *ctx, size_t first_offset_kb, size_t second_offset_kb)
