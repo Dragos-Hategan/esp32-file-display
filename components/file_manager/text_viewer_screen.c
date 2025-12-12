@@ -326,6 +326,7 @@ static esp_err_t read_window_chunks(text_viewer_ctx_t *ctx, size_t first_offset_
  * @return ESP_OK on success; ESP_ERR_NO_MEM on allocation failure.
  */
 static esp_err_t join_window_chunks(char *chunk_a, size_t len_a, char *chunk_b, size_t len_b, char **joined_out);
+
 /**
  * @brief Apply joined text to textarea, reset dirty/original, and update buttons.
  *
@@ -334,12 +335,31 @@ static esp_err_t join_window_chunks(char *chunk_a, size_t len_a, char *chunk_b, 
  */
 static void apply_joined_window(text_viewer_ctx_t *ctx, const char *joined);
 /**
+ * @brief Perform the full save flow: open streams, copy prefix/body/suffix, rename temp.
+ *
+ * @param ctx            Viewer context.
+ * @param text           Text to write.
+ * @param tmp_path       Temporary file path.
+ * @param have_existing  True if destination file exists.
+ * @param window_start   Byte offset where the current window begins.
+ * @param window_end     Byte offset right after the current window.
+ * @param prefix_size    Bytes to copy before current window.
+ * @param suffix_start   Offset where suffix begins.
+ * @param suffix_size    Bytes to copy after current window.
+ * @return true on success; false on any error.
+ */
+static bool file_save_success(text_viewer_ctx_t *ctx, const char *text, const char *tmp_path, bool have_existing,
+                              size_t window_start, size_t window_end,
+                              size_t prefix_size, size_t suffix_start, size_t suffix_size);
+
+/**
  * @brief Check whether scroll handling should be skipped (e.g., blocked).
  *
  * @param ctx Viewer context.
  * @return true if scroll events should be ignored.
  */
 static bool text_scroll_should_ignore(const text_viewer_ctx_t *ctx);
+
 /**
  * @brief Handle reaching/leaving the top edge of the text area.
  *
@@ -347,6 +367,7 @@ static bool text_scroll_should_ignore(const text_viewer_ctx_t *ctx);
  * @param at_top True if currently at the top.
  */
 static void handle_scroll_top_edge(text_viewer_ctx_t *ctx, bool at_top);
+
 /**
  * @brief Handle reaching/leaving the bottom edge of the text area.
  *
@@ -354,6 +375,129 @@ static void handle_scroll_top_edge(text_viewer_ctx_t *ctx, bool at_top);
  * @param at_bottom True if currently at the bottom.
  */
 static void handle_scroll_bottom_edge(text_viewer_ctx_t *ctx, bool at_bottom);
+
+/**
+ * @brief Validate save preconditions and return textarea text.
+ *
+ * Checks SD wait, missing name/new file name dialog, and empty path.
+ *
+ * @param ctx      Viewer context.
+ * @param[out] text_out Pointer to textarea text (never NULL on success).
+ * @return true if save can proceed; false otherwise.
+ */
+static bool save_prechecks(text_viewer_ctx_t *ctx, const char **text_out);
+
+/**
+ * @brief Compute save window offsets and sizes based on current chunks.
+ *
+ * Computes byte window, clamps to file size, and reports prefix/suffix sizes.
+ *
+ * @param ctx           Viewer context.
+ * @param[out] window_start Start offset in bytes.
+ * @param[out] window_end   End offset in bytes.
+ * @param[out] prefix_size  Bytes before window.
+ * @param[out] suffix_start Start of suffix in bytes.
+ * @param[out] suffix_size  Bytes after window.
+ * @param[out] have_existing True if destination file exists.
+ * @param[out] file_size     Destination file size in bytes.
+ * @return true on success; false on overflow/error.
+ */
+static bool compute_save_window(const text_viewer_ctx_t *ctx, size_t *window_start, size_t *window_end,
+                                size_t *prefix_size, size_t *suffix_start, size_t *suffix_size,
+                                bool *have_existing, size_t *file_size);
+
+/**
+ * @brief Build temp path for save (same dir) and clear stale file.
+ *
+ * @param dest_path Destination file path.
+ * @param tmp_path  Output temp path buffer.
+ * @param tmp_size  Size of temp buffer.
+ * @param ctx       Viewer context (for status).
+ * @return true on success; false on overflow.
+ */
+static bool build_temp_path_for_save(const char *dest_path, char *tmp_path, size_t tmp_size, text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Open source (if exists) and temp streams for save.
+ *
+ * @param dest_path Destination path.
+ * @param tmp_path  Temp path.
+ * @param have_existing True if destination exists.
+ * @param[out] src_out  Opened source FILE* (nullable).
+ * @param[out] tmp_out  Opened temp FILE*.
+ * @param ctx       Viewer context (for status/retry).
+ * @return true on success; false otherwise.
+ */
+static bool open_save_streams(const char *dest_path, const char *tmp_path, bool have_existing,
+                              FILE **src_out, FILE **tmp_out, text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Copy prefix bytes from src to temp.
+ *
+ * @param src       Source FILE* (nullable when prefix_size==0).
+ * @param tmp       Temp FILE*.
+ * @param prefix_size Bytes to copy.
+ * @param dest_path Destination path (for logging).
+ * @param tmp_path  Temp path (for logging).
+ * @param ctx       Viewer context.
+ * @return true on success; false on IO error.
+ */
+static bool copy_prefix(FILE *src, FILE *tmp, size_t prefix_size, const char *dest_path, const char *tmp_path, text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Write textarea body to temp file.
+ *
+ * @param tmp      Temp FILE*.
+ * @param text     Text content.
+ * @param tmp_path Temp path (for logging).
+ * @param ctx      Viewer context.
+ * @return true on success; false on IO error.
+ */
+static bool write_body(FILE *tmp, const char *text, const char *tmp_path, text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Copy suffix bytes from src to temp.
+ *
+ * @param src        Source FILE*.
+ * @param tmp        Temp FILE*.
+ * @param suffix_start Offset to seek.
+ * @param suffix_size  Bytes to copy.
+ * @param dest_path   Destination path (for logging).
+ * @param tmp_path    Temp path (for logging).
+ * @param ctx         Viewer context.
+ * @return true on success; false on IO error.
+ */
+static bool copy_suffix(FILE *src, FILE *tmp, size_t suffix_start, size_t suffix_size,
+                        const char *dest_path, const char *tmp_path, text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Rename temp file over destination with error handling.
+ *
+ * @param tmp_path  Temp path.
+ * @param dest_path Destination path.
+ * @param ctx       Viewer context.
+ * @return true on success; false on failure.
+ */
+static bool finalize_rename(const char *tmp_path, const char *dest_path, text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Update in-memory state after successful save.
+ *
+ * @param ctx         Viewer context.
+ * @param text        Saved text.
+ * @param prefix_size Prefix bytes length.
+ * @param suffix_size Suffix bytes length.
+ */
+static void finalize_save_state(text_viewer_ctx_t *ctx, const char *text, size_t prefix_size, size_t suffix_size);
+
+/**
+ * @brief Close FILE*s and optionally remove temp path.
+ *
+ * @param src      Source FILE* (nullable).
+ * @param tmp      Temp FILE* (nullable).
+ * @param tmp_path Temp path to remove (nullable).
+ */
+static void cleanup_save_files(FILE *src, FILE *tmp, const char *tmp_path);
 
 /**
  * @brief Handle slider press/drag/release to jump between chunk windows.
@@ -1783,232 +1927,299 @@ static void on_text_changed(lv_event_t *e)
 
 static void handle_save(text_viewer_ctx_t *ctx)
 {
-    if (!ctx)
+    const char *text = NULL;
+    if (!save_prechecks(ctx, &text))
     {
         return;
     }
-    if (ctx->flags.waiting_sd)
+
+    size_t window_start = 0, window_end = 0;
+    size_t prefix_size = 0, suffix_start = 0, suffix_size = 0;
+    size_t file_size = 0;
+    bool have_existing = false;
+    if (!compute_save_window(ctx, &window_start, &window_end, &prefix_size, &suffix_start, &suffix_size,
+                             &have_existing, &file_size))
     {
+        return;
+    }
+    (void)file_size;
+
+    char tmp_path[FS_TEXT_MAX_PATH];
+    if (!build_temp_path_for_save(ctx->path, tmp_path, sizeof(tmp_path), ctx))
+    {
+        return;
+    }
+
+    if (!file_save_success(ctx, text, tmp_path, have_existing, window_start, window_end,
+                           prefix_size, suffix_start, suffix_size)) 
+    {
+        return;
+    }
+
+    finalize_save_state(ctx, text, prefix_size, suffix_size);
+}
+
+static bool file_save_success(text_viewer_ctx_t *ctx, const char *text, const char *tmp_path, bool have_existing,
+                              size_t window_start, size_t window_end,
+                              size_t prefix_size, size_t suffix_start, size_t suffix_size)
+{
+    FILE *src = NULL;
+    FILE *tmp = NULL;
+    ESP_LOGD(TAG, "Saving range [%zu, %zu) with prefix=%zu, suffix_start=%zu, suffix_size=%zu",
+             window_start, window_end, prefix_size, suffix_start, suffix_size);
+
+    if (!open_save_streams(ctx->path, tmp_path, have_existing, &src, &tmp, ctx))
+        goto cleanup;
+
+    if (!copy_prefix(src, tmp, prefix_size, ctx->path, tmp_path, ctx))
+        goto cleanup;
+
+    if (!write_body(tmp, text, tmp_path, ctx))
+        goto cleanup;
+
+    if (!copy_suffix(src, tmp, suffix_start, suffix_size, ctx->path, tmp_path, ctx))
+        goto cleanup;   
+
+    cleanup_save_files(src, tmp, NULL); /* closes only */
+
+    if (!finalize_rename(tmp_path, ctx->path, ctx))
+        return false;
+
+    return true;
+
+cleanup:
+    cleanup_save_files(src, tmp, tmp_path);
+    return false;
+}
+
+static bool save_prechecks(text_viewer_ctx_t *ctx, const char **text_out)
+{
+    if (!ctx) {
+        return false;
+    }
+    if (ctx->flags.waiting_sd) {
         set_status(ctx, "Reconnect SD");
-        return;
+        return false;
     }
-    if (ctx->flags.new_file && ctx->path[0] == '\0')
-    {
+    if (ctx->flags.new_file && ctx->path[0] == '\0') {
         show_name_dialog(ctx);
-        return;
+        return false;
     }
 
     const char *text = lv_textarea_get_text(ctx->graphics.text_area);
-    if (!text)
-    {
+    if (!text) {
         text = "";
     }
-
-    if (ctx->path[0] == '\0')
-    {
+    if (ctx->path[0] == '\0') {
         set_status(ctx, "Missing file name");
-        return;
+        return false;
     }
+    if (text_out) {
+        *text_out = text;
+    }
+    return true;
+}
 
-    const char *dest_path = ctx->path;
+static bool compute_save_window(const text_viewer_ctx_t *ctx, size_t *window_start, size_t *window_end,
+                                size_t *prefix_size, size_t *suffix_start, size_t *suffix_size,
+                                bool *have_existing, size_t *file_size)
+{
     size_t first_kb = ctx->last_file_offset_kb;
     size_t second_kb = ctx->current_file_offset_kb;
     size_t chunk_count = (second_kb > first_kb) ? (second_kb - first_kb + 1u) : 1u;
 
-    /* Compute byte window for the currently loaded textarea (two chunks) */
-    if (first_kb > SIZE_MAX / 1024u || chunk_count > SIZE_MAX / READ_CHUNK_SIZE_B)
-    {
+    if (first_kb > SIZE_MAX / 1024u || chunk_count > SIZE_MAX / READ_CHUNK_SIZE_B) {
         set_status(ctx, "Range overflow");
-        return;
+        return false;
     }
-    size_t window_start = first_kb * 1024u;
-    size_t window_span = chunk_count * READ_CHUNK_SIZE_B;
-    size_t window_end = window_start + window_span;
-    if (window_end < window_start)
-    {
+
+    size_t start = first_kb * 1024u;
+    size_t span = chunk_count * READ_CHUNK_SIZE_B;
+    size_t end = start + span;
+    if (end < start) {
         set_status(ctx, "Range overflow");
-        return;
+        return false;
     }
 
     struct stat st = {0};
-    bool have_existing = (stat(dest_path, &st) == 0 && S_ISREG(st.st_mode));
-    size_t file_size = have_existing ? (size_t)st.st_size : 0u;
+    bool existing = (stat(ctx->path, &st) == 0 && S_ISREG(st.st_mode));
+    size_t size = existing ? (size_t)st.st_size : 0u;
 
-    /* Clamp window to current file size to avoid seeking past EOF */
-    if (window_start > file_size)
-    {
-        window_start = file_size;
-    }
-    if (window_end > file_size)
-    {
-        window_end = file_size;
-    }
+    if (start > size) start = size;
+    if (end > size) end = size;
 
-    size_t prefix_size = window_start;
-    size_t suffix_start = window_end;
-    size_t suffix_size = (suffix_start < file_size) ? (file_size - suffix_start) : 0u;
+    if (window_start) *window_start = start;
+    if (window_end) *window_end = end;
+    if (prefix_size) *prefix_size = start;
+    if (suffix_start) *suffix_start = end;
+    if (suffix_size) *suffix_size = (end < size) ? (size - end) : 0u;
+    if (have_existing) *have_existing = existing;
+    if (file_size) *file_size = size;
+    return true;
+}
 
-    /* Build temp path in same dir for atomic-ish replacement */
+static bool build_temp_path_for_save(const char *dest_path, char *tmp_path, size_t tmp_size, text_viewer_ctx_t *ctx)
+{
     char dir[FS_TEXT_MAX_PATH];
     const char *slash = strrchr(dest_path, '/');
-    if (slash)
-    {
+    if (slash) {
         size_t dir_len = (size_t)(slash - dest_path);
-        if (dir_len == 0)
-        {
+        if (dir_len == 0) {
+            if (sizeof(dir) < 2) {
+                set_status(ctx, "Path too long");
+                return false;
+            }
             dir[0] = '/';
             dir[1] = '\0';
-        }
-        else if (dir_len < sizeof(dir))
-        {
+        } else if (dir_len < sizeof(dir)) {
             memcpy(dir, dest_path, dir_len);
             dir[dir_len] = '\0';
-        }
-        else
-        {
+        } else {
             set_status(ctx, "Path too long");
-            return;
+            return false;
         }
-    }
-    else
-    {
+    } else {
         strlcpy(dir, ".", sizeof(dir));
     }
 
-    char tmp_path[FS_TEXT_MAX_PATH];
-    int needed = snprintf(tmp_path, sizeof(tmp_path), "%s/tmpwrt.tmp", dir);
-    if (needed < 0 || needed >= (int)sizeof(tmp_path))
-    {
+    int needed = snprintf(tmp_path, tmp_size, "%s/tmpwrt.tmp", dir);
+    if (needed < 0 || needed >= (int)tmp_size) {
         set_status(ctx, "Path too long");
-        return;
+        return false;
     }
     remove(tmp_path);
+    return true;
+}
 
+static bool open_save_streams(const char *dest_path, const char *tmp_path, bool have_existing,
+                              FILE **src_out, FILE **tmp_out, text_viewer_ctx_t *ctx)
+{
     FILE *src = NULL;
-    if (have_existing)
-    {
+    if (have_existing) {
         src = fopen(dest_path, "rb");
-        if (!src)
-        {
+        if (!src) {
             set_status(ctx, "Open failed");
             ESP_LOGE(TAG, "Failed to open %s for patching", dest_path);
             schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-            return;
+            return false;
         }
     }
 
     FILE *tmp = fopen(tmp_path, "wb");
-    if (!tmp)
-    {
-        if (src)
-        {
-            fclose(src);
-        }
+    if (!tmp) {
+        if (src) fclose(src);
         set_status(ctx, "Temp open failed");
         ESP_LOGE(TAG, "Failed to open %s", tmp_path);
         schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-        return;
+        return false;
     }
 
+    if (src_out) *src_out = src;
+    if (tmp_out) *tmp_out = tmp;
+    return true;
+}
+
+static bool copy_prefix(FILE *src, FILE *tmp, size_t prefix_size, const char *dest_path, const char *tmp_path, text_viewer_ctx_t *ctx)
+{
+    if (prefix_size == 0) {
+        return true;
+    }
     char buf[READ_CHUNK_SIZE_B];
     size_t remaining = prefix_size;
-    while (remaining > 0)
-    {
+    while (remaining > 0) {
         size_t chunk = remaining > sizeof(buf) ? sizeof(buf) : remaining;
-        if (!src || fread(buf, 1, chunk, src) != chunk)
-        {
+        if (!src || fread(buf, 1, chunk, src) != chunk) {
             set_status(ctx, "Read failed");
             ESP_LOGE(TAG, "Failed to read prefix from %s", dest_path);
             schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-            goto save_cleanup;
+            return false;
         }
-        if (fwrite(buf, 1, chunk, tmp) != chunk)
-        {
+        if (fwrite(buf, 1, chunk, tmp) != chunk) {
             set_status(ctx, "Write failed");
             ESP_LOGE(TAG, "Failed to write prefix to %s", tmp_path);
             schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-            goto save_cleanup;
+            return false;
         }
         remaining -= chunk;
     }
+    return true;
+}
 
-    size_t text_len = strlen(text);
-    if (text_len > 0)
-    {
-        if (fwrite(text, 1, text_len, tmp) != text_len)
-        {
+static bool write_body(FILE *tmp, const char *text, const char *tmp_path, text_viewer_ctx_t *ctx)
+{
+    size_t text_len = text ? strlen(text) : 0;
+    if (text_len == 0) {
+        return true;
+    }
+    if (fwrite(text, 1, text_len, tmp) != text_len) {
+        set_status(ctx, "Write failed");
+        ESP_LOGE(TAG, "Failed to write textarea to %s", tmp_path);
+        schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
+        return false;
+    }
+    return true;
+}
+
+static bool copy_suffix(FILE *src, FILE *tmp, size_t suffix_start, size_t suffix_size,
+                        const char *dest_path, const char *tmp_path, text_viewer_ctx_t *ctx)
+{
+    if (suffix_size == 0 || !src) {
+        return true;
+    }
+
+    if (fseek(src, (long)suffix_start, SEEK_SET) != 0) {
+        set_status(ctx, "Seek failed");
+        ESP_LOGE(TAG, "Failed to seek %s to %zu", dest_path, suffix_start);
+        schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
+        return false;
+    }
+
+    char buf[READ_CHUNK_SIZE_B];
+    size_t remaining = suffix_size;
+    while (remaining > 0) {
+        size_t chunk = remaining > sizeof(buf) ? sizeof(buf) : remaining;
+        size_t got = fread(buf, 1, chunk, src);
+        if (got != chunk) {
+            set_status(ctx, "Read failed");
+            ESP_LOGE(TAG, "Failed to read suffix from %s", dest_path);
+            schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
+            return false;
+        }
+        if (fwrite(buf, 1, chunk, tmp) != chunk) {
             set_status(ctx, "Write failed");
-            ESP_LOGE(TAG, "Failed to write textarea to %s", tmp_path);
+            ESP_LOGE(TAG, "Failed to write suffix to %s", tmp_path);
             schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-            goto save_cleanup;
+            return false;
         }
+        remaining -= chunk;
     }
+    return true;
+}
 
-    if (suffix_size > 0 && src)
-    {
-        if (fseek(src, (long)suffix_start, SEEK_SET) != 0)
-        {
-            set_status(ctx, "Seek failed");
-            ESP_LOGE(TAG, "Failed to seek %s to %zu", dest_path, suffix_start);
-            schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-            goto save_cleanup;
+static bool finalize_rename(const char *tmp_path, const char *dest_path, text_viewer_ctx_t *ctx)
+{
+    if (rename(tmp_path, dest_path) != 0) {
+        if (errno == EEXIST && remove(dest_path) == 0 && rename(tmp_path, dest_path) == 0) {
+            return true;
         }
-
-        remaining = suffix_size;
-        while (remaining > 0)
-        {
-            size_t chunk = remaining > sizeof(buf) ? sizeof(buf) : remaining;
-            size_t got = fread(buf, 1, chunk, src);
-            if (got != chunk)
-            {
-                set_status(ctx, "Read failed");
-                ESP_LOGE(TAG, "Failed to read suffix from %s", dest_path);
-                schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-                goto save_cleanup;
-            }
-            if (fwrite(buf, 1, chunk, tmp) != chunk)
-            {
-                set_status(ctx, "Write failed");
-                ESP_LOGE(TAG, "Failed to write suffix to %s", tmp_path);
-                schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-                goto save_cleanup;
-            }
-            remaining -= chunk;
-        }
+        set_status(ctx, "Rename failed");
+        ESP_LOGE(TAG, "rename(%s -> %s) failed (errno=%d)", tmp_path, dest_path, errno);
+        remove(tmp_path);
+        schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
+        return false;
     }
+    return true;
+}
 
-    if (src)
-    {
-        fclose(src);
-        src = NULL;
-    }
-    fclose(tmp);
-    tmp = NULL;
-
-    if (rename(tmp_path, dest_path) != 0)
-    {
-        if (errno == EEXIST && remove(dest_path) == 0 && rename(tmp_path, dest_path) == 0)
-        {
-            /* success after replacing existing */
-        }
-        else
-        {
-            set_status(ctx, "Rename failed");
-            ESP_LOGE(TAG, "rename(%s -> %s) failed (errno=%d)", tmp_path, dest_path, errno);
-            remove(tmp_path);
-            schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
-            return;
-        }
-    }
-
+static void finalize_save_state(text_viewer_ctx_t *ctx, const char *text, size_t prefix_size, size_t suffix_size)
+{
+    size_t text_len = text ? strlen(text) : 0;
     size_t new_size = prefix_size + text_len + suffix_size;
     ctx->max_file_offset_kb = (new_size > 0) ? ((new_size - 1u) / 1024u) : 0u;
-    if (ctx->last_file_offset_kb > ctx->max_file_offset_kb)
-    {
+    if (ctx->last_file_offset_kb > ctx->max_file_offset_kb) {
         ctx->last_file_offset_kb = ctx->max_file_offset_kb;
     }
-    if (ctx->current_file_offset_kb > ctx->max_file_offset_kb)
-    {
+    if (ctx->current_file_offset_kb > ctx->max_file_offset_kb) {
         ctx->current_file_offset_kb = ctx->max_file_offset_kb;
     }
     ctx->flags.at_top_edge = false;
@@ -2019,18 +2230,19 @@ static void handle_save(text_viewer_ctx_t *ctx)
     ctx->flags.content_changed = true;
     set_status(ctx, "Saved");
     update_slider(ctx);
-    return;
+}
 
-save_cleanup:
-    if (src)
-    {
+static void cleanup_save_files(FILE *src, FILE *tmp, const char *tmp_path)
+{
+    if (src) {
         fclose(src);
     }
-    if (tmp)
-    {
+    if (tmp) {
         fclose(tmp);
     }
-    remove(tmp_path);
+    if (tmp_path) {
+        remove(tmp_path);
+    }
 }
 
 static void on_save(lv_event_t *e)
