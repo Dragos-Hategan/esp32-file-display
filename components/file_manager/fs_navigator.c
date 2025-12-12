@@ -448,6 +448,35 @@ static DIR *open_directory_for_window(fs_nav_t *nav);
 static esp_err_t load_window_entries(fs_nav_t *nav, DIR *dir, size_t start, size_t size);
 
 /**
+ * @brief Skip entries up to the requested window start, ignoring "." and "..".
+ */
+static void skip_window_entries(DIR *dir, size_t start);
+
+/**
+ * @brief Load window entries into the navigator item array.
+ *
+ * Stops at the requested size or on allocation failure.
+ */
+static void load_window_items(DIR *dir, fs_nav_t *nav, size_t size, size_t *idx);
+
+/**
+ * @brief Capture errno and close directory after window load.
+ *
+ * @return errno captured prior to close.
+ */
+static int capture_window_errno_and_close(DIR *dir);
+
+/**
+ * @brief Finalize window load: set counts and handle read errors.
+ *
+ * @param nav        Navigator context.
+ * @param idx        Items loaded.
+ * @param load_errno Errno captured after iteration.
+ * @return ESP_OK on success; ESP_FAIL on read errors.
+ */
+static esp_err_t finalize_window_items(fs_nav_t *nav, size_t idx, int load_errno);
+
+/**
  * @brief Read persisted state blob from NVS.
  *
  * @param blob      Out blob destination.
@@ -1450,6 +1479,17 @@ static DIR *open_directory_for_window(fs_nav_t *nav)
 
 static esp_err_t load_window_entries(fs_nav_t *nav, DIR *dir, size_t start, size_t size)
 {
+    skip_window_entries(dir, start);
+
+    size_t idx = 0;
+    load_window_items(dir, nav, size, &idx);
+    int load_errno = capture_window_errno_and_close(dir);
+
+    return finalize_window_items(nav, idx, load_errno);
+}
+
+static void skip_window_entries(DIR *dir, size_t start)
+{
     struct dirent *dent = NULL;
     errno = 0;
     size_t skipped = 0;
@@ -1459,18 +1499,21 @@ static esp_err_t load_window_entries(fs_nav_t *nav, DIR *dir, size_t start, size
         }
         skipped++;
     }
+}
 
-    size_t idx = 0;
+static void load_window_items(DIR *dir, fs_nav_t *nav, size_t size, size_t *idx)
+{
+    struct dirent *dent = NULL;
     errno = 0;
     while ((dent = readdir(dir)) != NULL) {
         if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
             continue;
         }
-        if (idx >= size) {
+        if (*idx >= size) {
             break;
         }
 
-        fs_nav_item_t *dest = &nav->items[idx];
+        fs_nav_item_t *dest = &nav->items[*idx];
         memset(dest, 0, sizeof(*dest));
 
         size_t name_len = strnlen(dent->d_name, FS_NAV_MAX_NAME - 1);
@@ -1487,11 +1530,19 @@ static esp_err_t load_window_entries(fs_nav_t *nav, DIR *dir, size_t start, size
         dest->size_bytes = 0;
         dest->modified = 0;
 
-        idx++;
+        (*idx)++;
     }
+}
+
+static int capture_window_errno_and_close(DIR *dir)
+{
     int load_errno = errno;
     closedir(dir);
+    return load_errno;
+}
 
+static esp_err_t finalize_window_items(fs_nav_t *nav, size_t idx, int load_errno)
+{
     nav->item_count = idx;
 
     if (load_errno != 0) {
