@@ -220,7 +220,7 @@ static void sntp_connect(void);
  *
  * @param ctx Active settings context.
  */
-static void settings_build_screen(settings_ctx_t *ctx);
+static void build_settings_menu(settings_ctx_t *ctx);
 
 /**
  * @brief Show the About overlay with setting descriptions.
@@ -229,7 +229,7 @@ static void settings_build_screen(settings_ctx_t *ctx);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_on_about(lv_event_t *e);
+static void build_on_about_dlg(lv_event_t *e);
 
 /**
  * @brief Close handler for the About overlay.
@@ -238,7 +238,7 @@ static void settings_on_about(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = overlay obj.
  */
-static void settings_on_about_close(lv_event_t *e);
+static void close_on_about_dlg(lv_event_t *e);
 
 /**
  * @brief Update brightness level when the slider value changes.
@@ -247,7 +247,7 @@ static void settings_on_about_close(lv_event_t *e);
  *
  * @param e LVGL event (VALUE_CHANGED) with user data = settings_ctx_t*.
  */
-static void settings_on_brightness_changed(lv_event_t *e);
+static void on_brightness_changed(lv_event_t *e);
 
 /**
  * @brief Back button handler for the settings screen.
@@ -256,7 +256,7 @@ static void settings_on_brightness_changed(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_on_back(lv_event_t *e);
+static void back_from_settings(lv_event_t *e);
 
 /**
  * @brief Close the settings screen and restore the previous screen.
@@ -266,14 +266,14 @@ static void settings_on_back(lv_event_t *e);
  *
  * @param ctx Active settings context.
  */
-static void settings_close(settings_ctx_t *ctx);
+static void close_settings(settings_ctx_t *ctx);
 
 /**
  * @brief Show a restart confirmation overlay.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_restart(lv_event_t *e);
+static void build_restart_ui(lv_event_t *e);
 
 /**
  * @brief Read brightness slider value, clamp to safe bounds, and cache it in context.
@@ -291,7 +291,7 @@ static void update_brightness_value(settings_ctx_t *ctx);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_restart_confirm(lv_event_t *e);
+static void restart_confirm(lv_event_t *e);
 
 /**
  * @brief Close the restart overlay without restarting.
@@ -300,7 +300,7 @@ static void settings_restart_confirm(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_close_restart(lv_event_t *e);
+static void close_restart(lv_event_t *e);
 
 /**
  * @brief Show a reset confirmation overlay.
@@ -309,7 +309,7 @@ static void settings_close_restart(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_reset(lv_event_t *e);
+static void build_reset_ui(lv_event_t *e);
 
 /**
  * @brief Confirm reset, restore defaults, and reinitialize settings.
@@ -319,28 +319,28 @@ static void settings_reset(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_reset_confirm(lv_event_t *e);
+static void reset_confirm(lv_event_t *e);
 
 /**
  * @brief Toggle theme (light/dark) and restart system.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_toggle_theme(lv_event_t *e);
+static void toggle_theme(lv_event_t *e);
 
 /**
  * @brief Open the Wi-Fi & SNTP dialog from the settings screen.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_wifi_sntp_dialog(lv_event_t *e);
+static void wifi_sntp_dialog(lv_event_t *e);
 
 /**
  * @brief Returns whether Wi-Fi auto-connect at startup is enabled.
  *
  * @return true if auto-connect is persisted as enabled; false otherwise.
  */
-bool settings_get_auto_connect_enabled(void);
+static bool get_auto_connect_enabled(void);
 
 /**
  * @brief Persist the Wi-Fi auto-connect preference.
@@ -365,7 +365,7 @@ static void ui_on_startup_switch_changed(lv_event_t *e);
  *
  * @param ctx Active settings context.
  */
-static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx);
+static void build_wifi_sntp_dialog(settings_ctx_t *ctx);
 
 /**
  * @brief Build the confirmation message box for SNTP refresh.
@@ -374,28 +374,28 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx);
  *
  * @param ctx Active settings context.
  */
-static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx);
+static void build_refresh_sntp_msgbox(settings_ctx_t *ctx);
 
 /**
  * @brief Prompt user confirmation to refresh SNTP (requires restart).
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_refresh_sntp(lv_event_t *e);
+static void refresh_sntp(lv_event_t *e);
 
 /**
  * @brief Build the Access Point configuration dialog inside the Wi-Fi overlay.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_build_wifi_connection_dialog(lv_event_t *e);
+static void build_wifi_connection_dialog(lv_event_t *e);
 
 /**
  * @brief Saves theme and other the rest of the custom flags to NVS and restarts.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_theme_confirm_yes(lv_event_t *e);
+static void theme_confirm(lv_event_t *e);
 
 /**
  * @brief Confirm SNTP refresh and flag the request for restart processing.
@@ -404,28 +404,28 @@ static void settings_theme_confirm_yes(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_sntp_confirm_yes(lv_event_t *e);
+static void sntp_confirm(lv_event_t *e);
 
 /**
  * @brief Closes the theme change dialog.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_theme_confirm_no(lv_event_t *e);
+static void theme_not_confirm(lv_event_t *e);
 
 /**
  * @brief Cancel SNTP refresh request and close the confirmation dialog.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_sntp_confirm_no(lv_event_t *e);
+static void sntp_not_confirm(lv_event_t *e);
 
 /**
  * @brief Show and attach the AP keyboard when SSID/password fields gain focus.
  *
  * @param e LVGL event (FOCUSED or CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_on_ap_textarea_focus(lv_event_t *e);
+static void on_ap_textarea_focus(lv_event_t *e);
 
 /**
  * @brief Hide the AP keyboard when tapping outside editable areas.
@@ -434,21 +434,21 @@ static void settings_on_ap_textarea_focus(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_on_ap_background_tap(lv_event_t *e);
+static void on_ap_background_tap(lv_event_t *e);
 
 /**
  * @brief Handle AP keyboard cancel/ready events and hide it when finished.
  *
  * @param e LVGL event (CANCEL or READY) with user data = settings_ctx_t*.
  */
-static void settings_on_ap_keyboard_event(lv_event_t *e);
+static void on_ap_keyboard_event(lv_event_t *e);
 
 /**
  * @brief Detach and hide the AP keyboard, then reset dialog alignment.
  *
  * @param ctx Active settings context.
  */
-static void settings_hide_ap_keyboard(settings_ctx_t *ctx);
+static void hide_ap_keyboard(settings_ctx_t *ctx);
 
 /**
  * @brief Realign the AP dialog to keep the active textarea visible above the keyboard.
@@ -456,7 +456,7 @@ static void settings_hide_ap_keyboard(settings_ctx_t *ctx);
  * @param ctx Active settings context.
  * @param ta  Focused textarea requesting alignment (NULL to reset).
  */
-static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
+static void realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
 
 /**
  * @brief Close the reset confirmation overlay without applying changes.
@@ -465,7 +465,7 @@ static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_close_reset(lv_event_t *e);
+static void close_reset(lv_event_t *e);
 
 /**
  * @brief Launch touch calibration from Settings (async).
@@ -475,14 +475,14 @@ static void settings_close_reset(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_calibration_run_cal(lv_event_t *e);
+static void start_calibration_task(lv_event_t *e);
 
 /**
  * @brief Open the screensaver dialog from settings.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_screensaver(lv_event_t *e);
+static void open_screensaver(lv_event_t *e);
 
 /**
  * @brief Build the screensaver dialog UI and attach it to the top layer.
@@ -490,7 +490,7 @@ static void settings_screensaver(lv_event_t *e);
  * @param ctx Active settings context.
  * @return ESP_OK on success, ESP_ERR_INVALID_ARG if ctx is NULL.
  */
-static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx);
+static esp_err_t build_screensaver_dialog(settings_ctx_t *ctx);
 
 /**
  * @brief Apply screensaver settings from the dialog (Dim/Off).
@@ -499,7 +499,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_apply_screensaver(lv_event_t *e);
+static void apply_screensaver(lv_event_t *e);
 
 /**
  * @brief Validate dim inputs and populate parsed values.
@@ -555,14 +555,14 @@ static bool obtain_screensaver_values(settings_ctx_t *ctx);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_apply_ap_data(lv_event_t *e);
+static void apply_ap_data(lv_event_t *e);
 
 /**
  * @brief Close the screensaver dialog without applying changes.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_close_screensaver(lv_event_t *e);
+static void close_screensaver(lv_event_t *e);
 
 /**
  * @brief Close the Wi-Fi/SNTP connection dialog overlay.
@@ -571,7 +571,7 @@ static void settings_close_screensaver(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_close_connection_dialog(lv_event_t *e);
+static void close_connection_dialog(lv_event_t *e);
 
 /**
  * @brief Close the Access Point configuration dialog and rebuild the Wi-Fi dialog.
@@ -581,7 +581,7 @@ static void settings_close_connection_dialog(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_close_access_point_dialog(lv_event_t *e);
+static void close_access_point_dialog(lv_event_t *e);
 
 /**
  * @brief Background task to run touch calibration and restore UI state.
@@ -589,9 +589,9 @@ static void settings_close_access_point_dialog(lv_event_t *e);
  * Temporarily forces default rotation for calibration, runs @ref calibration_run_cal,
  * restores the previous rotation, and reopens the settings screen.
  *
- * @param param settings_ctx_t* passed from @ref settings_calibration_run_cal.
+ * @param param settings_ctx_t* passed from @ref start_calibration_task.
  */
-static void settings_calibration_task(void *param);
+static void calibration_task(void *param);
 
 /**
  * @brief Clear cached LVGL object pointers in the settings context.
@@ -599,7 +599,7 @@ static void settings_calibration_task(void *param);
  * Call after deleting/cleaning the settings UI to avoid dangling pointers being
  * used by async callbacks (e.g., brightness updates).
  */
-static void settings_clear_ui_refs(settings_ctx_t *ctx);
+static void clear_ui_refs(settings_ctx_t *ctx);
 
 /**
  * @brief Initialize the Non-Volatile Storage (NVS) flash partition.
@@ -750,7 +750,7 @@ static void load_last_saved_configs(void);
  * 
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_rotate_screen(lv_event_t *e);
+static void rotate_screen(lv_event_t *e);
 
 /**
  * @brief Build the date&time dialog overlay and wire its events.
@@ -760,16 +760,16 @@ static void settings_rotate_screen(lv_event_t *e);
  *
  * @param ctx Active settings context (must be non-NULL).
  */
-static void settings_build_date_time_dialog(settings_ctx_t *ctx);
+static void build_date_time_dialog(settings_ctx_t *ctx);
 
 /**
  * @brief Settings button handler to open the date&time dialog.
  *
- * Uses @ref settings_build_date_time_dialog() to display the picker.
+ * Uses @ref build_date_time_dialog() to display the picker.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_set_date_time(lv_event_t *e);
+static void set_date_time(lv_event_t *e);
 
 /**
  * @brief Build the splash screen shown at startup.
@@ -818,7 +818,7 @@ static void save_time_data(void);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_apply_date_time(lv_event_t *e);
+static void apply_date_time(lv_event_t *e);
 
 /**
  * @brief Parse date/time inputs from the dialog, validate, and return as time_t.
@@ -839,19 +839,19 @@ static time_t build_date_time_data(settings_ctx_t *ctx);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_close_set_date_time(lv_event_t *e);
+static void close_set_date_time(lv_event_t *e);
 
 /**
  * @brief OK handler for the invalid-input message box.
  *
  * @param e LVGL event (CLICKED) with user data = msgbox obj.
  */
-static void settings_invalid_ok(lv_event_t *e);
+static void close_invalid_message_mbox(lv_event_t *e);
 
 /**
  * @brief Show a simple "Incorrect Input" message box.
  */
-static void settings_show_invalid_input(void);
+static void show_invalid_input_mbox(void);
 
 /**
  * @brief Parse an integer from text and clamp to a [min, max] range.
@@ -862,35 +862,35 @@ static void settings_show_invalid_input(void);
  * @param out_val Parsed integer on success.
  * @return true if parse and range check succeed; false otherwise.
  */
-static bool settings_parse_int_range(const char *txt, int min, int max, int *out_val);
+static bool parse_int_range(const char *txt, int min, int max, int *out_val);
 
 /**
  * @brief Textarea focus/click handler to prep the keyboard and clear placeholders.
  *
  * @param e LVGL event (FOCUSED/CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_on_dt_textarea_focus(lv_event_t *e);
+static void on_dt_textarea_focus(lv_event_t *e);
 
 /**
  * @brief Overlay/dialog tap handler to hide the keyboard when tapping outside fields.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_on_dt_background_tap(lv_event_t *e);
+static void on_dt_background_tap(lv_event_t *e);
 
 /**
  * @brief Keyboard CANCEL/READY handler to hide the keyboard.
  *
  * @param e LVGL event (CANCEL/READY) with user data = settings_ctx_t*.
  */
-static void settings_on_dt_keyboard_event(lv_event_t *e);
+static void on_dt_keyboard_event(lv_event_t *e);
 
 /**
  * @brief Textarea defocus handler to restore placeholders when left empty.
  *
  * @param e LVGL event (DEFOCUSED) with user data = settings_ctx_t*.
  */
-static void settings_on_dt_textarea_defocus(lv_event_t *e);
+static void on_dt_textarea_defocus(lv_event_t *e);
 
 /**
  * @brief Scroll the dialog so the given field (or its row) stays visible.
@@ -898,40 +898,40 @@ static void settings_on_dt_textarea_defocus(lv_event_t *e);
  * @param ctx Settings context.
  * @param ta  Target textarea to bring into view.
  */
-static void settings_scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta);
+static void scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta);
 
 /**
  * @brief Hide the date&time keyboard and detach it from any textarea.
  *
  * @param ctx Settings context.
  */
-static void settings_hide_dt_keyboard(settings_ctx_t *ctx);
+static void hide_dt_keyboard(settings_ctx_t *ctx);
 
 /**
  * @brief Re-align the date&time dialog based on which textarea is active.
  * @param ctx Settings context.
  * @param ta  Active textarea (NULL to reset to default position).
  */
-static void settings_realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
+static void realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
 
 /**
  * @brief Focus/click handler for screensaver numeric fields (dim delay/percent).
  * @param e LVGL event with user data = settings_ctx_t*.
  */
-static void settings_on_ss_textarea_focus(lv_event_t *e);
+static void on_ss_textarea_focus(lv_event_t *e);
 
 /**
  * @brief Toggle handler for screensaver dim switch to enable/disable related fields.
  * @param e LVGL event (VALUE_CHANGED) with user data = settings_ctx_t*.
  */
-static void settings_on_dim_switch_changed(lv_event_t *e);
+static void on_dim_switch_changed(lv_event_t *e);
 
 /**
  * @brief Apply enabled/disabled state to dimming controls based on switch state.
  * @param ctx Settings context.
  * @param enabled True to enable fields, false to disable.
  */
-static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabled);
+static void update_dim_controls_enabled(settings_ctx_t *ctx, bool enabled);
 
 /**
  * @brief Toggle label style/opacity based on enabled state.
@@ -958,26 +958,26 @@ static void update_textarea(lv_obj_t *ta, bool enabled);
  * @brief Hide the screensaver keyboard and detach it from any textarea.
  * @param ctx Settings context.
  */
-static void settings_hide_ss_keyboard(settings_ctx_t *ctx);
+static void hide_ss_keyboard(settings_ctx_t *ctx);
 
 /**
  * @brief Re-align the screensaver dialog based on which textarea is active.
  * @param ctx Settings context.
  * @param ta  Active textarea (NULL to reset to default position).
  */
-static void settings_realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
+static void realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *ta);
 
 /**
  * @brief Overlay/dialog tap handler for screensaver dialog.
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void settings_on_ss_background_tap(lv_event_t *e);
+static void on_ss_background_tap(lv_event_t *e);
 
 /**
  * @brief Screensaver keyboard CANCEL/READY handler.
  * @param e LVGL event (CANCEL/READY) with user data = settings_ctx_t*.
  */
-static void settings_on_ss_keyboard_event(lv_event_t *e);
+static void on_ss_keyboard_event(lv_event_t *e);
 
 /**
  * @brief Start dim timer; delays and target level for screensaver dim.
@@ -1015,33 +1015,33 @@ static void screensaver_off_stop(void);
  * @brief Toggle handler for screensaver off switch to enable/disable related fields.
  * @param e LVGL event (VALUE_CHANGED) with user data = settings_ctx_t*.
  */
-static void settings_on_off_switch_changed(lv_event_t *e);
+static void on_off_switch_changed(lv_event_t *e);
 
 /**
  * @brief Apply enabled/disabled state to off controls based on switch state.
  * @param ctx Settings context.
  * @param enabled True to enable, false to disable.
  */
-static void settings_update_off_controls_enabled(settings_ctx_t *ctx, bool enabled);
+static void update_off_controls_enabled(settings_ctx_t *ctx, bool enabled);
 
 /**
  * @brief esp_timer callback for delayed screen off.
  * @param arg Unused.
  */
-static void settings_off_timer_cb(void *arg);
+static void off_timer_cb(void *arg);
 
 /**
  * @brief esp_timer callback for delayed screen dim.
  * @param arg Unused.
  */
-static void settings_dim_timer_cb(void *arg);
+static void dim_timer_cb(void *arg);
 
 /**
  * @brief Helper to animate brightness to a target percentage over a duration using esp_timer.
  * @param target_pct Target brightness percent.
  * @param duration_ms Fade duration in milliseconds.
  */
-static void settings_fade_brightness(int target_pct, uint32_t duration_ms);
+static void fade_brightness(int target_pct, uint32_t duration_ms);
 
 /**
  * @brief Handle instant fades (duration 0 or no delta); returns true if handled.
@@ -1084,20 +1084,20 @@ static bool fade_setup_steps(int target_pct, int start, settings_ctx_t *ctx);
  * @brief Fade step timer callback for brightness animation.
  * @param arg Unused.
  */
-static void settings_fade_step_cb(void *arg);
+static void fade_step_cb(void *arg);
 
 /**
  * @brief Sync brightness slider/label to the current brightness value.
  * @param ctx Settings context.
  * @param val Brightness percent to display.
  */
-static void settings_sync_brightness_ui(settings_ctx_t *ctx, int val);
+static void sync_brightness_ui(settings_ctx_t *ctx, int val);
 
 /**
  * @brief Async worker to update brightness UI elements.
  * @param arg Brightness value (cast from uintptr_t).
  */
-static void settings_sync_brightness_ui_async(void *arg);
+static void sync_brightness_ui_async(void *arg);
 
 /**
  * @brief Utility to check if an object is a descendant of another.
@@ -1106,7 +1106,7 @@ static void settings_sync_brightness_ui_async(void *arg);
  * @param maybe_ancestor Candidate ancestor object.
  * @return true if obj is a descendant (or same) as maybe_ancestor; false otherwise.
  */
-static bool settings_is_descendant(lv_obj_t *obj, lv_obj_t *maybe_ancestor);
+static bool is_descendant(lv_obj_t *obj, lv_obj_t *maybe_ancestor);
 
 /**
  * @brief Validate a date considering leap years and month lengths.
@@ -1116,17 +1116,17 @@ static bool settings_is_descendant(lv_obj_t *obj, lv_obj_t *maybe_ancestor);
  * @param day       Day (1..n based on month and leap year).
  * @return true if the date is valid, false otherwise.
  */
-static bool settings_is_valid_date(int year_full, int month, int day);
+static bool is_date_valid(int year_full, int month, int day);
 
 /**
  * @brief Notify registered listeners that time was set via dialog Apply.
  */
-static void settings_notify_time_set(void);
+static void notify_time_set(void);
 
 /**
  * @brief Notify registered listeners that time was reset via settings reset.
  */
-static void settings_notify_time_reset(void);
+static void notify_time_reset(void);
 
 /**
  * @brief Restore system time from NVS only after a software reset; clear otherwise.
@@ -1143,12 +1143,12 @@ static void persist_time_to_nvs(time_t epoch);
 /**
  * @brief Erase the stored time key from NVS.
  */
-static void settings_clear_time_in_nvs(void);
+static void clear_time_in_nvs(void);
 
 /**
  * @brief Remove the stored "time valid" flag from NVS.
  */
-static void settings_clear_valid_time_flag_in_nvs(void);
+static void clear_valid_time_flag_in_nvs(void);
 
 /**
  * @brief Persist the "time valid" flag to NVS.
@@ -1294,7 +1294,7 @@ esp_err_t settings_open_settings(lv_obj_t *return_screen)
 
     settings_ctx_t *ctx = &s_settings_ctx;
     if (!ctx->graphics.screen){
-        settings_build_screen(ctx);
+        build_settings_menu(ctx);
     }
 
     ctx->active = true;
@@ -1308,14 +1308,14 @@ void settings_show_date_time_dialog(lv_obj_t *return_screen)
 {
     settings_ctx_t *ctx = &s_settings_ctx;
     ctx->graphics.return_screen = return_screen;
-    settings_build_date_time_dialog(ctx);
+    build_date_time_dialog(ctx);
 }
 
 void settings_show_sntp_dialog(lv_obj_t *return_screen)
 {
     settings_ctx_t *ctx = &s_settings_ctx;
     ctx->graphics.return_screen = return_screen;
-    settings_build_wifi_sntp_dialog(ctx);
+    build_wifi_sntp_dialog(ctx);
 }
 
 void settings_register_time_callbacks(void (*on_time_set)(void),
@@ -1353,7 +1353,7 @@ void settings_fade_to_saved_brightness(void)
     int target = s_settings_ctx.settings.display.saved_brightness;
     if (target < SETTINGS_MINIMUM_BRIGHTNESS) target = SETTINGS_MINIMUM_BRIGHTNESS;
     if (target > 100) target = 100;
-    settings_fade_brightness(target, SETTINGS_UP_FADE_MS);
+    fade_brightness(target, SETTINGS_UP_FADE_MS);
 }
 
 void settings_start_screensaver_timers(void)
@@ -1481,7 +1481,7 @@ static void startup_splash_screen(void)
     vTaskDelay(pdMS_TO_TICKS(1350));   
 }
 
-static void settings_build_screen(settings_ctx_t *ctx)
+static void build_settings_menu(settings_ctx_t *ctx)
 {
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
@@ -1507,7 +1507,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(back_btn, 6, 0);
     lv_obj_set_style_pad_all(back_btn, 6, 0);    
     styles_set_button(back_btn);
-    lv_obj_add_event_cb(back_btn, settings_on_back, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(back_btn, back_from_settings, LV_EVENT_CLICKED, ctx);
     lv_obj_t *back_lbl = lv_label_create(back_btn);
     lv_label_set_text(back_lbl, LV_SYMBOL_LEFT " Back");
     lv_obj_center(back_lbl);
@@ -1516,7 +1516,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(about_btn, 6, 0);
     lv_obj_set_style_pad_all(about_btn, 6, 0);   
     styles_set_button(about_btn); 
-    lv_obj_add_event_cb(about_btn, settings_on_about, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(about_btn, build_on_about_dlg, LV_EVENT_CLICKED, ctx);
     lv_obj_t *about_lbl = lv_label_create(about_btn);
     lv_label_set_text(about_lbl, "About");
     lv_obj_center(about_lbl);    
@@ -1569,7 +1569,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_width(ctx->graphics.brightness_slider, LV_PCT(90));
     lv_slider_set_range(ctx->graphics.brightness_slider, SETTINGS_MINIMUM_BRIGHTNESS, 100);
     lv_slider_set_value(ctx->graphics.brightness_slider, ctx->settings.display.brightness, LV_ANIM_OFF);
-    lv_obj_add_event_cb(ctx->graphics.brightness_slider, settings_on_brightness_changed, LV_EVENT_VALUE_CHANGED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.brightness_slider, on_brightness_changed, LV_EVENT_VALUE_CHANGED, ctx);
     styles_set_slider(ctx->graphics.brightness_slider);
     lv_obj_set_style_bg_opa(ctx->graphics.brightness_slider, LV_OPA_60, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(ctx->graphics.brightness_slider, LV_OPA_COVER, LV_PART_INDICATOR);
@@ -1598,7 +1598,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(screen_saver_button, 8, 0);
     lv_obj_set_style_pad_all(screen_saver_button, 6, 0); 
     styles_set_button(screen_saver_button);
-    lv_obj_add_event_cb(screen_saver_button, settings_screensaver, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(screen_saver_button, open_screensaver, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(screen_saver_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *screen_saver_lbl = lv_label_create(screen_saver_button);
     lv_label_set_text(screen_saver_lbl, "Screensaver");
@@ -1609,7 +1609,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(theme_button, 8, 0);
     lv_obj_set_style_pad_all(theme_button, 6, 0);  
     styles_set_button(theme_button);  
-    lv_obj_add_event_cb(theme_button, settings_toggle_theme, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(theme_button, toggle_theme, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(theme_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *theme_lbl = lv_label_create(theme_button);
     lv_label_set_text(theme_lbl, "Change Theme");
@@ -1629,7 +1629,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(set_date_time_button, 8, 0);
     lv_obj_set_style_pad_all(set_date_time_button, 6, 0);  
     styles_set_button(set_date_time_button);  
-    lv_obj_add_event_cb(set_date_time_button, settings_set_date_time, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(set_date_time_button, set_date_time, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(set_date_time_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *set_date_time_lbl = lv_label_create(set_date_time_button);
     lv_label_set_text(set_date_time_lbl, "Manual Date&Time");
@@ -1640,7 +1640,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(connection_button, 8, 0);
     lv_obj_set_style_pad_all(connection_button, 6, 0);
     styles_set_button(connection_button);    
-    lv_obj_add_event_cb(connection_button, settings_wifi_sntp_dialog, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(connection_button, wifi_sntp_dialog, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(connection_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *connection_lbl = lv_label_create(connection_button);
     lv_label_set_text(connection_lbl, "Wi-Fi & SNTP");
@@ -1660,7 +1660,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(rotate_button, 8, 0);
     lv_obj_set_style_pad_all(rotate_button, 6, 0);    
     styles_set_button(rotate_button);
-    lv_obj_add_event_cb(rotate_button, settings_rotate_screen, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(rotate_button, rotate_screen, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(rotate_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *rotate_lbl = lv_label_create(rotate_button);
     lv_label_set_text(rotate_lbl, "Rotate Screen");
@@ -1671,7 +1671,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(calibration_button, 8, 0);
     lv_obj_set_style_pad_all(calibration_button, 6, 0); 
     styles_set_button(calibration_button);
-    lv_obj_add_event_cb(calibration_button, settings_calibration_run_cal, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(calibration_button, start_calibration_task, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(calibration_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *calibration_lbl = lv_label_create(calibration_button);
     lv_label_set_text(calibration_lbl, "Run Calibration");
@@ -1691,7 +1691,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(restart_button, 8, 0);
     lv_obj_set_style_pad_all(restart_button, 6, 0);  
     styles_set_button(restart_button);  
-    lv_obj_add_event_cb(restart_button, settings_restart, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(restart_button, build_restart_ui, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(restart_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *restart_lbl = lv_label_create(restart_button);
     lv_label_set_text(restart_lbl, "Restart");
@@ -1702,14 +1702,14 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_radius(reset_button, 8, 0);
     lv_obj_set_style_pad_all(reset_button, 6, 0);
     styles_set_button(reset_button);    
-    lv_obj_add_event_cb(reset_button, settings_reset, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(reset_button, build_reset_ui, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(reset_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *reset_lbl = lv_label_create(reset_button);
     lv_label_set_text(reset_lbl, "Reset");
     lv_obj_center(reset_lbl);      
 }
 
-static void settings_on_about(lv_event_t *e)
+static void build_on_about_dlg(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx)
@@ -1778,10 +1778,10 @@ static void settings_on_about(lv_event_t *e)
     lv_label_set_text(close_lbl, "Close");
     lv_obj_center(close_lbl);
 
-    lv_obj_add_event_cb(close_btn, settings_on_about_close, LV_EVENT_CLICKED, overlay);
+    lv_obj_add_event_cb(close_btn, close_on_about_dlg, LV_EVENT_CLICKED, overlay);
 }
 
-static void settings_on_about_close(lv_event_t *e)
+static void close_on_about_dlg(lv_event_t *e)
 {
     lv_obj_t *overlay = lv_event_get_user_data(e);
     if (overlay) {
@@ -1789,7 +1789,7 @@ static void settings_on_about_close(lv_event_t *e)
     }
 }
 
-static void settings_on_back(lv_event_t *e)
+static void back_from_settings(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx)
@@ -1798,10 +1798,10 @@ static void settings_on_back(lv_event_t *e)
     }
 
     settings_start_screensaver_timers();
-    settings_close(ctx);
+    close_settings(ctx);
 }
 
-static void settings_close(settings_ctx_t *ctx)
+static void close_settings(settings_ctx_t *ctx)
 {
     if (ctx && ctx->graphics.brightness_slider) {
         update_brightness_value(ctx);
@@ -1821,7 +1821,7 @@ static void settings_close(settings_ctx_t *ctx)
         lv_screen_load(ctx->graphics.return_screen);
     }    
     lv_obj_del(ctx->graphics.screen);
-    settings_clear_ui_refs(ctx);
+    clear_ui_refs(ctx);
     ctx->active = false;
     ctx->graphics.screen = NULL;
 }
@@ -2304,7 +2304,7 @@ static void load_last_saved_configs()
     load_time_from_nvs();
 }
 
-static void settings_rotate_screen(lv_event_t *e)
+static void rotate_screen(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx)
@@ -2316,7 +2316,7 @@ static void settings_rotate_screen(lv_event_t *e)
     apply_rotation_to_display(false);
 }
 
-static void settings_build_date_time_dialog(settings_ctx_t *ctx)
+static void build_date_time_dialog(settings_ctx_t *ctx)
 {
     if (!ctx) {
         return;
@@ -2342,7 +2342,7 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    lv_obj_add_event_cb(overlay, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(overlay, on_dt_background_tap, LV_EVENT_CLICKED, ctx);
     ctx->graphics.datetime_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
@@ -2356,7 +2356,7 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_add_flag(dlg, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_scroll_dir(dlg, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(dlg, on_dt_background_tap, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_bg_opa(dlg, LV_OPA_COVER, 0);
     styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
@@ -2392,9 +2392,9 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_max_length(ctx->graphics.dt_month_ta, 2);
     lv_textarea_set_text(ctx->graphics.dt_month_ta, "MM");
     styles_set_textarea(ctx->graphics.dt_month_ta);
-    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     lv_obj_t *slash1 = lv_label_create(row_date);
     lv_label_set_text(slash1, "/");
@@ -2406,9 +2406,9 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_max_length(ctx->graphics.dt_day_ta, 2);
     lv_textarea_set_text(ctx->graphics.dt_day_ta, "DD");
     styles_set_textarea(ctx->graphics.dt_day_ta);
-    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     lv_obj_t *slash2 = lv_label_create(row_date);
     lv_label_set_text(slash2, "/");
@@ -2420,9 +2420,9 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_max_length(ctx->graphics.dt_year_ta, 2);
     lv_textarea_set_text(ctx->graphics.dt_year_ta, "YY");
     styles_set_textarea(ctx->graphics.dt_year_ta);
-    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     /* Time row */
     lv_obj_t *row_time = lv_obj_create(dlg);
@@ -2446,9 +2446,9 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_max_length(ctx->graphics.dt_hour_ta, 2);
     lv_textarea_set_text(ctx->graphics.dt_hour_ta, "HH");
     styles_set_textarea(ctx->graphics.dt_hour_ta);
-    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     lv_obj_t *colon = lv_label_create(row_time);
     lv_label_set_text(colon, ":");
@@ -2460,9 +2460,9 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_textarea_set_max_length(ctx->graphics.dt_min_ta, 2);
     lv_textarea_set_text(ctx->graphics.dt_min_ta, "MM");
     styles_set_textarea(ctx->graphics.dt_min_ta);
-    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     /* Action row */
     lv_obj_t *row_actions = lv_obj_create(dlg);
@@ -2483,7 +2483,7 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_center(apply_lbl);
     lv_obj_add_flag(apply_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     styles_set_button(apply_btn);
-    lv_obj_add_event_cb(apply_btn, settings_apply_date_time, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(apply_btn, apply_date_time, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_button_create(row_actions);
     lv_obj_set_flex_grow(cancel_btn, 1);
@@ -2493,7 +2493,7 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_center(cancel_lbl);
     lv_obj_add_flag(cancel_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, settings_close_set_date_time, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, close_set_date_time, LV_EVENT_CLICKED, ctx);
 
     /* Keyboard anchored to bottom of overlay */
     ctx->graphics.dt_keyboard = lv_keyboard_create(overlay);
@@ -2502,22 +2502,22 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_keyboard_set_textarea(ctx->graphics.dt_keyboard, NULL);
     lv_obj_add_flag(ctx->graphics.dt_keyboard, LV_OBJ_FLAG_FLOATING);
     lv_obj_add_flag(ctx->graphics.dt_keyboard, LV_OBJ_FLAG_HIDDEN); /* show only after a field is tapped */
-    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, settings_on_dt_keyboard_event, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, settings_on_dt_keyboard_event, LV_EVENT_READY, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, on_dt_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, on_dt_keyboard_event, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, on_dt_keyboard_event, LV_EVENT_READY, ctx);
     lv_obj_align(ctx->graphics.dt_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 }
 
-static void settings_set_date_time(lv_event_t *e)
+static void set_date_time(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
         return;
     }
-    settings_build_date_time_dialog(ctx);
+    build_date_time_dialog(ctx);
 }
 
-static void settings_close_set_date_time(lv_event_t *e)
+static void close_set_date_time(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);  
     if (ctx && ctx->graphics.datetime_overlay) {
@@ -2545,18 +2545,18 @@ static time_t build_date_time_data(settings_ctx_t *ctx)
     const char *hour_txt = ctx->graphics.dt_hour_ta ? lv_textarea_get_text(ctx->graphics.dt_hour_ta) : NULL;
     const char *min_txt = ctx->graphics.dt_min_ta ? lv_textarea_get_text(ctx->graphics.dt_min_ta) : NULL;
     
-    if (!settings_parse_int_range(month_txt, 1, 12, &month) ||
-        !settings_parse_int_range(day_txt, 1, 31, &day) ||
-        !settings_parse_int_range(year_txt, 0, 99, &year) ||
-        !settings_parse_int_range(hour_txt, 0, 23, &hour) ||
-        !settings_parse_int_range(min_txt, 0, 59, &minute)) {
-        settings_show_invalid_input();
+    if (!parse_int_range(month_txt, 1, 12, &month) ||
+        !parse_int_range(day_txt, 1, 31, &day) ||
+        !parse_int_range(year_txt, 0, 99, &year) ||
+        !parse_int_range(hour_txt, 0, 23, &hour) ||
+        !parse_int_range(min_txt, 0, 59, &minute)) {
+        show_invalid_input_mbox();
         return -1;
     }
     
     int year_full = 2000 + year;
-    if (!settings_is_valid_date(year_full, month, day)) {
-        settings_show_invalid_input();
+    if (!is_date_valid(year_full, month, day)) {
+        show_invalid_input_mbox();
         return -1;
     }
     
@@ -2567,7 +2567,7 @@ static time_t build_date_time_data(settings_ctx_t *ctx)
     ctx->settings.time.dt_hour = hour;
     ctx->settings.time.dt_month = month;
     ctx->settings.time.dt_minute = minute;
-    settings_notify_time_set();
+    notify_time_set();
     
     struct tm tm_set = {
         .tm_year = year_full - 1900, /* YY -> 20YY */
@@ -2589,7 +2589,7 @@ static time_t build_date_time_data(settings_ctx_t *ctx)
     return t;
 }
 
-static void settings_apply_date_time(lv_event_t *e)
+static void apply_date_time(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -2751,7 +2751,7 @@ static void apply_timezone(void)
     tzset();
 }
 
-static bool settings_parse_int_range(const char *txt, int min, int max, int *out_val)
+static bool parse_int_range(const char *txt, int min, int max, int *out_val)
 {
     if (!txt || !out_val) {
         return false;
@@ -2768,7 +2768,7 @@ static bool settings_parse_int_range(const char *txt, int min, int max, int *out
     return true;
 }
 
-static void settings_invalid_ok(lv_event_t *e)
+static void close_invalid_message_mbox(lv_event_t *e)
 {
     lv_obj_t *mbox = lv_event_get_user_data(e);
     if (mbox) {
@@ -2776,7 +2776,7 @@ static void settings_invalid_ok(lv_event_t *e)
     }
 }
 
-static void settings_show_invalid_input(void)
+static void show_invalid_input_mbox(void)
 {
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
@@ -2791,10 +2791,10 @@ static void settings_show_invalid_input(void)
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "OK");
     styles_set_button(ok_btn);
-    lv_obj_add_event_cb(ok_btn, settings_invalid_ok, LV_EVENT_CLICKED, mbox);
+    lv_obj_add_event_cb(ok_btn, close_invalid_message_mbox, LV_EVENT_CLICKED, mbox);
 }
 
-static void settings_on_dt_textarea_focus(lv_event_t *e)
+static void on_dt_textarea_focus(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.dt_keyboard) {
@@ -2808,11 +2808,11 @@ static void settings_on_dt_textarea_focus(lv_event_t *e)
     }
     lv_keyboard_set_textarea(ctx->graphics.dt_keyboard, ta);
     lv_obj_clear_flag(ctx->graphics.dt_keyboard, LV_OBJ_FLAG_HIDDEN);
-    settings_realign_dt_dialog(ctx, ta);
-    settings_scroll_field_into_view(ctx, ta);
+    realign_dt_dialog(ctx, ta);
+    scroll_field_into_view(ctx, ta);
 }
 
-static void settings_on_dt_background_tap(lv_event_t *e)
+static void on_dt_background_tap(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -2820,31 +2820,31 @@ static void settings_on_dt_background_tap(lv_event_t *e)
     }
 
     lv_obj_t *target = lv_event_get_target(e);
-    if (settings_is_descendant(target, ctx->graphics.dt_keyboard)) {
+    if (is_descendant(target, ctx->graphics.dt_keyboard)) {
         return;
     }
-    if (settings_is_descendant(target, ctx->graphics.dt_month_ta) ||
-        settings_is_descendant(target, ctx->graphics.dt_day_ta) ||
-        settings_is_descendant(target, ctx->graphics.dt_year_ta) ||
-        settings_is_descendant(target, ctx->graphics.dt_hour_ta) ||
-        settings_is_descendant(target, ctx->graphics.dt_min_ta)) {
+    if (is_descendant(target, ctx->graphics.dt_month_ta) ||
+        is_descendant(target, ctx->graphics.dt_day_ta) ||
+        is_descendant(target, ctx->graphics.dt_year_ta) ||
+        is_descendant(target, ctx->graphics.dt_hour_ta) ||
+        is_descendant(target, ctx->graphics.dt_min_ta)) {
         return;
     }
 
-    settings_hide_dt_keyboard(ctx);
+    hide_dt_keyboard(ctx);
 }
 
-static void settings_hide_dt_keyboard(settings_ctx_t *ctx)
+static void hide_dt_keyboard(settings_ctx_t *ctx)
 {
     if (!ctx || !ctx->graphics.dt_keyboard) {
         return;
     }
     lv_keyboard_set_textarea(ctx->graphics.dt_keyboard, NULL);
     lv_obj_add_flag(ctx->graphics.dt_keyboard, LV_OBJ_FLAG_HIDDEN);
-    settings_realign_dt_dialog(ctx, NULL);
+    realign_dt_dialog(ctx, NULL);
 }
 
-static void settings_realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
+static void realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
 {
     if (!ctx || !ctx->graphics.dt_dialog || !lv_obj_is_valid(ctx->graphics.dt_dialog)) {
         return;
@@ -2879,17 +2879,17 @@ static void settings_realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
     lv_obj_align(ctx->graphics.dt_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
-static void settings_hide_ss_keyboard(settings_ctx_t *ctx)
+static void hide_ss_keyboard(settings_ctx_t *ctx)
 {
     if (!ctx || !ctx->graphics.ss_keyboard) {
         return;
     }
     lv_keyboard_set_textarea(ctx->graphics.ss_keyboard, NULL);
     lv_obj_add_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_HIDDEN);
-    settings_realign_screensaver_dialog(ctx, NULL);
+    realign_screensaver_dialog(ctx, NULL);
 }
 
-static void settings_realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
+static void realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
 {
     if (!ctx || !ctx->graphics.screensaver_dialog || !lv_obj_is_valid(ctx->graphics.screensaver_dialog)) {
         return;
@@ -2924,7 +2924,7 @@ static void settings_realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *t
     lv_obj_align(ctx->graphics.screensaver_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
-static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
+static void realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
 {
     if (!ctx || !ctx->graphics.access_point_dialog || !lv_obj_is_valid(ctx->graphics.access_point_dialog)) {
         return;
@@ -2953,16 +2953,16 @@ static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
     lv_obj_align(ctx->graphics.access_point_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
-static void settings_on_dt_keyboard_event(lv_event_t *e)
+static void on_dt_keyboard_event(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
         return;
     }
-    settings_hide_dt_keyboard(ctx);
+    hide_dt_keyboard(ctx);
 }
 
-static void settings_on_ss_background_tap(lv_event_t *e)
+static void on_ss_background_tap(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -2970,38 +2970,38 @@ static void settings_on_ss_background_tap(lv_event_t *e)
     }
 
     lv_obj_t *target = lv_event_get_target(e);
-    if (settings_is_descendant(target, ctx->graphics.ss_keyboard)) {
+    if (is_descendant(target, ctx->graphics.ss_keyboard)) {
         return;
     }
-    if (settings_is_descendant(target, ctx->graphics.ss_dim_after_ta) ||
-        settings_is_descendant(target, ctx->graphics.ss_dim_pct_ta) ||
-        settings_is_descendant(target, ctx->graphics.ss_off_after_ta)) {
+    if (is_descendant(target, ctx->graphics.ss_dim_after_ta) ||
+        is_descendant(target, ctx->graphics.ss_dim_pct_ta) ||
+        is_descendant(target, ctx->graphics.ss_off_after_ta)) {
         return;
     }
 
-    settings_hide_ss_keyboard(ctx);
+    hide_ss_keyboard(ctx);
 }
 
-static void settings_on_ss_keyboard_event(lv_event_t *e)
+static void on_ss_keyboard_event(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
         return;
     }
-    settings_hide_ss_keyboard(ctx);
+    hide_ss_keyboard(ctx);
 }
 
-static void settings_hide_ap_keyboard(settings_ctx_t *ctx)
+static void hide_ap_keyboard(settings_ctx_t *ctx)
 {
     if (!ctx || !ctx->graphics.access_point_keyboard) {
         return;
     }
     lv_keyboard_set_textarea(ctx->graphics.access_point_keyboard, NULL);
     lv_obj_add_flag(ctx->graphics.access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
-    settings_realign_ap_dialog(ctx, NULL);
+    realign_ap_dialog(ctx, NULL);
 }
 
-static void settings_on_ap_background_tap(lv_event_t *e)
+static void on_ap_background_tap(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -3009,18 +3009,18 @@ static void settings_on_ap_background_tap(lv_event_t *e)
     }
 
     lv_obj_t *target = lv_event_get_target(e);
-    if (settings_is_descendant(target, ctx->graphics.access_point_keyboard)) {
+    if (is_descendant(target, ctx->graphics.access_point_keyboard)) {
         return;
     }
     lv_obj_t *attached = ctx->graphics.access_point_keyboard ? lv_keyboard_get_textarea(ctx->graphics.access_point_keyboard) : NULL;
-    if (settings_is_descendant(target, attached)) {
+    if (is_descendant(target, attached)) {
         return;
     }
 
-    settings_hide_ap_keyboard(ctx);
+    hide_ap_keyboard(ctx);
 }
 
-static void settings_on_ap_keyboard_event(lv_event_t *e)
+static void on_ap_keyboard_event(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -3029,16 +3029,16 @@ static void settings_on_ap_keyboard_event(lv_event_t *e)
 
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CANCEL) {
-        settings_hide_ap_keyboard(ctx);
+        hide_ap_keyboard(ctx);
         return;
     }
 
     if (code == LV_EVENT_READY){
-        settings_hide_ap_keyboard(ctx);
+        hide_ap_keyboard(ctx);
     }
 }
 
-static void settings_on_ap_textarea_focus(lv_event_t *e)
+static void on_ap_textarea_focus(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
@@ -3058,11 +3058,11 @@ static void settings_on_ap_textarea_focus(lv_event_t *e)
 
     lv_keyboard_set_textarea(ctx->graphics.access_point_keyboard, ta);
     lv_obj_clear_flag(ctx->graphics.access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
-    settings_realign_ap_dialog(ctx, ta);
+    realign_ap_dialog(ctx, ta);
     lv_obj_scroll_to_view(ta, LV_ANIM_ON);
 }
 
-static void settings_on_ss_textarea_focus(lv_event_t *e)
+static void on_ss_textarea_focus(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
@@ -3081,11 +3081,11 @@ static void settings_on_ss_textarea_focus(lv_event_t *e)
     }
     lv_keyboard_set_textarea(ctx->graphics.ss_keyboard, ta);
     lv_obj_clear_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_HIDDEN);
-    settings_realign_screensaver_dialog(ctx, ta);
+    realign_screensaver_dialog(ctx, ta);
     lv_obj_scroll_to_view(ta, LV_ANIM_ON);
 }
 
-static void settings_on_dim_switch_changed(lv_event_t *e)
+static void on_dim_switch_changed(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -3094,12 +3094,12 @@ static void settings_on_dim_switch_changed(lv_event_t *e)
     lv_obj_t *sw = lv_event_get_target(e);
     bool enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
     if (!enabled) {
-        settings_hide_ss_keyboard(ctx);
+        hide_ss_keyboard(ctx);
     }
-    settings_update_dim_controls_enabled(ctx, enabled);
+    update_dim_controls_enabled(ctx, enabled);
 }
 
-static void settings_on_off_switch_changed(lv_event_t *e)
+static void on_off_switch_changed(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -3108,9 +3108,9 @@ static void settings_on_off_switch_changed(lv_event_t *e)
     lv_obj_t *sw = lv_event_get_target(e);
     bool enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
     if (!enabled) {
-        settings_hide_ss_keyboard(ctx);
+        hide_ss_keyboard(ctx);
     }
-    settings_update_off_controls_enabled(ctx, enabled);
+    update_off_controls_enabled(ctx, enabled);
 }
 
 static void update_label(lv_obj_t *lbl, bool enabled)
@@ -3149,7 +3149,7 @@ static void update_textarea(lv_obj_t *ta, bool enabled)
     }
 }
 
-static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabled)
+static void update_dim_controls_enabled(settings_ctx_t *ctx, bool enabled)
 {
     if (!ctx) {
         return;
@@ -3184,7 +3184,7 @@ static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabl
     }
 }
 
-static void settings_update_off_controls_enabled(settings_ctx_t *ctx, bool enabled)
+static void update_off_controls_enabled(settings_ctx_t *ctx, bool enabled)
 {
     if (!ctx) {
         return;
@@ -3245,13 +3245,13 @@ static void screensaver_start_timer(esp_timer_handle_t *timer_handle, esp_timer_
 static void screensaver_dim_start(int seconds)
 {
     ESP_LOGD(TAG, "Start dim timer: %ds", seconds);
-    screensaver_start_timer(&s_ss_dim_timer, settings_dim_timer_cb, "ss_dim", seconds);
+    screensaver_start_timer(&s_ss_dim_timer, dim_timer_cb, "ss_dim", seconds);
 }
 
 static void screensaver_off_start(int seconds)
 {
     ESP_LOGD(TAG, "Start screen-off timer: %ds", seconds);
-    screensaver_start_timer(&s_ss_off_timer, settings_off_timer_cb, "ss_off", seconds);
+    screensaver_start_timer(&s_ss_off_timer, off_timer_cb, "ss_off", seconds);
 }
 
 static void screensaver_dim_stop(void)
@@ -3272,21 +3272,21 @@ static void screensaver_off_stop(void)
     if (s_ss_off_timer) {
         esp_timer_stop(s_ss_off_timer);
     }
-    settings_fade_brightness(s_settings_ctx.settings.display.brightness, 0); /* stop any ongoing fade */
+    fade_brightness(s_settings_ctx.settings.display.brightness, 0); /* stop any ongoing fade */
 }
 
-static void settings_dim_timer_cb(void *arg)
+static void dim_timer_cb(void *arg)
 {
     (void)arg;
     ESP_LOGD(TAG, "Dim timer fired: fading to dim level");
-    settings_fade_brightness(s_settings_ctx.settings.display.dim_level, SETTINGS_DIM_FADE_MS);
+    fade_brightness(s_settings_ctx.settings.display.dim_level, SETTINGS_DIM_FADE_MS);
 }
 
-static void settings_off_timer_cb(void *arg)
+static void off_timer_cb(void *arg)
 {
     (void)arg;
     ESP_LOGD(TAG, "Off timer fired: fading screen off");
-    settings_fade_brightness(0, SETTINGS_OFF_FADE_MS);
+    fade_brightness(0, SETTINGS_OFF_FADE_MS);
 }
 
 static bool fade_ensure_timer_ready(void)
@@ -3295,7 +3295,7 @@ static bool fade_ensure_timer_ready(void)
         esp_timer_stop(s_fade_timer);
     } else {
         const esp_timer_create_args_t args = {
-            .callback = settings_fade_step_cb,
+            .callback = fade_step_cb,
             .arg = NULL,
             .dispatch_method = ESP_TIMER_TASK,
             .name = "fade",
@@ -3317,7 +3317,7 @@ static bool fade_setup_steps(int target_pct, int start, settings_ctx_t *ctx)
     if (s_fade_steps_left == 0) {
         ctx->settings.display.brightness = target_pct;
         bsp_display_brightness_set(target_pct);
-        settings_sync_brightness_ui(ctx, target_pct);
+        sync_brightness_ui(ctx, target_pct);
         return false;
     }
 
@@ -3329,7 +3329,7 @@ static bool fade_handle_instant_update(uint32_t duration_ms, int target_pct, int
     if (duration_ms == 0 || start == target_pct) {
         ctx->settings.display.brightness = target_pct;
         bsp_display_brightness_set(target_pct);
-        settings_sync_brightness_ui(ctx, target_pct);
+        sync_brightness_ui(ctx, target_pct);
         if (!rising) {
             s_wake_in_progress = false;
         }
@@ -3339,7 +3339,7 @@ static bool fade_handle_instant_update(uint32_t duration_ms, int target_pct, int
     return false;
 }
 
-static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
+static void fade_brightness(int target_pct, uint32_t duration_ms)
 {
     settings_ctx_t *ctx = &s_settings_ctx;
     if (target_pct > 100) target_pct = 100;
@@ -3365,7 +3365,7 @@ static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
     }
 }
 
-static void settings_fade_step_cb(void *arg)
+static void fade_step_cb(void *arg)
 {
     (void)arg;
     if (s_fade_steps_left <= 0) {
@@ -3374,7 +3374,7 @@ static void settings_fade_step_cb(void *arg)
         }
         s_settings_ctx.settings.display.brightness = s_fade_target;
         bsp_display_brightness_set(s_fade_target);
-        settings_sync_brightness_ui(&s_settings_ctx, s_fade_target);
+        sync_brightness_ui(&s_settings_ctx, s_fade_target);
         ESP_LOGD(TAG, "Fade complete -> %d", s_fade_target);
         s_wake_in_progress = false;
         return;
@@ -3388,13 +3388,13 @@ static void settings_fade_step_cb(void *arg)
     s_fade_steps_left--;
 }
 
-static void settings_sync_brightness_ui(settings_ctx_t *ctx, int val)
+static void sync_brightness_ui(settings_ctx_t *ctx, int val)
 {
     (void)ctx;
-    lv_async_call(settings_sync_brightness_ui_async, (void *)(uintptr_t)val);
+    lv_async_call(sync_brightness_ui_async, (void *)(uintptr_t)val);
 }
 
-static void settings_sync_brightness_ui_async(void *arg)
+static void sync_brightness_ui_async(void *arg)
 {
     int val = (int)(uintptr_t)arg;
     if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
@@ -3416,7 +3416,7 @@ static void settings_sync_brightness_ui_async(void *arg)
     }
 }
 
-static void settings_scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta)
+static void scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta)
 {
     if (!ctx || !ctx->graphics.dt_dialog || !ta) {
         return;
@@ -3428,7 +3428,7 @@ static void settings_scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta)
     lv_obj_scroll_to_view(target, LV_ANIM_ON);
 }
 
-static void settings_on_dt_textarea_defocus(lv_event_t *e)
+static void on_dt_textarea_defocus(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -3450,10 +3450,10 @@ static void settings_on_dt_textarea_defocus(lv_event_t *e)
     } else if (ta == ctx->graphics.dt_min_ta) {
         lv_textarea_set_text(ta, "MM");
     }
-    settings_scroll_field_into_view(ctx, ta);
+    scroll_field_into_view(ctx, ta);
 }
 
-static bool settings_is_descendant(lv_obj_t *obj, lv_obj_t *maybe_ancestor)
+static bool is_descendant(lv_obj_t *obj, lv_obj_t *maybe_ancestor)
 {
     if (!obj || !maybe_ancestor) {
         return false;
@@ -3468,7 +3468,7 @@ static bool settings_is_descendant(lv_obj_t *obj, lv_obj_t *maybe_ancestor)
     return false;
 }
 
-static bool settings_is_valid_date(int year_full, int month, int day)
+static bool is_date_valid(int year_full, int month, int day)
 {
     if (month < 1 || month > 12 || day < 1) {
         return false;
@@ -3483,14 +3483,14 @@ static bool settings_is_valid_date(int year_full, int month, int day)
     return day <= days_in_month[month - 1];
 }
 
-static void settings_notify_time_set(void)
+static void notify_time_set(void)
 {
     if (s_time_set_cb) {
         s_time_set_cb();
     }
 }
 
-static void settings_notify_time_reset(void)
+static void notify_time_reset(void)
 {
     if (s_time_reset_cb) {
         s_time_reset_cb();
@@ -3508,7 +3508,7 @@ static void persist_time_to_nvs(time_t epoch)
     nvs_close(h);
 }
 
-static void settings_clear_time_in_nvs(void)
+static void clear_time_in_nvs(void)
 {
     nvs_handle_t h;
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
@@ -3530,7 +3530,7 @@ static void persist_valid_time_flag_to_nvs(void)
     nvs_close(h);
 }
 
-static void settings_clear_valid_time_flag_in_nvs(void)
+static void clear_valid_time_flag_in_nvs(void)
 {
     nvs_handle_t h;
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
@@ -3705,10 +3705,10 @@ static void load_time_from_nvs(void)
 {
     esp_reset_reason_t reason = esp_reset_reason();
     if (reason != ESP_RST_SW) {
-        settings_clear_time_in_nvs();
+        clear_time_in_nvs();
         s_settings_ctx.settings.display.time_valid = false;
-        settings_clear_valid_time_flag_in_nvs();
-        settings_notify_time_reset();
+        clear_valid_time_flag_in_nvs();
+        notify_time_reset();
         return;
     }
 
@@ -3730,10 +3730,10 @@ static void load_time_from_nvs(void)
     settimeofday(&tv, NULL);
     s_settings_ctx.settings.display.time_valid = true;
     persist_valid_time_flag_to_nvs();
-    settings_notify_time_set();
+    notify_time_set();
 }
 
-static void settings_on_brightness_changed(lv_event_t *e)
+static void on_brightness_changed(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     if (code != LV_EVENT_VALUE_CHANGED && code != LV_EVENT_RELEASED && code != LV_EVENT_CLICKED) {
@@ -3759,7 +3759,7 @@ static void settings_on_brightness_changed(lv_event_t *e)
     bsp_display_brightness_set(ctx->settings.display.brightness);
 }
 
-static void settings_restart(lv_event_t *e)
+static void build_restart_ui(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx)
@@ -3782,12 +3782,12 @@ static void settings_restart(lv_event_t *e)
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
     lv_obj_set_user_data(yes_btn, (void *)1);
     styles_set_button(yes_btn);
-    lv_obj_add_event_cb(yes_btn, settings_restart_confirm, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(yes_btn, restart_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     lv_obj_set_user_data(cancel_btn, (void *)0);
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, settings_close_restart, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, close_restart, LV_EVENT_CLICKED, ctx);
 }
 
 static void update_brightness_value(settings_ctx_t *ctx)
@@ -3798,7 +3798,7 @@ static void update_brightness_value(settings_ctx_t *ctx)
     ctx->settings.display.brightness = val;
 }
 
-static void settings_restart_confirm(lv_event_t *e)
+static void restart_confirm(lv_event_t *e)
 {
     bsp_display_backlight_off();
     settings_ctx_t *ctx = lv_event_get_user_data(e);
@@ -3819,7 +3819,7 @@ static void settings_restart_confirm(lv_event_t *e)
     esp_restart();
 }
 
-static void settings_close_restart(lv_event_t *e)
+static void close_restart(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.restart_confirm_mbox)
@@ -3832,7 +3832,7 @@ static void settings_close_restart(lv_event_t *e)
     }    
 }
 
-static void settings_reset(lv_event_t *e)
+static void build_reset_ui(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx)
@@ -3855,15 +3855,15 @@ static void settings_reset(lv_event_t *e)
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
     lv_obj_set_user_data(yes_btn, (void *)1);
     styles_set_button(yes_btn);
-    lv_obj_add_event_cb(yes_btn, settings_reset_confirm, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(yes_btn, reset_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     lv_obj_set_user_data(cancel_btn, (void *)0);
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, settings_close_reset, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, close_reset, LV_EVENT_CLICKED, ctx);
 }
 
-static void settings_reset_confirm(lv_event_t *e)
+static void reset_confirm(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.reset_confirm_mbox)
@@ -3889,16 +3889,16 @@ static void settings_reset_confirm(lv_event_t *e)
         nvs_close(cal_nvs);
     }
 
-    settings_clear_time_in_nvs();
+    clear_time_in_nvs();
     s_settings_ctx.settings.display.time_valid = false;
     persist_valid_time_flag_to_nvs();
-    settings_notify_time_reset();
+    notify_time_reset();
 
     lv_msgbox_close(ctx->graphics.reset_confirm_mbox);
     ctx->graphics.reset_confirm_mbox = NULL;
 }
 
-static void settings_close_reset(lv_event_t *e)
+static void close_reset(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);  
     if (ctx && ctx->graphics.reset_confirm_mbox) {
@@ -3907,7 +3907,7 @@ static void settings_close_reset(lv_event_t *e)
     }    
 }
 
-static void settings_toggle_theme(lv_event_t *e)
+static void toggle_theme(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -3933,14 +3933,14 @@ static void settings_toggle_theme(lv_event_t *e)
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "Ok");
     styles_set_button(ok_btn);
-    lv_obj_add_event_cb(ok_btn, settings_theme_confirm_yes, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ok_btn, theme_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, settings_theme_confirm_no, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, theme_not_confirm, LV_EVENT_CLICKED, ctx);
 }
 
-static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
+static void build_wifi_sntp_dialog(settings_ctx_t *ctx)
 {
     if (ctx->graphics.wifi_sntp_dialog){
         lv_obj_delete(ctx->graphics.wifi_sntp_dialog);
@@ -3995,7 +3995,7 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     lv_obj_set_style_radius(ap_data_button, 8, 0);
     lv_obj_set_style_pad_all(ap_data_button, 6, 0); 
     styles_set_button(ap_data_button);
-    lv_obj_add_event_cb(ap_data_button, settings_build_wifi_connection_dialog, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ap_data_button, build_wifi_connection_dialog, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(ap_data_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *ap_data_lbl = lv_label_create(ap_data_button);
     lv_label_set_text(ap_data_lbl, "Access Point Credentials");
@@ -4018,7 +4018,7 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     lv_obj_set_style_radius(refresh_time_button, 8, 0);
     lv_obj_set_style_pad_all(refresh_time_button, 6, 0); 
     styles_set_button(refresh_time_button);
-    lv_obj_add_event_cb(refresh_time_button, settings_refresh_sntp, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(refresh_time_button, refresh_sntp, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_align(refresh_time_button, LV_ALIGN_CENTER, 0);
     lv_obj_t *refresh_time_lbl = lv_label_create(refresh_time_button);
     lv_label_set_text(refresh_time_lbl, "Refresh Date&Time");
@@ -4046,7 +4046,7 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *startup_switch = lv_switch_create(row_startup_refresh);
     styles_set_switch(startup_switch);
-    bool startup_enabled = settings_get_auto_connect_enabled();
+    bool startup_enabled = get_auto_connect_enabled();
     if (startup_enabled) {
         lv_obj_add_state(startup_switch, LV_STATE_CHECKED);
     } else {
@@ -4070,14 +4070,14 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     styles_set_button(close_btn);
     lv_obj_set_width(close_btn, LV_PCT(55));
     lv_obj_set_style_radius(close_btn, 6, 0);
-    lv_obj_add_event_cb(close_btn, settings_close_connection_dialog, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(close_btn, close_connection_dialog, LV_EVENT_CLICKED, ctx);
     lv_obj_t *close_lbl = lv_label_create(close_btn);
     lv_label_set_text(close_lbl, "Close");
     lv_obj_center(close_lbl);
     lv_obj_add_flag(close_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
 }
 
-static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx)
+static void build_refresh_sntp_msgbox(settings_ctx_t *ctx)
 {
     if (ctx->graphics.sntp_confirm_mbox) {
         lv_msgbox_close(ctx->graphics.sntp_confirm_mbox);
@@ -4098,24 +4098,24 @@ static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx)
 
     lv_obj_t *ok_btn = lv_msgbox_add_footer_button(mbox, "Ok");
     styles_set_button(ok_btn);
-    lv_obj_add_event_cb(ok_btn, settings_sntp_confirm_yes, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ok_btn, sntp_confirm, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, settings_sntp_confirm_no, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, sntp_not_confirm, LV_EVENT_CLICKED, ctx);
 }
 
-static void settings_refresh_sntp(lv_event_t *e)
+static void refresh_sntp(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.wifi_sntp_dialog) {
         return;
     }   
 
-    settings_build_refresh_sntp_msgbox(ctx);
+    build_refresh_sntp_msgbox(ctx);
 }
 
-static void settings_build_wifi_connection_dialog(lv_event_t *e)
+static void build_wifi_connection_dialog(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.wifi_sntp_dialog) {
@@ -4151,8 +4151,8 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_set_style_border_width(dlg, 2, 0);
     lv_obj_center(dlg);
     ctx->graphics.access_point_dialog = dlg;
-    lv_obj_add_event_cb(ctx->graphics.wifi_sntp_overlay, settings_on_ap_background_tap, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(dlg, settings_on_ap_background_tap, LV_EVENT_CLICKED, ctx);    
+    lv_obj_add_event_cb(ctx->graphics.wifi_sntp_overlay, on_ap_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(dlg, on_ap_background_tap, LV_EVENT_CLICKED, ctx);    
 
     lv_obj_t *title = lv_label_create(dlg);
     lv_label_set_text(title, "Access Point Credentials");
@@ -4186,8 +4186,8 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_textarea_set_max_length(ssid_ta, SETTINGS_AP_SSID_MAX_LEN);
     lv_textarea_set_placeholder_text(ssid_ta, "");
     styles_set_textarea(ssid_ta);
-    lv_obj_add_event_cb(ssid_ta, settings_on_ap_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ssid_ta, settings_on_ap_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ssid_ta, on_ap_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ssid_ta, on_ap_textarea_focus, LV_EVENT_CLICKED, ctx);
     if (ctx->settings.ap_ssid[0] != '\0') {
         lv_textarea_set_text(ssid_ta, ctx->settings.ap_ssid);
     }
@@ -4219,8 +4219,8 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_textarea_set_password_mode(pwd_ta, true);
     lv_textarea_set_placeholder_text(pwd_ta, "");
     styles_set_textarea(pwd_ta);
-    lv_obj_add_event_cb(pwd_ta, settings_on_ap_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(pwd_ta, settings_on_ap_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(pwd_ta, on_ap_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(pwd_ta, on_ap_textarea_focus, LV_EVENT_CLICKED, ctx);
     if (ctx->settings.ap_pwd[0] != '\0') {
         lv_textarea_set_text(pwd_ta, ctx->settings.ap_pwd);
     }
@@ -4245,7 +4245,7 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_center(apply_lbl);
     lv_obj_add_flag(apply_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     styles_set_button(apply_btn);
-    lv_obj_add_event_cb(apply_btn, settings_apply_ap_data, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(apply_btn, apply_ap_data, LV_EVENT_CLICKED, ctx);
     
     lv_obj_t *cancel_btn = lv_button_create(row_actions);
     lv_obj_set_flex_grow(cancel_btn, 1);
@@ -4255,7 +4255,7 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_obj_center(cancel_lbl);
     lv_obj_add_flag(cancel_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, settings_close_access_point_dialog, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, close_access_point_dialog, LV_EVENT_CLICKED, ctx);
     
     ctx->graphics.access_point_keyboard = lv_keyboard_create(ctx->graphics.wifi_sntp_overlay);
     styles_set_keyboard(ctx->graphics.access_point_keyboard);
@@ -4263,22 +4263,22 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     lv_keyboard_set_textarea(ctx->graphics.access_point_keyboard, NULL);
     lv_obj_add_flag(ctx->graphics.access_point_keyboard, LV_OBJ_FLAG_FLOATING);
     lv_obj_add_flag(ctx->graphics.access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_event_cb(ctx->graphics.access_point_keyboard, settings_on_ap_keyboard_event, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->graphics.access_point_keyboard, settings_on_ap_keyboard_event, LV_EVENT_READY, ctx);
+    lv_obj_add_event_cb(ctx->graphics.access_point_keyboard, on_ap_keyboard_event, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.access_point_keyboard, on_ap_keyboard_event, LV_EVENT_READY, ctx);
     lv_obj_align(ctx->graphics.access_point_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 }
 
-static void settings_wifi_sntp_dialog(lv_event_t *e)
+static void wifi_sntp_dialog(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
         return;
     }
 
-    settings_build_wifi_sntp_dialog(ctx);
+    build_wifi_sntp_dialog(ctx);
 }
 
-bool settings_get_auto_connect_enabled(void)
+static bool get_auto_connect_enabled(void)
 {
     return s_settings_ctx.settings.time.startup_sntp_auto_connect;
 }
@@ -4299,7 +4299,7 @@ static void ui_on_startup_switch_changed(lv_event_t *e)
     set_auto_connect_enabled(enabled);
 }
 
-static void settings_theme_confirm_yes(lv_event_t *e)
+static void theme_confirm(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -4311,10 +4311,10 @@ static void settings_theme_confirm_yes(lv_event_t *e)
     settings_set_dark_theme_flag(new_dark);
     persist_theme_to_nvs();
 
-    settings_restart_confirm(e);
+    restart_confirm(e);
 }
 
-static void settings_sntp_confirm_yes(lv_event_t *e)
+static void sntp_confirm(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx) {
@@ -4326,10 +4326,10 @@ static void settings_sntp_confirm_yes(lv_event_t *e)
     s_settings_ctx.settings.display.time_valid = false;
     persist_valid_time_flag_to_nvs();
 
-    settings_restart_confirm(e);
+    restart_confirm(e);
 }
 
-static void settings_theme_confirm_no(lv_event_t *e)
+static void theme_not_confirm(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.theme_confirm_mbox) {
@@ -4339,7 +4339,7 @@ static void settings_theme_confirm_no(lv_event_t *e)
     ctx->graphics.theme_confirm_mbox = NULL;
 }
 
-static void settings_sntp_confirm_no(lv_event_t *e)
+static void sntp_not_confirm(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.sntp_confirm_mbox) {
@@ -4349,7 +4349,7 @@ static void settings_sntp_confirm_no(lv_event_t *e)
     ctx->graphics.sntp_confirm_mbox = NULL;
 }
 
-static void settings_calibration_run_cal(lv_event_t *e)
+static void start_calibration_task(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.screen)
@@ -4367,10 +4367,10 @@ static void settings_calibration_run_cal(lv_event_t *e)
     calibration_set_show_loader(false);
 
     lv_obj_clean(ctx->graphics.screen);
-    settings_clear_ui_refs(ctx);
+    clear_ui_refs(ctx);
 
     /* Run calibration asynchronously to avoid blocking the LVGL task/UI thread. */
-    BaseType_t task_ok = xTaskCreate(settings_calibration_task,
+    BaseType_t task_ok = xTaskCreate(calibration_task,
                                      "settings_calibration",
                                      SETTINGS_CALIBRATION_TASK_STACK,
                                      ctx,
@@ -4383,7 +4383,7 @@ static void settings_calibration_run_cal(lv_event_t *e)
     }
 }
 
-static void settings_calibration_task(void *param)
+static void calibration_task(void *param)
 {
     settings_ctx_t *ctx = (settings_ctx_t *)param;
 
@@ -4394,7 +4394,7 @@ static void settings_calibration_task(void *param)
     }
 
     /* Clear cached widget pointers because we delete/clean the screen. */
-    settings_clear_ui_refs(ctx);
+    clear_ui_refs(ctx);
 
     int prev_rotation = ctx->settings.display.screen_rotation_step;
     
@@ -4432,7 +4432,7 @@ static void settings_calibration_task(void *param)
     vTaskDelete(NULL);
 }
 
-static void settings_clear_ui_refs(settings_ctx_t *ctx)
+static void clear_ui_refs(settings_ctx_t *ctx)
 {
     if (!ctx) {
         return;
@@ -4480,17 +4480,17 @@ static void settings_clear_ui_refs(settings_ctx_t *ctx)
     ctx->graphics.ss_keyboard = NULL;
 }
 
-static void settings_screensaver(lv_event_t *e)
+static void open_screensaver(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (ctx && ctx->graphics.screen)
     {
-        settings_build_screensaver_dialog(ctx);
+        build_screensaver_dialog(ctx);
     }
 }
 
 
-static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
+static esp_err_t build_screensaver_dialog(settings_ctx_t *ctx)
 {
     if (!ctx) {
         return ESP_ERR_INVALID_ARG;
@@ -4523,7 +4523,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    lv_obj_add_event_cb(overlay, settings_on_ss_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(overlay, on_ss_background_tap, LV_EVENT_CLICKED, ctx);
     ctx->graphics.screensaver_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
@@ -4539,7 +4539,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_set_scrollbar_mode(dlg, LV_SCROLLBAR_MODE_AUTO);
     styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
-    lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(dlg, on_dt_background_tap, LV_EVENT_CLICKED, ctx);
     lv_obj_center(dlg);
     ctx->graphics.screensaver_dialog = dlg;
 
@@ -4569,7 +4569,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_t *dim_switch = lv_switch_create(row_dim);
     lv_obj_set_style_pad_all(dim_switch, 4, 0);
     styles_set_switch(dim_switch);
-    lv_obj_add_event_cb(dim_switch, settings_on_dim_switch_changed, LV_EVENT_VALUE_CHANGED, ctx);
+    lv_obj_add_event_cb(dim_switch, on_dim_switch_changed, LV_EVENT_VALUE_CHANGED, ctx);
     ctx->graphics.ss_dim_switch = dim_switch;
 
     /* Dim timing/level row */
@@ -4607,8 +4607,8 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
         lv_textarea_set_placeholder_text(ctx->graphics.ss_dim_after_ta, "");
         lv_textarea_set_text(ctx->graphics.ss_dim_after_ta, "");
     }
-    lv_obj_add_event_cb(ctx->graphics.ss_dim_after_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.ss_dim_after_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_dim_after_ta, on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_dim_after_ta, on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *seconds_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(seconds_lbl, "seconds");
@@ -4639,8 +4639,8 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
         lv_textarea_set_placeholder_text(ctx->graphics.ss_dim_pct_ta, "");
         lv_textarea_set_text(ctx->graphics.ss_dim_pct_ta, "");
     }
-    lv_obj_add_event_cb(ctx->graphics.ss_dim_pct_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.ss_dim_pct_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_dim_pct_ta, on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_dim_pct_ta, on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *pct_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(pct_lbl, "%");
@@ -4680,7 +4680,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_t *off_switch = lv_switch_create(row_off);
     lv_obj_set_style_pad_all(off_switch, 4, 0);
     styles_set_switch(off_switch);  
-    lv_obj_add_event_cb(off_switch, settings_on_off_switch_changed, LV_EVENT_VALUE_CHANGED, ctx);
+    lv_obj_add_event_cb(off_switch, on_off_switch_changed, LV_EVENT_VALUE_CHANGED, ctx);
     ctx->graphics.ss_off_switch = off_switch;
 
     /* Off timing row */
@@ -4718,8 +4718,8 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
         lv_textarea_set_placeholder_text(ctx->graphics.ss_off_after_ta, "");
         lv_textarea_set_text(ctx->graphics.ss_off_after_ta, "");
     }
-    lv_obj_add_event_cb(ctx->graphics.ss_off_after_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.ss_off_after_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_off_after_ta, on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_off_after_ta, on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *off_seconds_lbl = lv_label_create(row_off_cfg);
     lv_label_set_text(off_seconds_lbl, "seconds.");
@@ -4745,7 +4745,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_center(apply_lbl);
     lv_obj_add_flag(apply_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     styles_set_button(apply_btn);
-    lv_obj_add_event_cb(apply_btn, settings_apply_screensaver, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(apply_btn, apply_screensaver, LV_EVENT_CLICKED, ctx);
     
     lv_obj_t *cancel_btn = lv_button_create(row_actions);
     lv_obj_set_flex_grow(cancel_btn, 1);
@@ -4755,7 +4755,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_center(cancel_lbl);
     lv_obj_add_flag(cancel_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, settings_close_screensaver, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, close_screensaver, LV_EVENT_CLICKED, ctx);
     
     /* Keyboard anchored to bottom of overlay */
     ctx->graphics.ss_keyboard = lv_keyboard_create(overlay);
@@ -4764,9 +4764,9 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_keyboard_set_textarea(ctx->graphics.ss_keyboard, NULL);
     lv_obj_add_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_FLOATING);
     lv_obj_add_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_HIDDEN); /* show only after a field is tapped */
-    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, settings_on_ss_background_tap, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, settings_on_ss_keyboard_event, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, settings_on_ss_keyboard_event, LV_EVENT_READY, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, on_ss_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, on_ss_keyboard_event, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, on_ss_keyboard_event, LV_EVENT_READY, ctx);
     lv_obj_align(ctx->graphics.ss_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 
     if (ctx->settings.display.screen_off) {
@@ -4779,13 +4779,13 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
         lv_obj_clear_state(off_seconds_lbl, LV_STATE_DISABLED);       
     }
 
-    settings_update_dim_controls_enabled(ctx, lv_obj_has_state(ctx->graphics.ss_dim_switch, LV_STATE_CHECKED));
-    settings_update_off_controls_enabled(ctx, lv_obj_has_state(ctx->graphics.ss_off_switch, LV_STATE_CHECKED));
+    update_dim_controls_enabled(ctx, lv_obj_has_state(ctx->graphics.ss_dim_switch, LV_STATE_CHECKED));
+    update_off_controls_enabled(ctx, lv_obj_has_state(ctx->graphics.ss_off_switch, LV_STATE_CHECKED));
 
     return ESP_OK;
 }
 
-static void settings_apply_screensaver(lv_event_t *e)
+static void apply_screensaver(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.screensaver_overlay) {
@@ -4798,7 +4798,7 @@ static void settings_apply_screensaver(lv_event_t *e)
 
     persist_screensaver_to_nvs();
     settings_start_screensaver_timers();
-    settings_close_screensaver(e);
+    close_screensaver(e);
 }
 
 static bool dim_valid(int *new_dim_time, int *new_dim_level, settings_ctx_t *ctx)
@@ -4809,14 +4809,14 @@ static bool dim_valid(int *new_dim_time, int *new_dim_level, settings_ctx_t *ctx
     int parsed_level = 0;
 
     /* dim time: 1..9999 (textarea limited to 3 chars) */
-    if (!settings_parse_int_range(dim_time_txt, 1, 9999, &parsed_time)) {
-        settings_show_invalid_input();
+    if (!parse_int_range(dim_time_txt, 1, 9999, &parsed_time)) {
+        show_invalid_input_mbox();
         return false;
     }
 
     /* Accept any 0..100 value, clamp later against brightness/minimum. */
-    if (!settings_parse_int_range(dim_level_txt, 0, 100, &parsed_level)) {
-        settings_show_invalid_input();
+    if (!parse_int_range(dim_level_txt, 0, 100, &parsed_level)) {
+        show_invalid_input_mbox();
         return false;
     }
 
@@ -4830,8 +4830,8 @@ static bool off_valid(int *new_off_time, settings_ctx_t *ctx)
 {
     const char *off_time_txt = ctx->graphics.ss_off_after_ta ? lv_textarea_get_text(ctx->graphics.ss_off_after_ta) : NULL;
     int parsed_off = 0;
-    if (!settings_parse_int_range(off_time_txt, 1, 99999, &parsed_off)) {
-        settings_show_invalid_input();
+    if (!parse_int_range(off_time_txt, 1, 99999, &parsed_off)) {
+        show_invalid_input_mbox();
         return false;
     }
     *new_off_time = parsed_off;
@@ -4884,7 +4884,7 @@ static bool obtain_screensaver_values(settings_ctx_t *ctx)
     return true;
 }
 
-static void settings_apply_ap_data(lv_event_t *e)
+static void apply_ap_data(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.access_point_dialog) {
@@ -4901,10 +4901,10 @@ static void settings_apply_ap_data(lv_event_t *e)
     ctx->settings.ap_pwd[sizeof(ctx->settings.ap_pwd) - 1] = '\0';
 
     persist_ap_credentials_to_nvs();
-    settings_close_access_point_dialog(e);
+    close_access_point_dialog(e);
 }
 
-static void settings_close_screensaver(lv_event_t *e)
+static void close_screensaver(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e); 
     if (ctx && ctx->graphics.screensaver_overlay) {
@@ -4928,7 +4928,7 @@ static void settings_close_screensaver(lv_event_t *e)
     }    
 }
 
-static void settings_close_connection_dialog(lv_event_t *e)
+static void close_connection_dialog(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e); 
     if (ctx && ctx->graphics.wifi_sntp_overlay) {
@@ -4943,7 +4943,7 @@ static void settings_close_connection_dialog(lv_event_t *e)
     }    
 }
 
-static void settings_close_access_point_dialog(lv_event_t *e)
+static void close_access_point_dialog(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e); 
     if (ctx && ctx->graphics.wifi_sntp_overlay) {
@@ -4955,5 +4955,5 @@ static void settings_close_access_point_dialog(lv_event_t *e)
         ctx->graphics.access_point_keyboard = NULL;
     }   
     
-    settings_build_wifi_sntp_dialog(ctx);
+    build_wifi_sntp_dialog(ctx);
 }
