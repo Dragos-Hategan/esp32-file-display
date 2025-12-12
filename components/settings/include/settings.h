@@ -63,7 +63,7 @@ void settings_shutdown_save_time(void);
  *
  * @return true if time is valid, false otherwise.
  */
-bool settings_is_time_valid();
+bool settings_is_time_valid(void);
 
 /**
  * @brief Fade brightness to saved_brightness over SETTINGS_UP_FADE_MS.
@@ -138,14 +138,14 @@ void settings_set_dark_theme_flag(bool is_dark);
  *
  * @return Pointer to the null-terminated SSID stored in settings (do not free).
  */
-char* settings_get_ap_ssid();
+char* settings_get_ap_ssid(void);
 
 /**
  * @brief Get the configured Access Point password string.
  *
  * @return Pointer to the null-terminated password stored in settings (do not free).
  */
-char* settings_get_ap_pwd();
+char* settings_get_ap_pwd(void);
 
 #ifdef __cplusplus
 }

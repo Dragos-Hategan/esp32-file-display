@@ -142,7 +142,7 @@ typedef enum {
 } file_manager_action_type_t;
 
 static file_manager_ctx_t s_browser;                /* Singleton UI context */
-static TaskHandle_t file_manager_wait_task = NULL;  /* Used to wait for sd card after a sd card failure */
+static TaskHandle_t file_manager_wait_task = NULL;  /* Task used to wait for sdspi reconnection after a failure */
 
 /***************************************** Image Helpers *****************************************/
 /**

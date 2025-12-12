@@ -83,33 +83,39 @@ typedef struct{
     int saved_rotation_step;            /**< Last persisted rotation step */
     int brightness;                     /**< Current brightness percentage */
     int saved_brightness;               /**< Last persisted brightness percentage */
+    int dim_time;
+    int dim_level;
+    int off_time;
+    bool time_valid;                    /**< True if a valid time was set/restored */
+    bool screen_dim;
+    bool screen_off;
+}settings_display_t;
+
+typedef struct{
+    bool startup_sntp_auto_connect;
+    bool refresh_sntp_startup;
+    esp_err_t sntp_last_err;
+    bool sntp_success;
     int dt_month;
     int dt_day;
     int dt_year;
     int dt_hour;
     int dt_minute;
     int dt_second;
-    bool time_valid;                    /**< True if a valid time was set/restored */
-    bool screen_dim;
-    int dim_time;
-    int dim_level;
-    bool screen_off;
-    int off_time;
-    bool calibration_prompt_enabled;    /**< True to ask for calibration at startup */
-    bool startup_sntp_auto_connect;
-    bool refresh_sntp_startup;
-    bool running_calibration;
-    bool dark_theme;
-    bool sntp_success;
-    esp_err_t sntp_last_err;
-    bool manual_restart;
+}settings_time_t;
+
+typedef struct{
     char ap_ssid[SETTINGS_AP_SSID_MAX_LEN + 1];
     char ap_pwd[SETTINGS_AP_PWD_MAX_LEN + 1];
+    bool calibration_prompt_enabled;    /**< True to ask for calibration at startup */
+    bool running_calibration;
+    bool manual_restart;
+    bool dark_theme;
+    settings_display_t display;
+    settings_time_t time;
 }settings_t;
 
 typedef struct{
-    bool active;                        /**< True while the settings screen is active */
-    bool changing_brightness;           /**< True while changing values to the brightness slider */
     lv_obj_t *return_screen;            /**< Screen to return to on close */
     lv_obj_t *screen;                   /**< Root LVGL screen object */
     lv_obj_t *toolbar;                  /**< Toolbar container */
@@ -150,6 +156,12 @@ typedef struct{
     lv_obj_t *ss_off_seconds_lbl;       /**< Label: "seconds." */
     lv_obj_t *ss_off_after_ta;          /**< Screensaver off delay input (seconds) */
     lv_obj_t *ss_keyboard;              /**< Screensaver numeric keyboard */
+} settings_ctx_graphics_t;
+
+typedef struct{
+    bool active;                        /**< True while the settings screen is active */
+    bool changing_brightness;           /**< True while changing values to the brightness slider */
+    settings_ctx_graphics_t graphics;   /**< UI lvgl objects */
     settings_t settings;                /**< Information about the current session */
 }settings_ctx_t;
 
@@ -175,7 +187,7 @@ static void startup_splash_screen(void);
 /**
  * @brief Connect to Wi-Fi, sync time via SNTP, persist the result, and restart.
  */
-static void get_sntp_time();
+static void get_sntp_time(void);
 
 /**
  * @brief Build the settings screen (header + scrollable settings list).
@@ -573,7 +585,7 @@ static void apply_timezone(void);
 /**
  * @brief Apply the current rotation step to the active LVGL display.
  *
- * Maps @ref s_settings_ctx.settings.screen_rotation_step to an LVGL display rotation and sets it,
+ * Maps @ref s_settings_ctx.settings.display.screen_rotation_step to an LVGL display rotation and sets it,
  * clamping to a valid state if needed. Logs a warning when no display exists.
  *
  * @param[in] lock_display True when calling from non-LVGL context (takes display lock);
@@ -592,7 +604,7 @@ static void load_rotation_from_nvs(void);
 /**
  * @brief Persist current rotation step to NVS.
  *
- * Writes @ref s_settings_ctx.settings.screen_rotation_step to @ref SETTINGS_NVS_ROT_KEY inside
+ * Writes @ref s_settings_ctx.settings.display.screen_rotation_step to @ref SETTINGS_NVS_ROT_KEY inside
  * @ref SETTINGS_NVS_NS, logging warnings on failure but not aborting flow.
  */
 static void persist_rotation_to_nvs(void);
@@ -1062,10 +1074,10 @@ void settings_starting_routine(void)
     if (power_reset){
         ESP_LOGI(TAG, "Showing splash & connection screens");   
         startup_splash_screen();  
-        if (s_settings_ctx.settings.startup_sntp_auto_connect) get_sntp_time();
+        if (s_settings_ctx.settings.time.startup_sntp_auto_connect) get_sntp_time();
     }else{
         sntp_startup(power_reset);
-        s_settings_ctx.settings.refresh_sntp_startup = false;
+        s_settings_ctx.settings.time.refresh_sntp_startup = false;
         persist_sntp_refresh();
     }
 
@@ -1095,13 +1107,13 @@ esp_err_t settings_open_settings(lv_obj_t *return_screen)
     }
 
     settings_ctx_t *ctx = &s_settings_ctx;
-    if (!ctx->screen){
+    if (!ctx->graphics.screen){
         settings_build_screen(ctx);
     }
 
     ctx->active = true;
-    ctx->return_screen = return_screen;
-    lv_screen_load(ctx->screen);
+    ctx->graphics.return_screen = return_screen;
+    lv_screen_load(ctx->graphics.screen);
 
     return ESP_OK;
 }
@@ -1109,14 +1121,14 @@ esp_err_t settings_open_settings(lv_obj_t *return_screen)
 void settings_show_date_time_dialog(lv_obj_t *return_screen)
 {
     settings_ctx_t *ctx = &s_settings_ctx;
-    ctx->return_screen = return_screen;
+    ctx->graphics.return_screen = return_screen;
     settings_build_date_time_dialog(ctx);
 }
 
 void settings_show_sntp_dialog(lv_obj_t *return_screen)
 {
     settings_ctx_t *ctx = &s_settings_ctx;
-    ctx->return_screen = return_screen;
+    ctx->graphics.return_screen = return_screen;
     settings_build_wifi_sntp_dialog(ctx);
 }
 
@@ -1126,7 +1138,7 @@ void settings_register_time_callbacks(void (*on_time_set)(void),
     s_time_set_cb = on_time_set;
     s_time_reset_cb = on_time_reset;
 
-    if (s_settings_ctx.settings.time_valid) {
+    if (s_settings_ctx.settings.display.time_valid) {
         if (s_time_set_cb) {
             s_time_set_cb();
         }
@@ -1145,14 +1157,14 @@ void settings_shutdown_save_time(void)
     }
 }
 
-bool settings_is_time_valid()
+bool settings_is_time_valid(void)
 {
-    return s_settings_ctx.settings.time_valid == true;
+    return s_settings_ctx.settings.display.time_valid == true;
 }
 
 void settings_fade_to_saved_brightness(void)
 {
-    int target = s_settings_ctx.settings.saved_brightness;
+    int target = s_settings_ctx.settings.display.saved_brightness;
     if (target < SETTINGS_MINIMUM_BRIGHTNESS) target = SETTINGS_MINIMUM_BRIGHTNESS;
     if (target > 100) target = 100;
     settings_fade_brightness(target, SETTINGS_UP_FADE_MS);
@@ -1160,27 +1172,27 @@ void settings_fade_to_saved_brightness(void)
 
 void settings_start_screensaver_timers(void)
 {
-    bool dim_allowed = s_settings_ctx.settings.screen_dim &&
-                        (!s_settings_ctx.settings.screen_off ||
-                        s_settings_ctx.settings.off_time <= 0 ||
-                        s_settings_ctx.settings.dim_time <= 0 ||
-                        s_settings_ctx.settings.dim_time < s_settings_ctx.settings.off_time);
+    bool dim_allowed = s_settings_ctx.settings.display.screen_dim &&
+                        (!s_settings_ctx.settings.display.screen_off ||
+                        s_settings_ctx.settings.display.off_time <= 0 ||
+                        s_settings_ctx.settings.display.dim_time <= 0 ||
+                        s_settings_ctx.settings.display.dim_time < s_settings_ctx.settings.display.off_time);
 
     if (dim_allowed) {
-        screensaver_dim_start(s_settings_ctx.settings.dim_time, s_settings_ctx.settings.dim_level);
+        screensaver_dim_start(s_settings_ctx.settings.display.dim_time, s_settings_ctx.settings.display.dim_level);
     } else {
         screensaver_dim_stop();
     }
 
-    if (s_settings_ctx.settings.screen_off) {
-        screensaver_off_start(s_settings_ctx.settings.off_time);
+    if (s_settings_ctx.settings.display.screen_off) {
+        screensaver_off_start(s_settings_ctx.settings.display.off_time);
     } else {
         screensaver_off_stop();
     }
 }
 
 int settings_get_active_brightness(void){
-    return s_settings_ctx.settings.brightness;
+    return s_settings_ctx.settings.display.brightness;
 }
 
 bool settings_is_wake_in_progress(void)
@@ -1232,16 +1244,16 @@ char* settings_get_ap_ssid()
     return s_settings_ctx.settings.ap_ssid;
 }
 
-char* settings_get_ap_pwd()
+char* settings_get_ap_pwd(void)
 {
     return s_settings_ctx.settings.ap_pwd;
 }
 
-static void get_sntp_time()
+static void get_sntp_time(void)
 {
     show_connecting_message();
     lv_timer_handler();
-    if (!s_settings_ctx.settings.time_valid && s_settings_ctx.settings.manual_restart){
+    if (!s_settings_ctx.settings.display.time_valid && s_settings_ctx.settings.manual_restart){
         vTaskDelay(150);
         bsp_display_backlight_on(); 
     }
@@ -1251,12 +1263,12 @@ static void get_sntp_time()
     if (err == ESP_OK){
         err = init_sntp();    
     }
-    s_settings_ctx.settings.sntp_last_err = err;
+    s_settings_ctx.settings.time.sntp_last_err = err;
     if (err == ESP_OK){
-        s_settings_ctx.settings.sntp_success = true;
+        s_settings_ctx.settings.time.sntp_success = true;
         save_time_data();
     }else{
-        s_settings_ctx.settings.sntp_success = false;
+        s_settings_ctx.settings.time.sntp_success = false;
     }
     persist_sntp_result();
     s_settings_ctx.settings.manual_restart = false;
@@ -1287,7 +1299,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_pad_gap(scr, 5, 0);
     lv_obj_set_flex_flow(scr, LV_FLEX_FLOW_COLUMN);
     lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);
-    ctx->screen = scr;
+    ctx->graphics.screen = scr;
 
     lv_obj_t *toolbar = lv_obj_create(scr);
     lv_obj_remove_style_all(toolbar);
@@ -1297,7 +1309,7 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_pad_gap(toolbar, 3, 0);
     lv_obj_set_flex_align(toolbar, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_bg_opa(toolbar, LV_OPA_COVER, 0);
-    ctx->toolbar = toolbar;    
+    ctx->graphics.toolbar = toolbar;    
 
     lv_obj_t *back_btn = lv_button_create(toolbar);
     lv_obj_set_style_radius(back_btn, 6, 0);
@@ -1356,29 +1368,29 @@ static void settings_build_screen(settings_ctx_t *ctx)
     lv_obj_set_style_align(brightness_card, LV_ALIGN_CENTER, 0);
     lv_obj_clear_flag(brightness_card, LV_OBJ_FLAG_CLICKABLE); /* container only */
 
-    ctx->brightness_label = lv_label_create(brightness_card);
-    lv_obj_set_width(ctx->brightness_label, LV_PCT(100));
-    lv_obj_set_style_text_align(ctx->brightness_label, LV_TEXT_ALIGN_CENTER, 0);
-    styles_set_text_color(ctx->brightness_label, 0);
+    ctx->graphics.brightness_label = lv_label_create(brightness_card);
+    lv_obj_set_width(ctx->graphics.brightness_label, LV_PCT(100));
+    lv_obj_set_style_text_align(ctx->graphics.brightness_label, LV_TEXT_ALIGN_CENTER, 0);
+    styles_set_text_color(ctx->graphics.brightness_label, 0);
 
-    ctx->brightness_slider = lv_slider_create(brightness_card);
-    lv_obj_set_width(ctx->brightness_slider, LV_PCT(90));
-    lv_slider_set_range(ctx->brightness_slider, SETTINGS_MINIMUM_BRIGHTNESS, 100);
-    lv_slider_set_value(ctx->brightness_slider, ctx->settings.brightness, LV_ANIM_OFF);
-    lv_obj_add_event_cb(ctx->brightness_slider, settings_on_brightness_changed, LV_EVENT_VALUE_CHANGED, ctx);
-    styles_set_slider(ctx->brightness_slider);
-    lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_60, LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_opa(ctx->brightness_slider, LV_OPA_COVER, LV_PART_KNOB);
-    lv_obj_set_style_border_width(ctx->brightness_slider, 1, LV_PART_KNOB);
-    lv_obj_set_style_radius(ctx->brightness_slider, 6, 0);
-    lv_obj_set_style_radius(ctx->brightness_slider, 6, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(ctx->brightness_slider, 5, LV_PART_KNOB);
+    ctx->graphics.brightness_slider = lv_slider_create(brightness_card);
+    lv_obj_set_width(ctx->graphics.brightness_slider, LV_PCT(90));
+    lv_slider_set_range(ctx->graphics.brightness_slider, SETTINGS_MINIMUM_BRIGHTNESS, 100);
+    lv_slider_set_value(ctx->graphics.brightness_slider, ctx->settings.display.brightness, LV_ANIM_OFF);
+    lv_obj_add_event_cb(ctx->graphics.brightness_slider, settings_on_brightness_changed, LV_EVENT_VALUE_CHANGED, ctx);
+    styles_set_slider(ctx->graphics.brightness_slider);
+    lv_obj_set_style_bg_opa(ctx->graphics.brightness_slider, LV_OPA_60, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(ctx->graphics.brightness_slider, LV_OPA_COVER, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(ctx->graphics.brightness_slider, LV_OPA_COVER, LV_PART_KNOB);
+    lv_obj_set_style_border_width(ctx->graphics.brightness_slider, 1, LV_PART_KNOB);
+    lv_obj_set_style_radius(ctx->graphics.brightness_slider, 6, 0);
+    lv_obj_set_style_radius(ctx->graphics.brightness_slider, 6, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(ctx->graphics.brightness_slider, 5, LV_PART_KNOB);
 
-    int init_val = lv_slider_get_value(ctx->brightness_slider);
+    int init_val = lv_slider_get_value(ctx->graphics.brightness_slider);
     char init_txt[32];
     lv_snprintf(init_txt, sizeof(init_txt), "Brightness: %d%%", init_val);
-    lv_label_set_text(ctx->brightness_label, init_txt);
+    lv_label_set_text(ctx->graphics.brightness_label, init_txt);
 
     /* Row: Screensaver + Change Theme*/
     lv_obj_t *row_actions0 = lv_obj_create(settings_list);
@@ -1599,30 +1611,30 @@ static void settings_on_back(lv_event_t *e)
 
 static void settings_close(settings_ctx_t *ctx)
 {
-    if (ctx && ctx->brightness_slider) {
-        int val = lv_slider_get_value(ctx->brightness_slider);
+    if (ctx && ctx->graphics.brightness_slider) {
+        int val = lv_slider_get_value(ctx->graphics.brightness_slider);
         if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
         if (val > 100) val = 100;
-        ctx->settings.brightness = val;
+        ctx->settings.display.brightness = val;
         s_settings_ctx.changing_brightness = false; 
-        if (ctx->settings.brightness != ctx->settings.saved_brightness) {
+        if (ctx->settings.display.brightness != ctx->settings.display.saved_brightness) {
             persist_brightness_to_nvs();
         }
     }
 
-    if (ctx->settings.screen_rotation_step != ctx->settings.saved_rotation_step) {
+    if (ctx->settings.display.screen_rotation_step != ctx->settings.display.saved_rotation_step) {
         persist_rotation_to_nvs();
     }
 
     ctx->active = false;
-    if (ctx->return_screen)
+    if (ctx->graphics.return_screen)
     {
-        lv_screen_load(ctx->return_screen);
+        lv_screen_load(ctx->graphics.return_screen);
     }    
-    lv_obj_del(ctx->screen);
+    lv_obj_del(ctx->graphics.screen);
     settings_clear_ui_refs(ctx);
     ctx->active = false;
-    ctx->screen = NULL;
+    ctx->graphics.screen = NULL;
 }
 
 static esp_err_t init_nvs(void)
@@ -1690,8 +1702,8 @@ static void apply_default_font_theme(bool lock_display)
 static void sntp_restart_flow(void)
 {
     load_sntp_result_from_nvs();            
-    esp_err_t last_err = s_settings_ctx.settings.sntp_last_err;
-    if (s_settings_ctx.settings.sntp_success){
+    esp_err_t last_err = s_settings_ctx.settings.time.sntp_last_err;
+    if (s_settings_ctx.settings.time.sntp_success){
         show_connection_result_message(ESP_OK);
     }else{
         if (last_err == ESP_OK) {
@@ -1700,7 +1712,7 @@ static void sntp_restart_flow(void)
         show_connection_result_message(last_err);
     }
     backlight_on_without_wipe_effect();
-    vTaskDelay(pdMS_TO_TICKS(s_settings_ctx.settings.sntp_success ? 2500 : 3000));
+    vTaskDelay(pdMS_TO_TICKS(s_settings_ctx.settings.time.sntp_success ? 2500 : 3000));
     
     bsp_display_lock(0);
     lv_obj_clean(lv_screen_active());
@@ -1709,8 +1721,8 @@ static void sntp_restart_flow(void)
 
 static void manual_restart_flow(void)
 {
-    if(s_settings_ctx.settings.startup_sntp_auto_connect ||
-            s_settings_ctx.settings.refresh_sntp_startup){
+    if(s_settings_ctx.settings.time.startup_sntp_auto_connect ||
+            s_settings_ctx.settings.time.refresh_sntp_startup){
                 get_sntp_time();
     }
 }
@@ -1741,13 +1753,13 @@ static void apply_rotation_to_display(bool lock_display)
     }
 
     /* Map state index to rotation (0:270, 1:180, 2:90, 3:0). */
-    switch (s_settings_ctx.settings.screen_rotation_step % SETTINGS_ROTATION_STEPS) {
+    switch (s_settings_ctx.settings.display.screen_rotation_step % SETTINGS_ROTATION_STEPS) {
         case 0: lv_display_set_rotation(display, LV_DISPLAY_ROTATION_270); break;
         case 1: lv_display_set_rotation(display, LV_DISPLAY_ROTATION_180); break;
         case 2: lv_display_set_rotation(display, LV_DISPLAY_ROTATION_90);  break;
         case 3: lv_display_set_rotation(display, LV_DISPLAY_ROTATION_0);   break;
         default:
-            s_settings_ctx.settings.screen_rotation_step = SETTINGS_ROTATION_STEPS - 1;
+            s_settings_ctx.settings.display.screen_rotation_step = SETTINGS_ROTATION_STEPS - 1;
             lv_display_set_rotation(display, LV_DISPLAY_ROTATION_0);
             break;
     }
@@ -1766,13 +1778,13 @@ static void load_rotation_from_nvs(void)
         return;
     }
 
-    int32_t stored = s_settings_ctx.settings.screen_rotation_step;
+    int32_t stored = s_settings_ctx.settings.display.screen_rotation_step;
     err = nvs_get_i32(h, SETTINGS_NVS_ROT_KEY, &stored);
     nvs_close(h);
 
     if (err == ESP_OK && stored >= 0 && stored < SETTINGS_ROTATION_STEPS) {
-        s_settings_ctx.settings.screen_rotation_step = (int)stored;
-        s_settings_ctx.settings.saved_rotation_step = s_settings_ctx.settings.screen_rotation_step;
+        s_settings_ctx.settings.display.screen_rotation_step = (int)stored;
+        s_settings_ctx.settings.display.saved_rotation_step = s_settings_ctx.settings.display.screen_rotation_step;
     }
 }
 
@@ -1785,7 +1797,7 @@ static void persist_rotation_to_nvs(void)
         return;
     }
 
-    err = nvs_set_i32(h, SETTINGS_NVS_ROT_KEY, s_settings_ctx.settings.screen_rotation_step);
+    err = nvs_set_i32(h, SETTINGS_NVS_ROT_KEY, s_settings_ctx.settings.display.screen_rotation_step);
     if (err == ESP_OK) {
         err = nvs_commit(h);
     }
@@ -1794,7 +1806,7 @@ static void persist_rotation_to_nvs(void)
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to save rotation to NVS: %s", esp_err_to_name(err));
     } else {
-        s_settings_ctx.settings.saved_rotation_step = s_settings_ctx.settings.screen_rotation_step;
+        s_settings_ctx.settings.display.saved_rotation_step = s_settings_ctx.settings.display.screen_rotation_step;
     }
 }
 
@@ -1803,8 +1815,8 @@ static void load_brightness_from_nvs(void)
     nvs_handle_t h;
     esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h);
     if (err != ESP_OK) {
-        s_settings_ctx.settings.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
-        s_settings_ctx.settings.saved_brightness = s_settings_ctx.settings.brightness;
+        s_settings_ctx.settings.display.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
+        s_settings_ctx.settings.display.saved_brightness = s_settings_ctx.settings.display.brightness;
         return;
     }
 
@@ -1813,11 +1825,11 @@ static void load_brightness_from_nvs(void)
     nvs_close(h);
 
     if (err == ESP_OK && stored >= SETTINGS_MINIMUM_BRIGHTNESS && stored <= 100) {
-        s_settings_ctx.settings.brightness = (int)stored;
-        s_settings_ctx.settings.saved_brightness = s_settings_ctx.settings.brightness;
+        s_settings_ctx.settings.display.brightness = (int)stored;
+        s_settings_ctx.settings.display.saved_brightness = s_settings_ctx.settings.display.brightness;
     } else {
-        s_settings_ctx.settings.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
-        s_settings_ctx.settings.saved_brightness = s_settings_ctx.settings.brightness;
+        s_settings_ctx.settings.display.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
+        s_settings_ctx.settings.display.saved_brightness = s_settings_ctx.settings.display.brightness;
     }
 }
 
@@ -1830,7 +1842,7 @@ static void persist_brightness_to_nvs(void)
         return;
     }
 
-    err = nvs_set_i32(h, SETTINGS_NVS_BRIGHTNESS_KEY, s_settings_ctx.settings.brightness);
+    err = nvs_set_i32(h, SETTINGS_NVS_BRIGHTNESS_KEY, s_settings_ctx.settings.display.brightness);
     if (err == ESP_OK) {
         err = nvs_commit(h);
     }
@@ -1839,23 +1851,23 @@ static void persist_brightness_to_nvs(void)
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to save brightness to NVS: %s", esp_err_to_name(err));
     } else {
-        s_settings_ctx.settings.saved_brightness = s_settings_ctx.settings.brightness;
+        s_settings_ctx.settings.display.saved_brightness = s_settings_ctx.settings.display.brightness;
 
         /* Adjust dim level to stay within saved brightness and above minimum. */
-        if (s_settings_ctx.settings.dim_level >= 0) {
-            int max_level = s_settings_ctx.settings.saved_brightness;
+        if (s_settings_ctx.settings.display.dim_level >= 0) {
+            int max_level = s_settings_ctx.settings.display.saved_brightness;
             if (max_level < SETTINGS_MINIMUM_BRIGHTNESS) {
                 max_level = SETTINGS_MINIMUM_BRIGHTNESS;
             }
-            int clamped = s_settings_ctx.settings.dim_level;
+            int clamped = s_settings_ctx.settings.display.dim_level;
             if (clamped > max_level) {
                 clamped = max_level;
             }
             if (clamped < SETTINGS_MINIMUM_BRIGHTNESS) {
                 clamped = SETTINGS_MINIMUM_BRIGHTNESS;
             }
-            if (clamped != s_settings_ctx.settings.dim_level) {
-                s_settings_ctx.settings.dim_level = clamped;
+            if (clamped != s_settings_ctx.settings.display.dim_level) {
+                s_settings_ctx.settings.display.dim_level = clamped;
                 persist_screensaver_to_nvs();
             }
         }
@@ -1872,41 +1884,41 @@ static void load_screensaver_from_nvs(void)
 
     int8_t dim_en = 0;
     if (nvs_get_i8(h, SETTINGS_NVS_DIM_EN_KEY, &dim_en) == ESP_OK) {
-        s_settings_ctx.settings.screen_dim = dim_en ? true : false;
+        s_settings_ctx.settings.display.screen_dim = dim_en ? true : false;
     }
 
     int32_t dim_time = -1;
     if (nvs_get_i32(h, SETTINGS_NVS_DIM_TIME_KEY, &dim_time) == ESP_OK) {
         if (dim_time >= -1) {
-            s_settings_ctx.settings.dim_time = (int)dim_time;
+            s_settings_ctx.settings.display.dim_time = (int)dim_time;
         }
     }
 
     int32_t dim_level = -1;
     if (nvs_get_i32(h, SETTINGS_NVS_DIM_LEVEL_KEY, &dim_level) == ESP_OK) {
         if (dim_level >= -1 && dim_level <= 100) {
-            s_settings_ctx.settings.dim_level = (int)dim_level;
+            s_settings_ctx.settings.display.dim_level = (int)dim_level;
         }
     }
 
     int8_t off_en = 0;
     if (nvs_get_i8(h, SETTINGS_NVS_OFF_EN_KEY, &off_en) == ESP_OK) {
-        s_settings_ctx.settings.screen_off = off_en ? true : false;
+        s_settings_ctx.settings.display.screen_off = off_en ? true : false;
     }
 
     int32_t off_time = -1;
     if (nvs_get_i32(h, SETTINGS_NVS_OFF_TIME_KEY, &off_time) == ESP_OK) {
         if (off_time >= -1) {
-            s_settings_ctx.settings.off_time = (int)off_time;
+            s_settings_ctx.settings.display.off_time = (int)off_time;
         }
     }
 
     nvs_close(h);
 
     /* Clamp dim level against current saved brightness and minimum brightness. */
-    if (s_settings_ctx.settings.dim_level >= 0) {
-        int max_level = s_settings_ctx.settings.saved_brightness > 0 ? s_settings_ctx.settings.saved_brightness : SETTINGS_DEFAULT_BRIGHTNESS;
-        int clamped = s_settings_ctx.settings.dim_level;
+    if (s_settings_ctx.settings.display.dim_level >= 0) {
+        int max_level = s_settings_ctx.settings.display.saved_brightness > 0 ? s_settings_ctx.settings.display.saved_brightness : SETTINGS_DEFAULT_BRIGHTNESS;
+        int clamped = s_settings_ctx.settings.display.dim_level;
         if (max_level < SETTINGS_MINIMUM_BRIGHTNESS) {
             max_level = SETTINGS_MINIMUM_BRIGHTNESS;
         }
@@ -1916,7 +1928,7 @@ static void load_screensaver_from_nvs(void)
         if (clamped < SETTINGS_MINIMUM_BRIGHTNESS) {
             clamped = SETTINGS_MINIMUM_BRIGHTNESS;
         }
-        s_settings_ctx.settings.dim_level = clamped;
+        s_settings_ctx.settings.display.dim_level = clamped;
     }
 }
 
@@ -1929,11 +1941,11 @@ static void persist_screensaver_to_nvs(void)
         return;
     }
 
-    esp_err_t res = nvs_set_i8(h, SETTINGS_NVS_DIM_EN_KEY, s_settings_ctx.settings.screen_dim ? 1 : 0);
-    res |= nvs_set_i32(h, SETTINGS_NVS_DIM_TIME_KEY, s_settings_ctx.settings.dim_time);
-    res |= nvs_set_i32(h, SETTINGS_NVS_DIM_LEVEL_KEY, s_settings_ctx.settings.dim_level);
-    res |= nvs_set_i8(h, SETTINGS_NVS_OFF_EN_KEY, s_settings_ctx.settings.screen_off ? 1 : 0);
-    res |= nvs_set_i32(h, SETTINGS_NVS_OFF_TIME_KEY, s_settings_ctx.settings.off_time);
+    esp_err_t res = nvs_set_i8(h, SETTINGS_NVS_DIM_EN_KEY, s_settings_ctx.settings.display.screen_dim ? 1 : 0);
+    res |= nvs_set_i32(h, SETTINGS_NVS_DIM_TIME_KEY, s_settings_ctx.settings.display.dim_time);
+    res |= nvs_set_i32(h, SETTINGS_NVS_DIM_LEVEL_KEY, s_settings_ctx.settings.display.dim_level);
+    res |= nvs_set_i8(h, SETTINGS_NVS_OFF_EN_KEY, s_settings_ctx.settings.display.screen_off ? 1 : 0);
+    res |= nvs_set_i32(h, SETTINGS_NVS_OFF_TIME_KEY, s_settings_ctx.settings.display.off_time);
     if (res == ESP_OK) {
         res = nvs_commit(h);
     }
@@ -1991,7 +2003,7 @@ static void persist_auto_connect_to_nvs(void)
         return;
     }
 
-    esp_err_t res = nvs_set_i8(h, SETTINGS_NVS_AUTO_CONNECT_KEY, s_settings_ctx.settings.startup_sntp_auto_connect ? 1 : 0);
+    esp_err_t res = nvs_set_i8(h, SETTINGS_NVS_AUTO_CONNECT_KEY, s_settings_ctx.settings.time.startup_sntp_auto_connect ? 1 : 0);
     if (res == ESP_OK) {
         res = nvs_commit(h);
     }
@@ -2005,7 +2017,7 @@ static void persist_auto_connect_to_nvs(void)
 static void load_auto_connect_from_nvs(void)
 {
     /* Default: disabled */
-    s_settings_ctx.settings.startup_sntp_auto_connect = SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT;
+    s_settings_ctx.settings.time.startup_sntp_auto_connect = SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT;
 
     nvs_handle_t h;
     if (nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h) != ESP_OK) {
@@ -2014,7 +2026,7 @@ static void load_auto_connect_from_nvs(void)
 
     int8_t raw = -1;
     if (nvs_get_i8(h, SETTINGS_NVS_AUTO_CONNECT_KEY, &raw) == ESP_OK) {
-        s_settings_ctx.settings.startup_sntp_auto_connect = (raw != 0);
+        s_settings_ctx.settings.time.startup_sntp_auto_connect = (raw != 0);
     }
 
     nvs_close(h);
@@ -2067,24 +2079,24 @@ static void init_settings(void)
 
 static void init_default_configs(void)
 {
-    s_settings_ctx.settings.startup_sntp_auto_connect = SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT;
+    s_settings_ctx.settings.time.startup_sntp_auto_connect = SETTINGS_DEFAULT_STARTUP_SNTP_AUTO_CONNECT;
     s_settings_ctx.settings.calibration_prompt_enabled = SETTINGS_DEFAULT_CALI_PROMPT_ENABLE;
-    s_settings_ctx.settings.refresh_sntp_startup = SETTINGS_DEFAULT_REFRESH_SNTP_STARTUP;
+    s_settings_ctx.settings.time.refresh_sntp_startup = SETTINGS_DEFAULT_REFRESH_SNTP_STARTUP;
     s_settings_ctx.settings.running_calibration = SETTINGS_DEFAULT_RUNNING_CALIBRATION;    
-    s_settings_ctx.settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
-    s_settings_ctx.settings.saved_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
+    s_settings_ctx.settings.display.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
+    s_settings_ctx.settings.display.saved_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.manual_restart = SETTINGS_DEFAULT_MANUAL_RESTART; 
-    s_settings_ctx.settings.sntp_last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
-    s_settings_ctx.settings.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
-    s_settings_ctx.settings.dim_level = SETTINGS_DEFAULT_SCREEN_DIM_LEVEL;
-    s_settings_ctx.settings.sntp_success = SETTINGS_DEFAULT_SNTP_SUCCESS; 
-    s_settings_ctx.settings.off_time = SETTINGS_DEFAULT_SCREEN_OFF_TIME;
-    s_settings_ctx.settings.dim_time = SETTINGS_DEFAULT_SCREEN_DIM_TIME;
-    s_settings_ctx.settings.screen_dim = SETTINGS_DEFAULT_SCREEN_DIM;
-    s_settings_ctx.settings.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
-    s_settings_ctx.settings.screen_off = SETTINGS_DEFAULT_SCREEN_OFF;
+    s_settings_ctx.settings.time.sntp_last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
+    s_settings_ctx.settings.display.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
+    s_settings_ctx.settings.display.dim_level = SETTINGS_DEFAULT_SCREEN_DIM_LEVEL;
+    s_settings_ctx.settings.time.sntp_success = SETTINGS_DEFAULT_SNTP_SUCCESS; 
+    s_settings_ctx.settings.display.off_time = SETTINGS_DEFAULT_SCREEN_OFF_TIME;
+    s_settings_ctx.settings.display.dim_time = SETTINGS_DEFAULT_SCREEN_DIM_TIME;
+    s_settings_ctx.settings.display.screen_dim = SETTINGS_DEFAULT_SCREEN_DIM;
+    s_settings_ctx.settings.display.brightness = SETTINGS_DEFAULT_BRIGHTNESS;
+    s_settings_ctx.settings.display.screen_off = SETTINGS_DEFAULT_SCREEN_OFF;
     s_settings_ctx.settings.dark_theme = SETTINGS_DEFAULT_DARK_THEME;
-    s_settings_ctx.settings.time_valid = SETTINGS_DEFAULT_TIME_VALID; 
+    s_settings_ctx.settings.display.time_valid = SETTINGS_DEFAULT_TIME_VALID; 
     s_settings_ctx.changing_brightness = false; 
     s_settings_ctx.settings.ap_ssid[0] = '\0';
     s_settings_ctx.settings.ap_pwd[0] = '\0';    
@@ -2113,7 +2125,7 @@ static void settings_rotate_screen(lv_event_t *e)
         return;
     }
 
-    ctx->settings.screen_rotation_step = (ctx->settings.screen_rotation_step + 1) % SETTINGS_ROTATION_STEPS;
+    ctx->settings.display.screen_rotation_step = (ctx->settings.display.screen_rotation_step + 1) % SETTINGS_ROTATION_STEPS;
     apply_rotation_to_display(false);
 }
 
@@ -2124,17 +2136,17 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     }
 
     /* Close previous overlay if still open. */
-    if (ctx->datetime_overlay) {
-        lv_obj_del(ctx->datetime_overlay);
-        ctx->datetime_overlay = NULL;
-        ctx->dt_month_ta = NULL;
-        ctx->dt_day_ta = NULL;
-        ctx->dt_year_ta = NULL;
-        ctx->dt_hour_ta = NULL;
-        ctx->dt_min_ta = NULL;
-        ctx->dt_keyboard = NULL;
-        ctx->dt_dialog = NULL;
-        ctx->dt_row_time = NULL;
+    if (ctx->graphics.datetime_overlay) {
+        lv_obj_del(ctx->graphics.datetime_overlay);
+        ctx->graphics.datetime_overlay = NULL;
+        ctx->graphics.dt_month_ta = NULL;
+        ctx->graphics.dt_day_ta = NULL;
+        ctx->graphics.dt_year_ta = NULL;
+        ctx->graphics.dt_hour_ta = NULL;
+        ctx->graphics.dt_min_ta = NULL;
+        ctx->graphics.dt_keyboard = NULL;
+        ctx->graphics.dt_dialog = NULL;
+        ctx->graphics.dt_row_time = NULL;
     }
 
     lv_obj_t *overlay = lv_obj_create(lv_layer_top());
@@ -2144,7 +2156,7 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_add_event_cb(overlay, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
-    ctx->datetime_overlay = overlay;
+    ctx->graphics.datetime_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
     lv_obj_set_style_radius(dlg, 12, 0);
@@ -2162,7 +2174,7 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
     lv_obj_center(dlg);
-    ctx->dt_dialog = dlg;
+    ctx->graphics.dt_dialog = dlg;
 
     lv_obj_t *title = lv_label_create(dlg);
     lv_label_set_text(title, "Manual Date&Time");
@@ -2187,43 +2199,43 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_label_set_text(date_lbl, "Date:");
     lv_obj_add_flag(date_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
 
-    ctx->dt_month_ta = lv_textarea_create(row_date);
-    lv_obj_set_width(ctx->dt_month_ta, 48);
-    lv_textarea_set_one_line(ctx->dt_month_ta, true);
-    lv_textarea_set_max_length(ctx->dt_month_ta, 2);
-    lv_textarea_set_text(ctx->dt_month_ta, "MM");
-    styles_set_textarea(ctx->dt_month_ta);
-    lv_obj_add_event_cb(ctx->dt_month_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->dt_month_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->dt_month_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    ctx->graphics.dt_month_ta = lv_textarea_create(row_date);
+    lv_obj_set_width(ctx->graphics.dt_month_ta, 48);
+    lv_textarea_set_one_line(ctx->graphics.dt_month_ta, true);
+    lv_textarea_set_max_length(ctx->graphics.dt_month_ta, 2);
+    lv_textarea_set_text(ctx->graphics.dt_month_ta, "MM");
+    styles_set_textarea(ctx->graphics.dt_month_ta);
+    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_month_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     lv_obj_t *slash1 = lv_label_create(row_date);
     lv_label_set_text(slash1, "/");
     lv_obj_add_flag(slash1, LV_OBJ_FLAG_EVENT_BUBBLE);
 
-    ctx->dt_day_ta = lv_textarea_create(row_date);
-    lv_obj_set_width(ctx->dt_day_ta, 48);
-    lv_textarea_set_one_line(ctx->dt_day_ta, true);
-    lv_textarea_set_max_length(ctx->dt_day_ta, 2);
-    lv_textarea_set_text(ctx->dt_day_ta, "DD");
-    styles_set_textarea(ctx->dt_day_ta);
-    lv_obj_add_event_cb(ctx->dt_day_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->dt_day_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->dt_day_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    ctx->graphics.dt_day_ta = lv_textarea_create(row_date);
+    lv_obj_set_width(ctx->graphics.dt_day_ta, 48);
+    lv_textarea_set_one_line(ctx->graphics.dt_day_ta, true);
+    lv_textarea_set_max_length(ctx->graphics.dt_day_ta, 2);
+    lv_textarea_set_text(ctx->graphics.dt_day_ta, "DD");
+    styles_set_textarea(ctx->graphics.dt_day_ta);
+    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_day_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     lv_obj_t *slash2 = lv_label_create(row_date);
     lv_label_set_text(slash2, "/");
     lv_obj_add_flag(slash2, LV_OBJ_FLAG_EVENT_BUBBLE);
 
-    ctx->dt_year_ta = lv_textarea_create(row_date);
-    lv_obj_set_width(ctx->dt_year_ta, 48);
-    lv_textarea_set_one_line(ctx->dt_year_ta, true);
-    lv_textarea_set_max_length(ctx->dt_year_ta, 2);
-    lv_textarea_set_text(ctx->dt_year_ta, "YY");
-    styles_set_textarea(ctx->dt_year_ta);
-    lv_obj_add_event_cb(ctx->dt_year_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->dt_year_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->dt_year_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    ctx->graphics.dt_year_ta = lv_textarea_create(row_date);
+    lv_obj_set_width(ctx->graphics.dt_year_ta, 48);
+    lv_textarea_set_one_line(ctx->graphics.dt_year_ta, true);
+    lv_textarea_set_max_length(ctx->graphics.dt_year_ta, 2);
+    lv_textarea_set_text(ctx->graphics.dt_year_ta, "YY");
+    styles_set_textarea(ctx->graphics.dt_year_ta);
+    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_year_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     /* Time row */
     lv_obj_t *row_time = lv_obj_create(dlg);
@@ -2235,35 +2247,35 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_set_height(row_time, LV_SIZE_CONTENT);
     lv_obj_set_flex_align(row_time, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_add_flag(row_time, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->dt_row_time = row_time;
+    ctx->graphics.dt_row_time = row_time;
 
     lv_obj_t *time_lbl = lv_label_create(row_time);
     lv_label_set_text(time_lbl, "Time:");
     lv_obj_add_flag(time_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
 
-    ctx->dt_hour_ta = lv_textarea_create(row_time);
-    lv_obj_set_width(ctx->dt_hour_ta, 48);
-    lv_textarea_set_one_line(ctx->dt_hour_ta, true);
-    lv_textarea_set_max_length(ctx->dt_hour_ta, 2);
-    lv_textarea_set_text(ctx->dt_hour_ta, "HH");
-    styles_set_textarea(ctx->dt_hour_ta);
-    lv_obj_add_event_cb(ctx->dt_hour_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->dt_hour_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->dt_hour_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    ctx->graphics.dt_hour_ta = lv_textarea_create(row_time);
+    lv_obj_set_width(ctx->graphics.dt_hour_ta, 48);
+    lv_textarea_set_one_line(ctx->graphics.dt_hour_ta, true);
+    lv_textarea_set_max_length(ctx->graphics.dt_hour_ta, 2);
+    lv_textarea_set_text(ctx->graphics.dt_hour_ta, "HH");
+    styles_set_textarea(ctx->graphics.dt_hour_ta);
+    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_hour_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     lv_obj_t *colon = lv_label_create(row_time);
     lv_label_set_text(colon, ":");
     lv_obj_add_flag(colon, LV_OBJ_FLAG_EVENT_BUBBLE);
 
-    ctx->dt_min_ta = lv_textarea_create(row_time);
-    lv_obj_set_width(ctx->dt_min_ta, 48);
-    lv_textarea_set_one_line(ctx->dt_min_ta, true);
-    lv_textarea_set_max_length(ctx->dt_min_ta, 2);
-    lv_textarea_set_text(ctx->dt_min_ta, "MM");
-    styles_set_textarea(ctx->dt_min_ta);
-    lv_obj_add_event_cb(ctx->dt_min_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->dt_min_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->dt_min_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
+    ctx->graphics.dt_min_ta = lv_textarea_create(row_time);
+    lv_obj_set_width(ctx->graphics.dt_min_ta, 48);
+    lv_textarea_set_one_line(ctx->graphics.dt_min_ta, true);
+    lv_textarea_set_max_length(ctx->graphics.dt_min_ta, 2);
+    lv_textarea_set_text(ctx->graphics.dt_min_ta, "MM");
+    styles_set_textarea(ctx->graphics.dt_min_ta);
+    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, settings_on_dt_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, settings_on_dt_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_min_ta, settings_on_dt_textarea_defocus, LV_EVENT_DEFOCUSED, ctx);
 
     /* Action row */
     lv_obj_t *row_actions = lv_obj_create(dlg);
@@ -2297,16 +2309,16 @@ static void settings_build_date_time_dialog(settings_ctx_t *ctx)
     lv_obj_add_event_cb(cancel_btn, settings_close_set_date_time, LV_EVENT_CLICKED, ctx);
 
     /* Keyboard anchored to bottom of overlay */
-    ctx->dt_keyboard = lv_keyboard_create(overlay);
-    styles_set_keyboard(ctx->dt_keyboard);
-    lv_keyboard_set_mode(ctx->dt_keyboard, LV_KEYBOARD_MODE_NUMBER);
-    lv_keyboard_set_textarea(ctx->dt_keyboard, NULL);
-    lv_obj_add_flag(ctx->dt_keyboard, LV_OBJ_FLAG_FLOATING);
-    lv_obj_add_flag(ctx->dt_keyboard, LV_OBJ_FLAG_HIDDEN); /* show only after a field is tapped */
-    lv_obj_add_event_cb(ctx->dt_keyboard, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->dt_keyboard, settings_on_dt_keyboard_event, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->dt_keyboard, settings_on_dt_keyboard_event, LV_EVENT_READY, ctx);
-    lv_obj_align(ctx->dt_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    ctx->graphics.dt_keyboard = lv_keyboard_create(overlay);
+    styles_set_keyboard(ctx->graphics.dt_keyboard);
+    lv_keyboard_set_mode(ctx->graphics.dt_keyboard, LV_KEYBOARD_MODE_NUMBER);
+    lv_keyboard_set_textarea(ctx->graphics.dt_keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.dt_keyboard, LV_OBJ_FLAG_FLOATING);
+    lv_obj_add_flag(ctx->graphics.dt_keyboard, LV_OBJ_FLAG_HIDDEN); /* show only after a field is tapped */
+    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, settings_on_dt_keyboard_event, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.dt_keyboard, settings_on_dt_keyboard_event, LV_EVENT_READY, ctx);
+    lv_obj_align(ctx->graphics.dt_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 }
 
 static void settings_set_date_time(lv_event_t *e)
@@ -2321,15 +2333,15 @@ static void settings_set_date_time(lv_event_t *e)
 static void settings_close_set_date_time(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);  
-    if (ctx && ctx->datetime_overlay) {
-        lv_obj_del(ctx->datetime_overlay);
-        ctx->datetime_overlay = NULL;
-        ctx->dt_month_ta = NULL;
-        ctx->dt_day_ta = NULL;
-        ctx->dt_year_ta = NULL;
-        ctx->dt_hour_ta = NULL;
-        ctx->dt_min_ta = NULL;
-        ctx->dt_keyboard = NULL;
+    if (ctx && ctx->graphics.datetime_overlay) {
+        lv_obj_del(ctx->graphics.datetime_overlay);
+        ctx->graphics.datetime_overlay = NULL;
+        ctx->graphics.dt_month_ta = NULL;
+        ctx->graphics.dt_day_ta = NULL;
+        ctx->graphics.dt_year_ta = NULL;
+        ctx->graphics.dt_hour_ta = NULL;
+        ctx->graphics.dt_min_ta = NULL;
+        ctx->graphics.dt_keyboard = NULL;
     }    
 }
 
@@ -2341,11 +2353,11 @@ static void settings_apply_date_time(lv_event_t *e)
     }
 
     int month, day, year, hour, minute;
-    const char *month_txt = ctx->dt_month_ta ? lv_textarea_get_text(ctx->dt_month_ta) : NULL;
-    const char *day_txt = ctx->dt_day_ta ? lv_textarea_get_text(ctx->dt_day_ta) : NULL;
-    const char *year_txt = ctx->dt_year_ta ? lv_textarea_get_text(ctx->dt_year_ta) : NULL;
-    const char *hour_txt = ctx->dt_hour_ta ? lv_textarea_get_text(ctx->dt_hour_ta) : NULL;
-    const char *min_txt = ctx->dt_min_ta ? lv_textarea_get_text(ctx->dt_min_ta) : NULL;
+    const char *month_txt = ctx->graphics.dt_month_ta ? lv_textarea_get_text(ctx->graphics.dt_month_ta) : NULL;
+    const char *day_txt = ctx->graphics.dt_day_ta ? lv_textarea_get_text(ctx->graphics.dt_day_ta) : NULL;
+    const char *year_txt = ctx->graphics.dt_year_ta ? lv_textarea_get_text(ctx->graphics.dt_year_ta) : NULL;
+    const char *hour_txt = ctx->graphics.dt_hour_ta ? lv_textarea_get_text(ctx->graphics.dt_hour_ta) : NULL;
+    const char *min_txt = ctx->graphics.dt_min_ta ? lv_textarea_get_text(ctx->graphics.dt_min_ta) : NULL;
 
     if (!settings_parse_int_range(month_txt, 1, 12, &month) ||
         !settings_parse_int_range(day_txt, 1, 31, &day) ||
@@ -2362,13 +2374,13 @@ static void settings_apply_date_time(lv_event_t *e)
         return;
     }
 
-    ctx->settings.time_valid = true;
+    ctx->settings.display.time_valid = true;
     persist_valid_time_flag_to_nvs();
-    ctx->settings.dt_day = day;
-    ctx->settings.dt_year = year;
-    ctx->settings.dt_hour = hour;
-    ctx->settings.dt_month = month;
-    ctx->settings.dt_minute = minute;
+    ctx->settings.time.dt_day = day;
+    ctx->settings.time.dt_year = year;
+    ctx->settings.time.dt_hour = hour;
+    ctx->settings.time.dt_month = month;
+    ctx->settings.time.dt_minute = minute;
     settings_notify_time_set();
 
     /* Set system time from the provided fields (no persistence). */
@@ -2391,18 +2403,18 @@ static void settings_apply_date_time(lv_event_t *e)
 
     persist_time_to_nvs(t);
 
-    if (ctx->datetime_overlay) {
-        lv_obj_del(ctx->datetime_overlay);
-        ctx->datetime_overlay = NULL;
+    if (ctx->graphics.datetime_overlay) {
+        lv_obj_del(ctx->graphics.datetime_overlay);
+        ctx->graphics.datetime_overlay = NULL;
     }
-    ctx->dt_month_ta = NULL;
-    ctx->dt_day_ta = NULL;
-    ctx->dt_year_ta = NULL;
-    ctx->dt_hour_ta = NULL;
-    ctx->dt_min_ta = NULL;
-    ctx->dt_keyboard = NULL;
-    ctx->dt_dialog = NULL;
-    ctx->dt_row_time = NULL;
+    ctx->graphics.dt_month_ta = NULL;
+    ctx->graphics.dt_day_ta = NULL;
+    ctx->graphics.dt_year_ta = NULL;
+    ctx->graphics.dt_hour_ta = NULL;
+    ctx->graphics.dt_min_ta = NULL;
+    ctx->graphics.dt_keyboard = NULL;
+    ctx->graphics.dt_dialog = NULL;
+    ctx->graphics.dt_row_time = NULL;
 }
 
 static void build_splash_screen(void)
@@ -2525,13 +2537,13 @@ static void save_time_data(void)
         return;
     }
 
-    s_settings_ctx.settings.dt_year   = tm_info.tm_year % 100; /* YY */
-    s_settings_ctx.settings.dt_month  = tm_info.tm_mon + 1;
-    s_settings_ctx.settings.dt_day    = tm_info.tm_mday;
-    s_settings_ctx.settings.dt_hour   = tm_info.tm_hour;
-    s_settings_ctx.settings.dt_minute = tm_info.tm_min;
-    s_settings_ctx.settings.dt_second = tm_info.tm_sec;
-    s_settings_ctx.settings.time_valid = true;
+    s_settings_ctx.settings.time.dt_year   = tm_info.tm_year % 100; /* YY */
+    s_settings_ctx.settings.time.dt_month  = tm_info.tm_mon + 1;
+    s_settings_ctx.settings.time.dt_day    = tm_info.tm_mday;
+    s_settings_ctx.settings.time.dt_hour   = tm_info.tm_hour;
+    s_settings_ctx.settings.time.dt_minute = tm_info.tm_min;
+    s_settings_ctx.settings.time.dt_second = tm_info.tm_sec;
+    s_settings_ctx.settings.display.time_valid = true;
     persist_time_to_nvs(now);
 }
 
@@ -2587,7 +2599,7 @@ static void settings_show_invalid_input(void)
 static void settings_on_dt_textarea_focus(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->dt_keyboard) {
+    if (!ctx || !ctx->graphics.dt_keyboard) {
         return;
     }
     lv_obj_t *ta = lv_event_get_target(e);
@@ -2596,8 +2608,8 @@ static void settings_on_dt_textarea_focus(lv_event_t *e)
                 strcmp(txt, "YY") == 0 || strcmp(txt, "HH") == 0)) {
         lv_textarea_set_text(ta, "");
     }
-    lv_keyboard_set_textarea(ctx->dt_keyboard, ta);
-    lv_obj_clear_flag(ctx->dt_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.dt_keyboard, ta);
+    lv_obj_clear_flag(ctx->graphics.dt_keyboard, LV_OBJ_FLAG_HIDDEN);
     settings_realign_dt_dialog(ctx, ta);
     settings_scroll_field_into_view(ctx, ta);
 }
@@ -2610,14 +2622,14 @@ static void settings_on_dt_background_tap(lv_event_t *e)
     }
 
     lv_obj_t *target = lv_event_get_target(e);
-    if (settings_is_descendant(target, ctx->dt_keyboard)) {
+    if (settings_is_descendant(target, ctx->graphics.dt_keyboard)) {
         return;
     }
-    if (settings_is_descendant(target, ctx->dt_month_ta) ||
-        settings_is_descendant(target, ctx->dt_day_ta) ||
-        settings_is_descendant(target, ctx->dt_year_ta) ||
-        settings_is_descendant(target, ctx->dt_hour_ta) ||
-        settings_is_descendant(target, ctx->dt_min_ta)) {
+    if (settings_is_descendant(target, ctx->graphics.dt_month_ta) ||
+        settings_is_descendant(target, ctx->graphics.dt_day_ta) ||
+        settings_is_descendant(target, ctx->graphics.dt_year_ta) ||
+        settings_is_descendant(target, ctx->graphics.dt_hour_ta) ||
+        settings_is_descendant(target, ctx->graphics.dt_min_ta)) {
         return;
     }
 
@@ -2626,23 +2638,23 @@ static void settings_on_dt_background_tap(lv_event_t *e)
 
 static void settings_hide_dt_keyboard(settings_ctx_t *ctx)
 {
-    if (!ctx || !ctx->dt_keyboard) {
+    if (!ctx || !ctx->graphics.dt_keyboard) {
         return;
     }
-    lv_keyboard_set_textarea(ctx->dt_keyboard, NULL);
-    lv_obj_add_flag(ctx->dt_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.dt_keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.dt_keyboard, LV_OBJ_FLAG_HIDDEN);
     settings_realign_dt_dialog(ctx, NULL);
 }
 
 static void settings_realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
 {
-    if (!ctx || !ctx->dt_dialog || !lv_obj_is_valid(ctx->dt_dialog)) {
+    if (!ctx || !ctx->graphics.dt_dialog || !lv_obj_is_valid(ctx->graphics.dt_dialog)) {
         return;
     }
 
-    int16_t kb_h = (ctx->dt_keyboard && lv_obj_is_valid(ctx->dt_keyboard)) ? lv_obj_get_height(ctx->dt_keyboard) : 0;
+    int16_t kb_h = (ctx->graphics.dt_keyboard && lv_obj_is_valid(ctx->graphics.dt_keyboard)) ? lv_obj_get_height(ctx->graphics.dt_keyboard) : 0;
     if (kb_h <= 0) {
-        kb_h = lv_obj_get_height(ctx->dt_dialog) / 3;
+        kb_h = lv_obj_get_height(ctx->graphics.dt_dialog) / 3;
     }
     if (kb_h <= 0) {
         kb_h = 120; /* fallback */
@@ -2659,35 +2671,35 @@ static void settings_realign_dt_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
 
     int16_t offset = 0;
     if (ta) {
-        if (ta == ctx->dt_month_ta || ta == ctx->dt_day_ta || ta == ctx->dt_year_ta) {
+        if (ta == ctx->graphics.dt_month_ta || ta == ctx->graphics.dt_day_ta || ta == ctx->graphics.dt_year_ta) {
             offset = date_row_lift;
         } else {
             offset = time_row_lift;
         }
     }
 
-    lv_obj_align(ctx->dt_dialog, LV_ALIGN_CENTER, 0, offset);
+    lv_obj_align(ctx->graphics.dt_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
 static void settings_hide_ss_keyboard(settings_ctx_t *ctx)
 {
-    if (!ctx || !ctx->ss_keyboard) {
+    if (!ctx || !ctx->graphics.ss_keyboard) {
         return;
     }
-    lv_keyboard_set_textarea(ctx->ss_keyboard, NULL);
-    lv_obj_add_flag(ctx->ss_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.ss_keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_HIDDEN);
     settings_realign_screensaver_dialog(ctx, NULL);
 }
 
 static void settings_realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
 {
-    if (!ctx || !ctx->screensaver_dialog || !lv_obj_is_valid(ctx->screensaver_dialog)) {
+    if (!ctx || !ctx->graphics.screensaver_dialog || !lv_obj_is_valid(ctx->graphics.screensaver_dialog)) {
         return;
     }
 
-    int16_t kb_h = (ctx->ss_keyboard && lv_obj_is_valid(ctx->ss_keyboard)) ? lv_obj_get_height(ctx->ss_keyboard) : 0;
-    if (kb_h <= 0 && ctx->screensaver_dialog) {
-        kb_h = lv_obj_get_height(ctx->screensaver_dialog) / 3;
+    int16_t kb_h = (ctx->graphics.ss_keyboard && lv_obj_is_valid(ctx->graphics.ss_keyboard)) ? lv_obj_get_height(ctx->graphics.ss_keyboard) : 0;
+    if (kb_h <= 0 && ctx->graphics.screensaver_dialog) {
+        kb_h = lv_obj_get_height(ctx->graphics.screensaver_dialog) / 3;
     }
     if (kb_h <= 0) {
         kb_h = 120; /* reasonable fallback */
@@ -2704,25 +2716,25 @@ static void settings_realign_screensaver_dialog(settings_ctx_t *ctx, lv_obj_t *t
 
     int16_t offset = 0;
     if (ta) {
-        if (ta == ctx->ss_dim_after_ta || ta == ctx->ss_dim_pct_ta) {
+        if (ta == ctx->graphics.ss_dim_after_ta || ta == ctx->graphics.ss_dim_pct_ta) {
             offset = dim_row_lift;
         } else {
             offset = off_row_lift;
         }
     }
 
-    lv_obj_align(ctx->screensaver_dialog, LV_ALIGN_CENTER, 0, offset);
+    lv_obj_align(ctx->graphics.screensaver_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
 static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
 {
-    if (!ctx || !ctx->access_point_dialog || !lv_obj_is_valid(ctx->access_point_dialog)) {
+    if (!ctx || !ctx->graphics.access_point_dialog || !lv_obj_is_valid(ctx->graphics.access_point_dialog)) {
         return;
     }
 
-    int16_t kb_h = (ctx->access_point_keyboard && lv_obj_is_valid(ctx->access_point_keyboard)) ? lv_obj_get_height(ctx->access_point_keyboard) : 0;
+    int16_t kb_h = (ctx->graphics.access_point_keyboard && lv_obj_is_valid(ctx->graphics.access_point_keyboard)) ? lv_obj_get_height(ctx->graphics.access_point_keyboard) : 0;
     if (kb_h <= 0) {
-        kb_h = lv_obj_get_height(ctx->access_point_dialog) / 3;
+        kb_h = lv_obj_get_height(ctx->graphics.access_point_dialog) / 3;
     }
     if (kb_h <= 0) {
         kb_h = 120; /* fallback */
@@ -2731,7 +2743,7 @@ static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
     int16_t offset = 0;
     if (ta) {
         /* Lift more for password row to keep it visible. */
-        if (ta == ctx->access_point_pwd_ta) {
+        if (ta == ctx->graphics.access_point_pwd_ta) {
             offset = -(kb_h * 2 / 3);
             if (offset == 0) offset = -80;
         } else {
@@ -2740,7 +2752,7 @@ static void settings_realign_ap_dialog(settings_ctx_t *ctx, lv_obj_t *ta)
         }
     }
 
-    lv_obj_align(ctx->access_point_dialog, LV_ALIGN_CENTER, 0, offset);
+    lv_obj_align(ctx->graphics.access_point_dialog, LV_ALIGN_CENTER, 0, offset);
 }
 
 static void settings_on_dt_keyboard_event(lv_event_t *e)
@@ -2760,12 +2772,12 @@ static void settings_on_ss_background_tap(lv_event_t *e)
     }
 
     lv_obj_t *target = lv_event_get_target(e);
-    if (settings_is_descendant(target, ctx->ss_keyboard)) {
+    if (settings_is_descendant(target, ctx->graphics.ss_keyboard)) {
         return;
     }
-    if (settings_is_descendant(target, ctx->ss_dim_after_ta) ||
-        settings_is_descendant(target, ctx->ss_dim_pct_ta) ||
-        settings_is_descendant(target, ctx->ss_off_after_ta)) {
+    if (settings_is_descendant(target, ctx->graphics.ss_dim_after_ta) ||
+        settings_is_descendant(target, ctx->graphics.ss_dim_pct_ta) ||
+        settings_is_descendant(target, ctx->graphics.ss_off_after_ta)) {
         return;
     }
 
@@ -2783,11 +2795,11 @@ static void settings_on_ss_keyboard_event(lv_event_t *e)
 
 static void settings_hide_ap_keyboard(settings_ctx_t *ctx)
 {
-    if (!ctx || !ctx->access_point_keyboard) {
+    if (!ctx || !ctx->graphics.access_point_keyboard) {
         return;
     }
-    lv_keyboard_set_textarea(ctx->access_point_keyboard, NULL);
-    lv_obj_add_flag(ctx->access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.access_point_keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
     settings_realign_ap_dialog(ctx, NULL);
 }
 
@@ -2799,10 +2811,10 @@ static void settings_on_ap_background_tap(lv_event_t *e)
     }
 
     lv_obj_t *target = lv_event_get_target(e);
-    if (settings_is_descendant(target, ctx->access_point_keyboard)) {
+    if (settings_is_descendant(target, ctx->graphics.access_point_keyboard)) {
         return;
     }
-    lv_obj_t *attached = ctx->access_point_keyboard ? lv_keyboard_get_textarea(ctx->access_point_keyboard) : NULL;
+    lv_obj_t *attached = ctx->graphics.access_point_keyboard ? lv_keyboard_get_textarea(ctx->graphics.access_point_keyboard) : NULL;
     if (settings_is_descendant(target, attached)) {
         return;
     }
@@ -2833,7 +2845,7 @@ static void settings_on_ap_textarea_focus(lv_event_t *e)
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
 
-    if (!ctx || !ctx->access_point_keyboard) {
+    if (!ctx || !ctx->graphics.access_point_keyboard) {
         return;
     }
 
@@ -2846,8 +2858,8 @@ static void settings_on_ap_textarea_focus(lv_event_t *e)
         return;
     }
 
-    lv_keyboard_set_textarea(ctx->access_point_keyboard, ta);
-    lv_obj_clear_flag(ctx->access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.access_point_keyboard, ta);
+    lv_obj_clear_flag(ctx->graphics.access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
     settings_realign_ap_dialog(ctx, ta);
     lv_obj_scroll_to_view(ta, LV_ANIM_ON);
 }
@@ -2857,7 +2869,7 @@ static void settings_on_ss_textarea_focus(lv_event_t *e)
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
 
-    if (!ctx || !ctx->ss_keyboard) {
+    if (!ctx || !ctx->graphics.ss_keyboard) {
         return;
     }
 
@@ -2869,8 +2881,8 @@ static void settings_on_ss_textarea_focus(lv_event_t *e)
     if (lv_obj_has_state(ta, LV_STATE_DISABLED)) {
         return;
     }
-    lv_keyboard_set_textarea(ctx->ss_keyboard, ta);
-    lv_obj_clear_flag(ctx->ss_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.ss_keyboard, ta);
+    lv_obj_clear_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_HIDDEN);
     settings_realign_screensaver_dialog(ctx, ta);
     lv_obj_scroll_to_view(ta, LV_ANIM_ON);
 }
@@ -2910,10 +2922,10 @@ static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabl
     }
 
     lv_obj_t *labels[] = {
-        ctx->ss_dim_after_lbl,
-        ctx->ss_seconds_lbl,
-        ctx->ss_at_lbl,
-        ctx->ss_pct_lbl,
+        ctx->graphics.ss_dim_after_lbl,
+        ctx->graphics.ss_seconds_lbl,
+        ctx->graphics.ss_at_lbl,
+        ctx->graphics.ss_pct_lbl,
     };
     for (size_t i = 0; i < sizeof(labels)/sizeof(labels[0]); i++) {
         lv_obj_t *lbl = labels[i];
@@ -2930,8 +2942,8 @@ static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabl
     }
 
     lv_obj_t *textareas[] = {
-        ctx->ss_dim_after_ta,
-        ctx->ss_dim_pct_ta,
+        ctx->graphics.ss_dim_after_ta,
+        ctx->graphics.ss_dim_pct_ta,
     };
     for (size_t i = 0; i < sizeof(textareas)/sizeof(textareas[0]); i++) {
         lv_obj_t *ta = textareas[i];
@@ -2955,11 +2967,11 @@ static void settings_update_dim_controls_enabled(settings_ctx_t *ctx, bool enabl
         }
     }
 
-    if (!enabled && ctx->ss_keyboard) {
-        lv_obj_t *attached = lv_keyboard_get_textarea(ctx->ss_keyboard);
-        if (attached == ctx->ss_dim_after_ta || attached == ctx->ss_dim_pct_ta) {
-            lv_keyboard_set_textarea(ctx->ss_keyboard, NULL);
-            lv_obj_add_flag(ctx->ss_keyboard, LV_OBJ_FLAG_HIDDEN);
+    if (!enabled && ctx->graphics.ss_keyboard) {
+        lv_obj_t *attached = lv_keyboard_get_textarea(ctx->graphics.ss_keyboard);
+        if (attached == ctx->graphics.ss_dim_after_ta || attached == ctx->graphics.ss_dim_pct_ta) {
+            lv_keyboard_set_textarea(ctx->graphics.ss_keyboard, NULL);
+            lv_obj_add_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
@@ -2971,8 +2983,8 @@ static void settings_update_off_controls_enabled(settings_ctx_t *ctx, bool enabl
     }
 
     lv_obj_t *labels[] = {
-        ctx->ss_off_after_lbl,
-        ctx->ss_off_seconds_lbl,
+        ctx->graphics.ss_off_after_lbl,
+        ctx->graphics.ss_off_seconds_lbl,
     };
     for (size_t i = 0; i < sizeof(labels)/sizeof(labels[0]); i++) {
         lv_obj_t *lbl = labels[i];
@@ -2988,27 +3000,27 @@ static void settings_update_off_controls_enabled(settings_ctx_t *ctx, bool enabl
         }
     }
 
-    if (ctx->ss_off_after_ta) {
+    if (ctx->graphics.ss_off_after_ta) {
         if (enabled) {
-            lv_obj_clear_state(ctx->ss_off_after_ta, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(ctx->ss_off_after_ta, LV_OPA_COVER, LV_PART_MAIN);
-            const char *txt = lv_textarea_get_text(ctx->ss_off_after_ta);
-            const char *ph = lv_textarea_get_placeholder_text(ctx->ss_off_after_ta);
+            lv_obj_clear_state(ctx->graphics.ss_off_after_ta, LV_STATE_DISABLED);
+            lv_obj_set_style_text_opa(ctx->graphics.ss_off_after_ta, LV_OPA_COVER, LV_PART_MAIN);
+            const char *txt = lv_textarea_get_text(ctx->graphics.ss_off_after_ta);
+            const char *ph = lv_textarea_get_placeholder_text(ctx->graphics.ss_off_after_ta);
             if (txt && txt[0] == '\0' && ph && ph[0] != '\0') {
-                lv_textarea_set_text(ctx->ss_off_after_ta, ph);
+                lv_textarea_set_text(ctx->graphics.ss_off_after_ta, ph);
             }
         } else {
-            lv_obj_add_state(ctx->ss_off_after_ta, LV_STATE_DISABLED);
-            lv_obj_set_style_text_opa(ctx->ss_off_after_ta, LV_OPA_60, LV_PART_MAIN);
-            lv_textarea_set_text(ctx->ss_off_after_ta, "");
+            lv_obj_add_state(ctx->graphics.ss_off_after_ta, LV_STATE_DISABLED);
+            lv_obj_set_style_text_opa(ctx->graphics.ss_off_after_ta, LV_OPA_60, LV_PART_MAIN);
+            lv_textarea_set_text(ctx->graphics.ss_off_after_ta, "");
         }
     }
 
-    if (!enabled && ctx->ss_keyboard) {
-        lv_obj_t *attached = lv_keyboard_get_textarea(ctx->ss_keyboard);
-        if (attached == ctx->ss_off_after_ta) {
-            lv_keyboard_set_textarea(ctx->ss_keyboard, NULL);
-            lv_obj_add_flag(ctx->ss_keyboard, LV_OBJ_FLAG_HIDDEN);
+    if (!enabled && ctx->graphics.ss_keyboard) {
+        lv_obj_t *attached = lv_keyboard_get_textarea(ctx->graphics.ss_keyboard);
+        if (attached == ctx->graphics.ss_off_after_ta) {
+            lv_keyboard_set_textarea(ctx->graphics.ss_keyboard, NULL);
+            lv_obj_add_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
@@ -3082,7 +3094,7 @@ static void screensaver_off_stop(void)
     if (s_ss_off_timer) {
         esp_timer_stop(s_ss_off_timer);
     }
-    settings_fade_brightness(s_settings_ctx.settings.brightness, 0); /* stop any ongoing fade */
+    settings_fade_brightness(s_settings_ctx.settings.display.brightness, 0); /* stop any ongoing fade */
 }
 
 static void settings_off_timer_cb(void *arg)
@@ -3096,7 +3108,7 @@ static void settings_dim_timer_cb(void *arg)
 {
     (void)arg;
     ESP_LOGD(TAG, "Dim timer fired: fading to dim level");
-    settings_fade_brightness(s_settings_ctx.settings.dim_level, SETTINGS_DIM_FADE_MS);
+    settings_fade_brightness(s_settings_ctx.settings.display.dim_level, SETTINGS_DIM_FADE_MS);
 }
 
 static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
@@ -3105,10 +3117,10 @@ static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
     if (target_pct < 0) target_pct = 0;
 
     settings_ctx_t *ctx = &s_settings_ctx;
-    int start = ctx->settings.brightness;
+    int start = ctx->settings.display.brightness;
     bool rising = target_pct > start;
     if (duration_ms == 0 || start == target_pct) {
-        ctx->settings.brightness = target_pct;
+        ctx->settings.display.brightness = target_pct;
         bsp_display_brightness_set(target_pct);
         settings_sync_brightness_ui(ctx, target_pct);
         if (!rising) {
@@ -3141,7 +3153,7 @@ static void settings_fade_brightness(int target_pct, uint32_t duration_ms)
     s_fade_direction = (target_pct > start) ? 1 : -1;
     s_fade_steps_left = (start > target_pct) ? (start - target_pct) : (target_pct - start);
     if (s_fade_steps_left == 0) {
-        ctx->settings.brightness = target_pct;
+        ctx->settings.display.brightness = target_pct;
         bsp_display_brightness_set(target_pct);
         settings_sync_brightness_ui(ctx, target_pct);
         return;
@@ -3165,7 +3177,7 @@ static void settings_fade_step_cb(void *arg)
         if (s_fade_timer) {
             esp_timer_stop(s_fade_timer);
         }
-        s_settings_ctx.settings.brightness = s_fade_target;
+        s_settings_ctx.settings.display.brightness = s_fade_target;
         bsp_display_brightness_set(s_fade_target);
         settings_sync_brightness_ui(&s_settings_ctx, s_fade_target);
         ESP_LOGD(TAG, "Fade complete -> %d", s_fade_target);
@@ -3173,10 +3185,10 @@ static void settings_fade_step_cb(void *arg)
         return;
     }
 
-    int next = s_settings_ctx.settings.brightness + s_fade_direction;
+    int next = s_settings_ctx.settings.display.brightness + s_fade_direction;
     if (next < 0) next = 0;
     if (next > 100) next = 100;
-    s_settings_ctx.settings.brightness = next;
+    s_settings_ctx.settings.display.brightness = next;
     bsp_display_brightness_set(next);
     s_fade_steps_left--;
 }
@@ -3195,28 +3207,28 @@ static void settings_sync_brightness_ui_async(void *arg)
 
     settings_ctx_t *ctx = &s_settings_ctx;
     /* Skip if settings screen is not active/visible or controls were deleted. */
-    if (!ctx->active || !ctx->screen || !lv_obj_is_valid(ctx->screen) || lv_screen_active() != ctx->screen) {
+    if (!ctx->active || !ctx->graphics.screen || !lv_obj_is_valid(ctx->graphics.screen) || lv_screen_active() != ctx->graphics.screen) {
         return;
     }
 
-    if (ctx->brightness_slider && lv_obj_is_valid(ctx->brightness_slider)) {
-        lv_slider_set_value(ctx->brightness_slider, val, LV_ANIM_OFF);
+    if (ctx->graphics.brightness_slider && lv_obj_is_valid(ctx->graphics.brightness_slider)) {
+        lv_slider_set_value(ctx->graphics.brightness_slider, val, LV_ANIM_OFF);
     }
-    if (ctx->brightness_label && lv_obj_is_valid(ctx->brightness_label)) {
+    if (ctx->graphics.brightness_label && lv_obj_is_valid(ctx->graphics.brightness_label)) {
         char txt[32];
         lv_snprintf(txt, sizeof(txt), "Brightness: %d%%", val);
-        lv_label_set_text(ctx->brightness_label, txt);
+        lv_label_set_text(ctx->graphics.brightness_label, txt);
     }
 }
 
 static void settings_scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta)
 {
-    if (!ctx || !ctx->dt_dialog || !ta) {
+    if (!ctx || !ctx->graphics.dt_dialog || !ta) {
         return;
     }
     lv_obj_t *target = ta;
-    if ((ta == ctx->dt_hour_ta || ta == ctx->dt_min_ta) && ctx->dt_row_time) {
-        target = ctx->dt_row_time;
+    if ((ta == ctx->graphics.dt_hour_ta || ta == ctx->graphics.dt_min_ta) && ctx->graphics.dt_row_time) {
+        target = ctx->graphics.dt_row_time;
     }
     lv_obj_scroll_to_view(target, LV_ANIM_ON);
 }
@@ -3232,15 +3244,15 @@ static void settings_on_dt_textarea_defocus(lv_event_t *e)
     if (txt && txt[0] != '\0') {
         return;
     }
-    if (ta == ctx->dt_month_ta) {
+    if (ta == ctx->graphics.dt_month_ta) {
         lv_textarea_set_text(ta, "MM");
-    } else if (ta == ctx->dt_day_ta) {
+    } else if (ta == ctx->graphics.dt_day_ta) {
         lv_textarea_set_text(ta, "DD");
-    } else if (ta == ctx->dt_year_ta) {
+    } else if (ta == ctx->graphics.dt_year_ta) {
         lv_textarea_set_text(ta, "YY");
-    } else if (ta == ctx->dt_hour_ta) {
+    } else if (ta == ctx->graphics.dt_hour_ta) {
         lv_textarea_set_text(ta, "HH");
-    } else if (ta == ctx->dt_min_ta) {
+    } else if (ta == ctx->graphics.dt_min_ta) {
         lv_textarea_set_text(ta, "MM");
     }
     settings_scroll_field_into_view(ctx, ta);
@@ -3318,7 +3330,7 @@ static void persist_valid_time_flag_to_nvs(void)
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
         return;
     }
-    nvs_set_i8(h, SETTINGS_NVS_VALID_TIME_FLAG_KEY, s_settings_ctx.settings.time_valid ? 1 : 0);
+    nvs_set_i8(h, SETTINGS_NVS_VALID_TIME_FLAG_KEY, s_settings_ctx.settings.display.time_valid ? 1 : 0);
     nvs_commit(h);
     nvs_close(h);
 }
@@ -3340,8 +3352,8 @@ static void persist_sntp_result(void)
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
         return;
     }
-    nvs_set_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, s_settings_ctx.settings.sntp_success ? 1 : 0);
-    nvs_set_i32(h, SETTINGS_NVS_SNTP_ERROR_KEY, (int32_t)s_settings_ctx.settings.sntp_last_err);
+    nvs_set_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, s_settings_ctx.settings.time.sntp_success ? 1 : 0);
+    nvs_set_i32(h, SETTINGS_NVS_SNTP_ERROR_KEY, (int32_t)s_settings_ctx.settings.time.sntp_last_err);
     nvs_commit(h);
     nvs_close(h);
 }
@@ -3375,7 +3387,7 @@ static void persist_sntp_refresh(void)
     if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
         return;
     }
-    nvs_set_i8(h, SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY, s_settings_ctx.settings.refresh_sntp_startup? 1 : 0);
+    nvs_set_i8(h, SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY, s_settings_ctx.settings.time.refresh_sntp_startup? 1 : 0);
     nvs_commit(h);
     nvs_close(h);
 }
@@ -3391,7 +3403,7 @@ static void load_sntp_refresh_from_nvs(void)
 
     int8_t raw = -1;
     if (nvs_get_i8(h, SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY, &raw) == ESP_OK) {
-        s_settings_ctx.settings.refresh_sntp_startup = (raw != 0);
+        s_settings_ctx.settings.time.refresh_sntp_startup = (raw != 0);
     }
 
     nvs_close(h);
@@ -3447,13 +3459,13 @@ static void load_sntp_result_from_nvs(void)
 
     int8_t raw = -1;
     if (nvs_get_i8(h, SETTINGS_NVS_SNTP_RESULT_KEY, &raw) == ESP_OK) {
-        s_settings_ctx.settings.sntp_success = (raw != 0);
+        s_settings_ctx.settings.time.sntp_success = (raw != 0);
     }
     int32_t raw_err = (int32_t)SETTINGS_DEFAULT_SNTP_ERR_CODE;
     if (nvs_get_i32(h, SETTINGS_NVS_SNTP_ERROR_KEY, &raw_err) == ESP_OK) {
-        s_settings_ctx.settings.sntp_last_err = (esp_err_t)raw_err;
+        s_settings_ctx.settings.time.sntp_last_err = (esp_err_t)raw_err;
     } else {
-        s_settings_ctx.settings.sntp_last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
+        s_settings_ctx.settings.time.sntp_last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
     }
 
     nvs_close(h);
@@ -3492,7 +3504,7 @@ static void load_time_from_nvs(void)
     esp_reset_reason_t reason = esp_reset_reason();
     if (reason != ESP_RST_SW) {
         settings_clear_time_in_nvs();
-        s_settings_ctx.settings.time_valid = false;
+        s_settings_ctx.settings.display.time_valid = false;
         settings_clear_valid_time_flag_in_nvs();
         settings_notify_time_reset();
         return;
@@ -3514,7 +3526,7 @@ static void load_time_from_nvs(void)
         .tv_usec = 0,
     };
     settimeofday(&tv, NULL);
-    s_settings_ctx.settings.time_valid = true;
+    s_settings_ctx.settings.display.time_valid = true;
     persist_valid_time_flag_to_nvs();
     settings_notify_time_set();
 }
@@ -3527,14 +3539,14 @@ static void settings_on_brightness_changed(lv_event_t *e)
     }
 
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->brightness_label || !ctx->brightness_slider) {
+    if (!ctx || !ctx->graphics.brightness_label || !ctx->graphics.brightness_slider) {
         return;
     }
 
-    int val = lv_slider_get_value(ctx->brightness_slider);
+    int val = lv_slider_get_value(ctx->graphics.brightness_slider);
     if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
     if (val > 100) val = 100;
-    ctx->settings.brightness = val;
+    ctx->settings.display.brightness = val;
     
     /* Stop any screensaver dim/off fade using the latest brightness value. */
     screensaver_dim_stop();
@@ -3543,7 +3555,7 @@ static void settings_on_brightness_changed(lv_event_t *e)
 
     char txt[32];
     lv_snprintf(txt, sizeof(txt), "Brightness: %d%%", val);
-    lv_label_set_text(ctx->brightness_label, txt);
+    lv_label_set_text(ctx->graphics.brightness_label, txt);
 
     bsp_display_brightness_set(val);
 }
@@ -3558,7 +3570,7 @@ static void settings_restart(lv_event_t *e)
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
-    ctx->restart_confirm_mbox = mbox;
+    ctx->graphics.restart_confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -3583,16 +3595,16 @@ static void settings_restart_confirm(lv_event_t *e)
 {
     bsp_display_backlight_off();
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (ctx && ctx->brightness_slider) {
-        int val = lv_slider_get_value(ctx->brightness_slider);
+    if (ctx && ctx->graphics.brightness_slider) {
+        int val = lv_slider_get_value(ctx->graphics.brightness_slider);
         if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
         if (val > 100) val = 100;
-        ctx->settings.brightness = val;
-        if (ctx->settings.brightness != ctx->settings.saved_brightness) {
+        ctx->settings.display.brightness = val;
+        if (ctx->settings.display.brightness != ctx->settings.display.saved_brightness) {
             persist_brightness_to_nvs();
         }
     }
-    if (ctx->settings.screen_rotation_step != ctx->settings.saved_rotation_step) {
+    if (ctx->settings.display.screen_rotation_step != ctx->settings.display.saved_rotation_step) {
         persist_rotation_to_nvs();
     }
     if (settings_is_time_valid()){
@@ -3606,13 +3618,13 @@ static void settings_restart_confirm(lv_event_t *e)
 static void settings_close_restart(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->restart_confirm_mbox)
+    if (!ctx || !ctx->graphics.restart_confirm_mbox)
     {
         return;
     }    
-    if (ctx && ctx->restart_confirm_mbox) {
-        lv_msgbox_close(ctx->restart_confirm_mbox);
-        ctx->restart_confirm_mbox = NULL;
+    if (ctx && ctx->graphics.restart_confirm_mbox) {
+        lv_msgbox_close(ctx->graphics.restart_confirm_mbox);
+        ctx->graphics.restart_confirm_mbox = NULL;
     }    
 }
 
@@ -3626,7 +3638,7 @@ static void settings_reset(lv_event_t *e)
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
-    ctx->reset_confirm_mbox = mbox;
+    ctx->graphics.reset_confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -3650,7 +3662,7 @@ static void settings_reset(lv_event_t *e)
 static void settings_reset_confirm(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->reset_confirm_mbox)
+    if (!ctx || !ctx->graphics.reset_confirm_mbox)
     {
         return;
     }  
@@ -3674,20 +3686,20 @@ static void settings_reset_confirm(lv_event_t *e)
     }
 
     settings_clear_time_in_nvs();
-    s_settings_ctx.settings.time_valid = false;
+    s_settings_ctx.settings.display.time_valid = false;
     persist_valid_time_flag_to_nvs();
     settings_notify_time_reset();
 
-    lv_msgbox_close(ctx->reset_confirm_mbox);
-    ctx->reset_confirm_mbox = NULL;
+    lv_msgbox_close(ctx->graphics.reset_confirm_mbox);
+    ctx->graphics.reset_confirm_mbox = NULL;
 }
 
 static void settings_close_reset(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);  
-    if (ctx && ctx->reset_confirm_mbox) {
-        lv_msgbox_close(ctx->reset_confirm_mbox);
-        ctx->reset_confirm_mbox = NULL;
+    if (ctx && ctx->graphics.reset_confirm_mbox) {
+        lv_msgbox_close(ctx->graphics.reset_confirm_mbox);
+        ctx->graphics.reset_confirm_mbox = NULL;
     }    
 }
 
@@ -3698,14 +3710,14 @@ static void settings_toggle_theme(lv_event_t *e)
         return;
     }
 
-    if (ctx->theme_confirm_mbox) {
-        lv_msgbox_close(ctx->theme_confirm_mbox);
-        ctx->theme_confirm_mbox = NULL;
+    if (ctx->graphics.theme_confirm_mbox) {
+        lv_msgbox_close(ctx->graphics.theme_confirm_mbox);
+        ctx->graphics.theme_confirm_mbox = NULL;
     }
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
-    ctx->theme_confirm_mbox = mbox;
+    ctx->graphics.theme_confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -3726,9 +3738,9 @@ static void settings_toggle_theme(lv_event_t *e)
 
 static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
 {
-    if (ctx->wifi_sntp_dialog){
-        lv_obj_delete(ctx->wifi_sntp_dialog);
-        ctx->wifi_sntp_dialog = NULL;
+    if (ctx->graphics.wifi_sntp_dialog){
+        lv_obj_delete(ctx->graphics.wifi_sntp_dialog);
+        ctx->graphics.wifi_sntp_dialog = NULL;
     }
 
     lv_obj_t *overlay = lv_obj_create(lv_layer_top());
@@ -3737,7 +3749,7 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    ctx->wifi_sntp_overlay = overlay;
+    ctx->graphics.wifi_sntp_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
     lv_obj_set_style_radius(dlg, 12, 0);
@@ -3753,7 +3765,7 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
     styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
     lv_obj_center(dlg);
-    ctx->wifi_sntp_dialog = dlg;
+    ctx->graphics.wifi_sntp_dialog = dlg;
 
     lv_obj_t *title = lv_label_create(dlg);
     lv_label_set_text(title, "Wi-Fi & SNTP");
@@ -3863,14 +3875,14 @@ static void settings_build_wifi_sntp_dialog(settings_ctx_t *ctx)
 
 static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx)
 {
-    if (ctx->sntp_confirm_mbox) {
-        lv_msgbox_close(ctx->sntp_confirm_mbox);
-        ctx->sntp_confirm_mbox = NULL;
+    if (ctx->graphics.sntp_confirm_mbox) {
+        lv_msgbox_close(ctx->graphics.sntp_confirm_mbox);
+        ctx->graphics.sntp_confirm_mbox = NULL;
     }
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
-    ctx->sntp_confirm_mbox = mbox;
+    ctx->graphics.sntp_confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -3892,7 +3904,7 @@ static void settings_build_refresh_sntp_msgbox(settings_ctx_t *ctx)
 static void settings_refresh_sntp(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->wifi_sntp_dialog) {
+    if (!ctx || !ctx->graphics.wifi_sntp_dialog) {
         return;
     }   
 
@@ -3902,25 +3914,25 @@ static void settings_refresh_sntp(lv_event_t *e)
 static void settings_build_wifi_connection_dialog(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->wifi_sntp_dialog) {
+    if (!ctx || !ctx->graphics.wifi_sntp_dialog) {
         return;
     }    
-    lv_obj_delete(ctx->wifi_sntp_dialog);
-    ctx->wifi_sntp_dialog = NULL;
+    lv_obj_delete(ctx->graphics.wifi_sntp_dialog);
+    ctx->graphics.wifi_sntp_dialog = NULL;
 
-    if (ctx->access_point_dialog){
-        lv_obj_delete(ctx->access_point_dialog);
-        ctx->access_point_dialog = NULL;
+    if (ctx->graphics.access_point_dialog){
+        lv_obj_delete(ctx->graphics.access_point_dialog);
+        ctx->graphics.access_point_dialog = NULL;
     }
 
-    ctx->access_point_ssid_ta = NULL;
-    ctx->access_point_pwd_ta = NULL;
-    if (ctx->access_point_keyboard) {
-        lv_obj_del(ctx->access_point_keyboard);
-        ctx->access_point_keyboard = NULL;
+    ctx->graphics.access_point_ssid_ta = NULL;
+    ctx->graphics.access_point_pwd_ta = NULL;
+    if (ctx->graphics.access_point_keyboard) {
+        lv_obj_del(ctx->graphics.access_point_keyboard);
+        ctx->graphics.access_point_keyboard = NULL;
     }    
 
-    lv_obj_t *dlg = lv_obj_create(ctx->wifi_sntp_overlay);
+    lv_obj_t *dlg = lv_obj_create(ctx->graphics.wifi_sntp_overlay);
     lv_obj_set_style_radius(dlg, 12, 0);
     lv_obj_set_style_pad_all(dlg, 6, 0);
     lv_obj_set_style_pad_gap(dlg, 4, 0);
@@ -3934,8 +3946,8 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
     lv_obj_center(dlg);
-    ctx->access_point_dialog = dlg;
-    lv_obj_add_event_cb(ctx->wifi_sntp_overlay, settings_on_ap_background_tap, LV_EVENT_CLICKED, ctx);
+    ctx->graphics.access_point_dialog = dlg;
+    lv_obj_add_event_cb(ctx->graphics.wifi_sntp_overlay, settings_on_ap_background_tap, LV_EVENT_CLICKED, ctx);
     lv_obj_add_event_cb(dlg, settings_on_ap_background_tap, LV_EVENT_CLICKED, ctx);    
 
     lv_obj_t *title = lv_label_create(dlg);
@@ -3975,7 +3987,7 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     if (ctx->settings.ap_ssid[0] != '\0') {
         lv_textarea_set_text(ssid_ta, ctx->settings.ap_ssid);
     }
-    ctx->access_point_ssid_ta = ssid_ta;    
+    ctx->graphics.access_point_ssid_ta = ssid_ta;    
 
     /* Access Point password row */
     lv_obj_t *row_ap_password = lv_obj_create(dlg);
@@ -4008,7 +4020,7 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     if (ctx->settings.ap_pwd[0] != '\0') {
         lv_textarea_set_text(pwd_ta, ctx->settings.ap_pwd);
     }
-    ctx->access_point_pwd_ta = pwd_ta;    
+    ctx->graphics.access_point_pwd_ta = pwd_ta;    
 
     /* Action row */
     lv_obj_t *row_actions = lv_obj_create(dlg);
@@ -4041,15 +4053,15 @@ static void settings_build_wifi_connection_dialog(lv_event_t *e)
     styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, settings_close_access_point_dialog, LV_EVENT_CLICKED, ctx);
     
-    ctx->access_point_keyboard = lv_keyboard_create(ctx->wifi_sntp_overlay);
-    styles_set_keyboard(ctx->access_point_keyboard);
-    lv_keyboard_set_mode(ctx->access_point_keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
-    lv_keyboard_set_textarea(ctx->access_point_keyboard, NULL);
-    lv_obj_add_flag(ctx->access_point_keyboard, LV_OBJ_FLAG_FLOATING);
-    lv_obj_add_flag(ctx->access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_event_cb(ctx->access_point_keyboard, settings_on_ap_keyboard_event, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->access_point_keyboard, settings_on_ap_keyboard_event, LV_EVENT_READY, ctx);
-    lv_obj_align(ctx->access_point_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    ctx->graphics.access_point_keyboard = lv_keyboard_create(ctx->graphics.wifi_sntp_overlay);
+    styles_set_keyboard(ctx->graphics.access_point_keyboard);
+    lv_keyboard_set_mode(ctx->graphics.access_point_keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
+    lv_keyboard_set_textarea(ctx->graphics.access_point_keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.access_point_keyboard, LV_OBJ_FLAG_FLOATING);
+    lv_obj_add_flag(ctx->graphics.access_point_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(ctx->graphics.access_point_keyboard, settings_on_ap_keyboard_event, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.access_point_keyboard, settings_on_ap_keyboard_event, LV_EVENT_READY, ctx);
+    lv_obj_align(ctx->graphics.access_point_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 }
 
 static void settings_wifi_sntp_dialog(lv_event_t *e)
@@ -4064,15 +4076,15 @@ static void settings_wifi_sntp_dialog(lv_event_t *e)
 
 bool settings_get_auto_connect_enabled(void)
 {
-    return s_settings_ctx.settings.startup_sntp_auto_connect;
+    return s_settings_ctx.settings.time.startup_sntp_auto_connect;
 }
 
 static void set_auto_connect_enabled(bool enable)
 {
-    if (s_settings_ctx.settings.startup_sntp_auto_connect == enable) {
+    if (s_settings_ctx.settings.time.startup_sntp_auto_connect == enable) {
         return;
     }
-    s_settings_ctx.settings.startup_sntp_auto_connect = enable;
+    s_settings_ctx.settings.time.startup_sntp_auto_connect = enable;
     persist_auto_connect_to_nvs();
 }
 
@@ -4105,9 +4117,9 @@ static void settings_sntp_confirm_yes(lv_event_t *e)
         return;
     }
 
-    s_settings_ctx.settings.refresh_sntp_startup = true;
+    s_settings_ctx.settings.time.refresh_sntp_startup = true;
     persist_sntp_refresh();
-    s_settings_ctx.settings.time_valid = false;
+    s_settings_ctx.settings.display.time_valid = false;
     persist_valid_time_flag_to_nvs();
 
     settings_restart_confirm(e);
@@ -4116,27 +4128,27 @@ static void settings_sntp_confirm_yes(lv_event_t *e)
 static void settings_theme_confirm_no(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->theme_confirm_mbox) {
+    if (!ctx || !ctx->graphics.theme_confirm_mbox) {
         return;
     }
-    lv_msgbox_close(ctx->theme_confirm_mbox);
-    ctx->theme_confirm_mbox = NULL;
+    lv_msgbox_close(ctx->graphics.theme_confirm_mbox);
+    ctx->graphics.theme_confirm_mbox = NULL;
 }
 
 static void settings_sntp_confirm_no(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->sntp_confirm_mbox) {
+    if (!ctx || !ctx->graphics.sntp_confirm_mbox) {
         return;
     }
-    lv_msgbox_close(ctx->sntp_confirm_mbox);
-    ctx->sntp_confirm_mbox = NULL;
+    lv_msgbox_close(ctx->graphics.sntp_confirm_mbox);
+    ctx->graphics.sntp_confirm_mbox = NULL;
 }
 
 static void settings_calibration_run_cal(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->screen)
+    if (!ctx || !ctx->graphics.screen)
     {
         return;
     }
@@ -4150,7 +4162,7 @@ static void settings_calibration_run_cal(lv_event_t *e)
     settings_set_running_calibration(true);
     calibration_set_show_loader(false);
 
-    lv_obj_clean(ctx->screen);
+    lv_obj_clean(ctx->graphics.screen);
     settings_clear_ui_refs(ctx);
 
     /* Run calibration asynchronously to avoid blocking the LVGL task/UI thread. */
@@ -4171,7 +4183,7 @@ static void settings_calibration_task(void *param)
 {
     settings_ctx_t *ctx = (settings_ctx_t *)param;
 
-    if (!ctx || !ctx->return_screen){
+    if (!ctx || !ctx->graphics.return_screen){
         settings_set_running_calibration(false);
         vTaskDelete(NULL);
         return;
@@ -4180,10 +4192,10 @@ static void settings_calibration_task(void *param)
     /* Clear cached widget pointers because we delete/clean the screen. */
     settings_clear_ui_refs(ctx);
 
-    int prev_rotation = ctx->settings.screen_rotation_step;
+    int prev_rotation = ctx->settings.display.screen_rotation_step;
     
-    if (ctx->settings.screen_rotation_step != SETTINGS_DEFAULT_ROTATION_STEP && ctx->settings.screen_rotation_step != SETTINGS_DEFAULT_ROTATION_STEP - 2){
-        ctx->settings.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
+    if (ctx->settings.display.screen_rotation_step != SETTINGS_DEFAULT_ROTATION_STEP && ctx->settings.display.screen_rotation_step != SETTINGS_DEFAULT_ROTATION_STEP - 2){
+        ctx->settings.display.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
         apply_rotation_to_display(true);
     }
 
@@ -4199,17 +4211,17 @@ static void settings_calibration_task(void *param)
     s_settings_ctx.changing_brightness = false;  
     settings_start_screensaver_timers();
 
-    ctx->settings.screen_rotation_step = prev_rotation;
+    ctx->settings.display.screen_rotation_step = prev_rotation;
     apply_rotation_to_display(true);
 
     bsp_display_lock(0);
-    if (ctx->screen)
+    if (ctx->graphics.screen)
     {
-        lv_obj_del(ctx->screen);
-        ctx->screen = NULL;
+        lv_obj_del(ctx->graphics.screen);
+        ctx->graphics.screen = NULL;
     }
     ctx->active = false;
-    settings_open_settings(ctx->return_screen);
+    settings_open_settings(ctx->graphics.return_screen);
     bsp_display_unlock();
     
     settings_set_running_calibration(false);
@@ -4222,52 +4234,52 @@ static void settings_clear_ui_refs(settings_ctx_t *ctx)
         return;
     }
 
-    ctx->toolbar = NULL;
-    ctx->brightness_label = NULL;
-    ctx->brightness_slider = NULL;
-    ctx->restart_confirm_mbox = NULL;
-    ctx->reset_confirm_mbox = NULL;
-    ctx->theme_confirm_mbox = NULL;
-    ctx->sntp_confirm_mbox = NULL;
-    ctx->datetime_overlay = NULL;
-    ctx->screensaver_overlay = NULL;
-    ctx->wifi_sntp_overlay = NULL;
-    ctx->dt_month_ta = NULL;
-    ctx->dt_day_ta = NULL;
-    ctx->dt_year_ta = NULL;
-    ctx->dt_hour_ta = NULL;
-    ctx->dt_min_ta = NULL;
-    ctx->dt_keyboard = NULL;
-    ctx->access_point_keyboard = NULL;
-    ctx->access_point_ssid_ta = NULL;
-    ctx->access_point_pwd_ta = NULL;    
-    ctx->dt_dialog = NULL;
-    ctx->screensaver_dialog = NULL;
-    ctx->wifi_sntp_dialog = NULL;
-    ctx->access_point_dialog = NULL;
-    ctx->access_point_ssid_ta = NULL;
-    ctx->access_point_pwd_ta = NULL;    
-    ctx->dt_row_time = NULL;
-    ctx->ss_dim_lbl = NULL;
-    ctx->ss_dim_switch = NULL;
-    ctx->ss_dim_after_lbl = NULL;
-    ctx->ss_seconds_lbl = NULL;
-    ctx->ss_at_lbl = NULL;
-    ctx->ss_pct_lbl = NULL;
-    ctx->ss_dim_after_ta = NULL;
-    ctx->ss_dim_pct_ta = NULL;
-    ctx->ss_off_lbl = NULL;
-    ctx->ss_off_switch = NULL;
-    ctx->ss_off_after_lbl = NULL;
-    ctx->ss_off_seconds_lbl = NULL;
-    ctx->ss_off_after_ta = NULL;
-    ctx->ss_keyboard = NULL;
+    ctx->graphics.toolbar = NULL;
+    ctx->graphics.brightness_label = NULL;
+    ctx->graphics.brightness_slider = NULL;
+    ctx->graphics.restart_confirm_mbox = NULL;
+    ctx->graphics.reset_confirm_mbox = NULL;
+    ctx->graphics.theme_confirm_mbox = NULL;
+    ctx->graphics.sntp_confirm_mbox = NULL;
+    ctx->graphics.datetime_overlay = NULL;
+    ctx->graphics.screensaver_overlay = NULL;
+    ctx->graphics.wifi_sntp_overlay = NULL;
+    ctx->graphics.dt_month_ta = NULL;
+    ctx->graphics.dt_day_ta = NULL;
+    ctx->graphics.dt_year_ta = NULL;
+    ctx->graphics.dt_hour_ta = NULL;
+    ctx->graphics.dt_min_ta = NULL;
+    ctx->graphics.dt_keyboard = NULL;
+    ctx->graphics.access_point_keyboard = NULL;
+    ctx->graphics.access_point_ssid_ta = NULL;
+    ctx->graphics.access_point_pwd_ta = NULL;    
+    ctx->graphics.dt_dialog = NULL;
+    ctx->graphics.screensaver_dialog = NULL;
+    ctx->graphics.wifi_sntp_dialog = NULL;
+    ctx->graphics.access_point_dialog = NULL;
+    ctx->graphics.access_point_ssid_ta = NULL;
+    ctx->graphics.access_point_pwd_ta = NULL;    
+    ctx->graphics.dt_row_time = NULL;
+    ctx->graphics.ss_dim_lbl = NULL;
+    ctx->graphics.ss_dim_switch = NULL;
+    ctx->graphics.ss_dim_after_lbl = NULL;
+    ctx->graphics.ss_seconds_lbl = NULL;
+    ctx->graphics.ss_at_lbl = NULL;
+    ctx->graphics.ss_pct_lbl = NULL;
+    ctx->graphics.ss_dim_after_ta = NULL;
+    ctx->graphics.ss_dim_pct_ta = NULL;
+    ctx->graphics.ss_off_lbl = NULL;
+    ctx->graphics.ss_off_switch = NULL;
+    ctx->graphics.ss_off_after_lbl = NULL;
+    ctx->graphics.ss_off_seconds_lbl = NULL;
+    ctx->graphics.ss_off_after_ta = NULL;
+    ctx->graphics.ss_keyboard = NULL;
 }
 
 static void settings_screensaver(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (ctx && ctx->screen)
+    if (ctx && ctx->graphics.screen)
     {
         settings_build_screensaver_dialog(ctx);
     }
@@ -4281,24 +4293,24 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     }
 
     /* Close previous overlay if still open. */
-    if (ctx->screensaver_overlay) {
-        lv_obj_del(ctx->screensaver_overlay);
-        ctx->screensaver_overlay = NULL;
-        ctx->screensaver_dialog = NULL;
-        ctx->ss_dim_lbl = NULL;
-        ctx->ss_dim_switch = NULL;
-        ctx->ss_dim_after_lbl = NULL;
-        ctx->ss_seconds_lbl = NULL;
-        ctx->ss_at_lbl = NULL;
-        ctx->ss_pct_lbl = NULL;
-        ctx->ss_dim_after_ta = NULL;
-        ctx->ss_dim_pct_ta = NULL;
-        ctx->ss_off_lbl = NULL;
-        ctx->ss_off_switch = NULL;
-        ctx->ss_off_after_lbl = NULL;
-        ctx->ss_off_seconds_lbl = NULL;
-        ctx->ss_off_after_ta = NULL;
-        ctx->ss_keyboard = NULL;
+    if (ctx->graphics.screensaver_overlay) {
+        lv_obj_del(ctx->graphics.screensaver_overlay);
+        ctx->graphics.screensaver_overlay = NULL;
+        ctx->graphics.screensaver_dialog = NULL;
+        ctx->graphics.ss_dim_lbl = NULL;
+        ctx->graphics.ss_dim_switch = NULL;
+        ctx->graphics.ss_dim_after_lbl = NULL;
+        ctx->graphics.ss_seconds_lbl = NULL;
+        ctx->graphics.ss_at_lbl = NULL;
+        ctx->graphics.ss_pct_lbl = NULL;
+        ctx->graphics.ss_dim_after_ta = NULL;
+        ctx->graphics.ss_dim_pct_ta = NULL;
+        ctx->graphics.ss_off_lbl = NULL;
+        ctx->graphics.ss_off_switch = NULL;
+        ctx->graphics.ss_off_after_lbl = NULL;
+        ctx->graphics.ss_off_seconds_lbl = NULL;
+        ctx->graphics.ss_off_after_ta = NULL;
+        ctx->graphics.ss_keyboard = NULL;
     }
 
     lv_obj_t *overlay = lv_obj_create(lv_layer_top());
@@ -4308,7 +4320,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
     lv_obj_add_event_cb(overlay, settings_on_ss_background_tap, LV_EVENT_CLICKED, ctx);
-    ctx->screensaver_overlay = overlay;
+    ctx->graphics.screensaver_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
     lv_obj_set_style_radius(dlg, 12, 0);
@@ -4325,7 +4337,7 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_set_style_border_width(dlg, 2, 0);
     lv_obj_add_event_cb(dlg, settings_on_dt_background_tap, LV_EVENT_CLICKED, ctx);
     lv_obj_center(dlg);
-    ctx->screensaver_dialog = dlg;
+    ctx->graphics.screensaver_dialog = dlg;
 
     lv_obj_t *title = lv_label_create(dlg);
     lv_label_set_text(title, "Screensaver");
@@ -4348,13 +4360,13 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_t *dim_lbl = lv_label_create(row_dim);
     lv_label_set_text(dim_lbl, "Dimming");
     lv_obj_add_flag(dim_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->ss_dim_lbl = dim_lbl;
+    ctx->graphics.ss_dim_lbl = dim_lbl;
 
     lv_obj_t *dim_switch = lv_switch_create(row_dim);
     lv_obj_set_style_pad_all(dim_switch, 4, 0);
     styles_set_switch(dim_switch);
     lv_obj_add_event_cb(dim_switch, settings_on_dim_switch_changed, LV_EVENT_VALUE_CHANGED, ctx);
-    ctx->ss_dim_switch = dim_switch;
+    ctx->graphics.ss_dim_switch = dim_switch;
 
     /* Dim timing/level row */
     lv_obj_t *row_dim_cfg = lv_obj_create(dlg);
@@ -4370,68 +4382,68 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_t *dim_after_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(dim_after_lbl, "Dim after");
     lv_obj_add_flag(dim_after_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->ss_dim_after_lbl = dim_after_lbl;
+    ctx->graphics.ss_dim_after_lbl = dim_after_lbl;
 
-    ctx->ss_dim_after_ta = lv_textarea_create(row_dim_cfg);
-    lv_obj_set_width(ctx->ss_dim_after_ta, 35);
-    lv_obj_clear_flag(ctx->ss_dim_after_ta, LV_OBJ_FLAG_SCROLLABLE);
-    styles_set_textarea(ctx->ss_dim_after_ta);
-    lv_textarea_set_one_line(ctx->ss_dim_after_ta, true);
-    lv_textarea_set_max_length(ctx->ss_dim_after_ta, 3);
-    if (ctx->settings.dim_time >= 0) {
+    ctx->graphics.ss_dim_after_ta = lv_textarea_create(row_dim_cfg);
+    lv_obj_set_width(ctx->graphics.ss_dim_after_ta, 35);
+    lv_obj_clear_flag(ctx->graphics.ss_dim_after_ta, LV_OBJ_FLAG_SCROLLABLE);
+    styles_set_textarea(ctx->graphics.ss_dim_after_ta);
+    lv_textarea_set_one_line(ctx->graphics.ss_dim_after_ta, true);
+    lv_textarea_set_max_length(ctx->graphics.ss_dim_after_ta, 3);
+    if (ctx->settings.display.dim_time >= 0) {
         char buf[8];
-        lv_snprintf(buf, sizeof(buf), "%d", ctx->settings.dim_time);
-        lv_textarea_set_placeholder_text(ctx->ss_dim_after_ta, buf);
-        if (ctx->settings.screen_dim) {
-            lv_textarea_set_text(ctx->ss_dim_after_ta, buf);
+        lv_snprintf(buf, sizeof(buf), "%d", ctx->settings.display.dim_time);
+        lv_textarea_set_placeholder_text(ctx->graphics.ss_dim_after_ta, buf);
+        if (ctx->settings.display.screen_dim) {
+            lv_textarea_set_text(ctx->graphics.ss_dim_after_ta, buf);
         } else {
-            lv_textarea_set_text(ctx->ss_dim_after_ta, "");
+            lv_textarea_set_text(ctx->graphics.ss_dim_after_ta, "");
         }
     } else {
-        lv_textarea_set_placeholder_text(ctx->ss_dim_after_ta, "");
-        lv_textarea_set_text(ctx->ss_dim_after_ta, "");
+        lv_textarea_set_placeholder_text(ctx->graphics.ss_dim_after_ta, "");
+        lv_textarea_set_text(ctx->graphics.ss_dim_after_ta, "");
     }
-    lv_obj_add_event_cb(ctx->ss_dim_after_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->ss_dim_after_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_dim_after_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_dim_after_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *seconds_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(seconds_lbl, "seconds");
     lv_obj_add_flag(seconds_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->ss_seconds_lbl = seconds_lbl;
+    ctx->graphics.ss_seconds_lbl = seconds_lbl;
 
     lv_obj_t *at_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(at_lbl, "to");
     lv_obj_add_flag(at_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->ss_at_lbl = at_lbl;
+    ctx->graphics.ss_at_lbl = at_lbl;
 
-    ctx->ss_dim_pct_ta = lv_textarea_create(row_dim_cfg);
-    lv_obj_set_width(ctx->ss_dim_pct_ta, 35);
-    lv_obj_clear_flag(ctx->ss_dim_pct_ta, LV_OBJ_FLAG_SCROLLABLE);
-    lv_textarea_set_one_line(ctx->ss_dim_pct_ta, true);
-    lv_textarea_set_max_length(ctx->ss_dim_pct_ta, 3);
-    styles_set_textarea(ctx->ss_dim_pct_ta); 
-    if (ctx->settings.dim_level >= 0) {
+    ctx->graphics.ss_dim_pct_ta = lv_textarea_create(row_dim_cfg);
+    lv_obj_set_width(ctx->graphics.ss_dim_pct_ta, 35);
+    lv_obj_clear_flag(ctx->graphics.ss_dim_pct_ta, LV_OBJ_FLAG_SCROLLABLE);
+    lv_textarea_set_one_line(ctx->graphics.ss_dim_pct_ta, true);
+    lv_textarea_set_max_length(ctx->graphics.ss_dim_pct_ta, 3);
+    styles_set_textarea(ctx->graphics.ss_dim_pct_ta); 
+    if (ctx->settings.display.dim_level >= 0) {
         char buf[8];
-        lv_snprintf(buf, sizeof(buf), "%d", ctx->settings.dim_level);
-        lv_textarea_set_placeholder_text(ctx->ss_dim_pct_ta, buf);
-        if (ctx->settings.screen_dim) {
-            lv_textarea_set_text(ctx->ss_dim_pct_ta, buf);
+        lv_snprintf(buf, sizeof(buf), "%d", ctx->settings.display.dim_level);
+        lv_textarea_set_placeholder_text(ctx->graphics.ss_dim_pct_ta, buf);
+        if (ctx->settings.display.screen_dim) {
+            lv_textarea_set_text(ctx->graphics.ss_dim_pct_ta, buf);
         } else {
-            lv_textarea_set_text(ctx->ss_dim_pct_ta, "");
+            lv_textarea_set_text(ctx->graphics.ss_dim_pct_ta, "");
         }
     } else {
-        lv_textarea_set_placeholder_text(ctx->ss_dim_pct_ta, "");
-        lv_textarea_set_text(ctx->ss_dim_pct_ta, "");
+        lv_textarea_set_placeholder_text(ctx->graphics.ss_dim_pct_ta, "");
+        lv_textarea_set_text(ctx->graphics.ss_dim_pct_ta, "");
     }
-    lv_obj_add_event_cb(ctx->ss_dim_pct_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->ss_dim_pct_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_dim_pct_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_dim_pct_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *pct_lbl = lv_label_create(row_dim_cfg);
     lv_label_set_text(pct_lbl, "%");
     lv_obj_add_flag(pct_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->ss_pct_lbl = pct_lbl;
+    ctx->graphics.ss_pct_lbl = pct_lbl;
 
-    if (ctx->settings.screen_dim) {
+    if (ctx->settings.display.screen_dim) {
         lv_obj_add_state(dim_switch, LV_STATE_CHECKED);
         lv_obj_add_state(dim_after_lbl, LV_STATE_DISABLED);
         lv_obj_add_state(seconds_lbl, LV_STATE_DISABLED);
@@ -4459,13 +4471,13 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_t *time_lbl = lv_label_create(row_off);
     lv_label_set_text(time_lbl, "Screen OFF");
     lv_obj_add_flag(time_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->ss_off_lbl = time_lbl;
+    ctx->graphics.ss_off_lbl = time_lbl;
 
     lv_obj_t *off_switch = lv_switch_create(row_off);
     lv_obj_set_style_pad_all(off_switch, 4, 0);
     styles_set_switch(off_switch);  
     lv_obj_add_event_cb(off_switch, settings_on_off_switch_changed, LV_EVENT_VALUE_CHANGED, ctx);
-    ctx->ss_off_switch = off_switch;
+    ctx->graphics.ss_off_switch = off_switch;
 
     /* Off timing row */
     lv_obj_t *row_off_cfg = lv_obj_create(dlg);
@@ -4481,34 +4493,34 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_t *off_after_lbl = lv_label_create(row_off_cfg);
     lv_label_set_text(off_after_lbl, "Turn off after");
     lv_obj_add_flag(off_after_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->ss_off_after_lbl = off_after_lbl;
+    ctx->graphics.ss_off_after_lbl = off_after_lbl;
 
-    ctx->ss_off_after_ta = lv_textarea_create(row_off_cfg);
-    lv_obj_set_width(ctx->ss_off_after_ta, 50);
-    lv_obj_clear_flag(ctx->ss_off_after_ta, LV_OBJ_FLAG_SCROLLABLE);
-    styles_set_textarea(ctx->ss_off_after_ta); 
-    lv_textarea_set_one_line(ctx->ss_off_after_ta, true);
-    lv_textarea_set_max_length(ctx->ss_off_after_ta, 4);
-    if (ctx->settings.off_time >= 0) {
+    ctx->graphics.ss_off_after_ta = lv_textarea_create(row_off_cfg);
+    lv_obj_set_width(ctx->graphics.ss_off_after_ta, 50);
+    lv_obj_clear_flag(ctx->graphics.ss_off_after_ta, LV_OBJ_FLAG_SCROLLABLE);
+    styles_set_textarea(ctx->graphics.ss_off_after_ta); 
+    lv_textarea_set_one_line(ctx->graphics.ss_off_after_ta, true);
+    lv_textarea_set_max_length(ctx->graphics.ss_off_after_ta, 4);
+    if (ctx->settings.display.off_time >= 0) {
         char buf[12];
-        lv_snprintf(buf, sizeof(buf), "%d", ctx->settings.off_time);
-        lv_textarea_set_placeholder_text(ctx->ss_off_after_ta, buf);
-        if (ctx->settings.screen_off) {
-            lv_textarea_set_text(ctx->ss_off_after_ta, buf);
+        lv_snprintf(buf, sizeof(buf), "%d", ctx->settings.display.off_time);
+        lv_textarea_set_placeholder_text(ctx->graphics.ss_off_after_ta, buf);
+        if (ctx->settings.display.screen_off) {
+            lv_textarea_set_text(ctx->graphics.ss_off_after_ta, buf);
         } else {
-            lv_textarea_set_text(ctx->ss_off_after_ta, "");
+            lv_textarea_set_text(ctx->graphics.ss_off_after_ta, "");
         }
     } else {
-        lv_textarea_set_placeholder_text(ctx->ss_off_after_ta, "");
-        lv_textarea_set_text(ctx->ss_off_after_ta, "");
+        lv_textarea_set_placeholder_text(ctx->graphics.ss_off_after_ta, "");
+        lv_textarea_set_text(ctx->graphics.ss_off_after_ta, "");
     }
-    lv_obj_add_event_cb(ctx->ss_off_after_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
-    lv_obj_add_event_cb(ctx->ss_off_after_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_off_after_ta, settings_on_ss_textarea_focus, LV_EVENT_FOCUSED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_off_after_ta, settings_on_ss_textarea_focus, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *off_seconds_lbl = lv_label_create(row_off_cfg);
     lv_label_set_text(off_seconds_lbl, "seconds.");
     lv_obj_add_flag(off_seconds_lbl, LV_OBJ_FLAG_EVENT_BUBBLE);
-    ctx->ss_off_seconds_lbl = off_seconds_lbl;
+    ctx->graphics.ss_off_seconds_lbl = off_seconds_lbl;
 
     /* Action row */
     lv_obj_t *row_actions = lv_obj_create(dlg);
@@ -4542,18 +4554,18 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
     lv_obj_add_event_cb(cancel_btn, settings_close_screensaver, LV_EVENT_CLICKED, ctx);
     
     /* Keyboard anchored to bottom of overlay */
-    ctx->ss_keyboard = lv_keyboard_create(overlay);
-    styles_set_keyboard(ctx->ss_keyboard);
-    lv_keyboard_set_mode(ctx->ss_keyboard, LV_KEYBOARD_MODE_NUMBER);
-    lv_keyboard_set_textarea(ctx->ss_keyboard, NULL);
-    lv_obj_add_flag(ctx->ss_keyboard, LV_OBJ_FLAG_FLOATING);
-    lv_obj_add_flag(ctx->ss_keyboard, LV_OBJ_FLAG_HIDDEN); /* show only after a field is tapped */
-    lv_obj_add_event_cb(ctx->ss_keyboard, settings_on_ss_background_tap, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->ss_keyboard, settings_on_ss_keyboard_event, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->ss_keyboard, settings_on_ss_keyboard_event, LV_EVENT_READY, ctx);
-    lv_obj_align(ctx->ss_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    ctx->graphics.ss_keyboard = lv_keyboard_create(overlay);
+    styles_set_keyboard(ctx->graphics.ss_keyboard);
+    lv_keyboard_set_mode(ctx->graphics.ss_keyboard, LV_KEYBOARD_MODE_NUMBER);
+    lv_keyboard_set_textarea(ctx->graphics.ss_keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_FLOATING);
+    lv_obj_add_flag(ctx->graphics.ss_keyboard, LV_OBJ_FLAG_HIDDEN); /* show only after a field is tapped */
+    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, settings_on_ss_background_tap, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, settings_on_ss_keyboard_event, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.ss_keyboard, settings_on_ss_keyboard_event, LV_EVENT_READY, ctx);
+    lv_obj_align(ctx->graphics.ss_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 
-    if (ctx->settings.screen_off) {
+    if (ctx->settings.display.screen_off) {
         lv_obj_add_state(off_switch, LV_STATE_CHECKED);
         lv_obj_add_state(off_after_lbl, LV_STATE_DISABLED);
         lv_obj_add_state(off_seconds_lbl, LV_STATE_DISABLED);     
@@ -4563,8 +4575,8 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
         lv_obj_clear_state(off_seconds_lbl, LV_STATE_DISABLED);       
     }
 
-    settings_update_dim_controls_enabled(ctx, lv_obj_has_state(ctx->ss_dim_switch, LV_STATE_CHECKED));
-    settings_update_off_controls_enabled(ctx, lv_obj_has_state(ctx->ss_off_switch, LV_STATE_CHECKED));
+    settings_update_dim_controls_enabled(ctx, lv_obj_has_state(ctx->graphics.ss_dim_switch, LV_STATE_CHECKED));
+    settings_update_off_controls_enabled(ctx, lv_obj_has_state(ctx->graphics.ss_off_switch, LV_STATE_CHECKED));
 
     return ESP_OK;
 }
@@ -4572,21 +4584,21 @@ static esp_err_t settings_build_screensaver_dialog(settings_ctx_t *ctx)
 static void settings_apply_screensaver(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->screensaver_overlay) {
+    if (!ctx || !ctx->graphics.screensaver_overlay) {
         return;
     }
 
-    bool dim_on = ctx->ss_dim_switch && lv_obj_has_state(ctx->ss_dim_switch, LV_STATE_CHECKED);
-    bool off_on = ctx->ss_off_switch && lv_obj_has_state(ctx->ss_off_switch, LV_STATE_CHECKED);
+    bool dim_on = ctx->graphics.ss_dim_switch && lv_obj_has_state(ctx->graphics.ss_dim_switch, LV_STATE_CHECKED);
+    bool off_on = ctx->graphics.ss_off_switch && lv_obj_has_state(ctx->graphics.ss_off_switch, LV_STATE_CHECKED);
 
-    int new_dim_time = ctx->settings.dim_time;
-    int new_dim_level = ctx->settings.dim_level;
-    int new_off_time = ctx->settings.off_time;
+    int new_dim_time = ctx->settings.display.dim_time;
+    int new_dim_level = ctx->settings.display.dim_level;
+    int new_off_time = ctx->settings.display.off_time;
 
     /* Validate dim when enabled. */
     if (dim_on) {
-        const char *dim_time_txt = ctx->ss_dim_after_ta ? lv_textarea_get_text(ctx->ss_dim_after_ta) : NULL;
-        const char *dim_level_txt = ctx->ss_dim_pct_ta ? lv_textarea_get_text(ctx->ss_dim_pct_ta) : NULL;
+        const char *dim_time_txt = ctx->graphics.ss_dim_after_ta ? lv_textarea_get_text(ctx->graphics.ss_dim_after_ta) : NULL;
+        const char *dim_level_txt = ctx->graphics.ss_dim_pct_ta ? lv_textarea_get_text(ctx->graphics.ss_dim_pct_ta) : NULL;
         int parsed_time = 0;
         int parsed_level = 0;
 
@@ -4608,7 +4620,7 @@ static void settings_apply_screensaver(lv_event_t *e)
 
     /* Validate off when enabled. */
     if (off_on) {
-        const char *off_time_txt = ctx->ss_off_after_ta ? lv_textarea_get_text(ctx->ss_off_after_ta) : NULL;
+        const char *off_time_txt = ctx->graphics.ss_off_after_ta ? lv_textarea_get_text(ctx->graphics.ss_off_after_ta) : NULL;
         int parsed_off = 0;
         if (!settings_parse_int_range(off_time_txt, 1, 99999, &parsed_off)) {
             settings_show_invalid_input();
@@ -4618,11 +4630,11 @@ static void settings_apply_screensaver(lv_event_t *e)
     }
 
     /* Apply in-memory state. Keep last valid values even when feature is off. */
-    ctx->settings.screen_dim = dim_on;
-    ctx->settings.dim_time = new_dim_time;
+    ctx->settings.display.screen_dim = dim_on;
+    ctx->settings.display.dim_time = new_dim_time;
     /* Clamp dim level to brightness bounds even if feature disabled. */
     if (new_dim_level >= 0) {
-        int max_level = ctx->settings.saved_brightness > 0 ? ctx->settings.saved_brightness : SETTINGS_DEFAULT_BRIGHTNESS;
+        int max_level = ctx->settings.display.saved_brightness > 0 ? ctx->settings.display.saved_brightness : SETTINGS_DEFAULT_BRIGHTNESS;
         if (max_level < SETTINGS_MINIMUM_BRIGHTNESS) {
             max_level = SETTINGS_MINIMUM_BRIGHTNESS;
         }
@@ -4630,9 +4642,9 @@ static void settings_apply_screensaver(lv_event_t *e)
         if (new_dim_level < SETTINGS_MINIMUM_BRIGHTNESS) new_dim_level = SETTINGS_MINIMUM_BRIGHTNESS;
     }
 
-    ctx->settings.dim_level = new_dim_level;
-    ctx->settings.screen_off = off_on;
-    ctx->settings.off_time = new_off_time;
+    ctx->settings.display.dim_level = new_dim_level;
+    ctx->settings.display.screen_off = off_on;
+    ctx->settings.display.off_time = new_off_time;
 
     /* Persist */
     persist_screensaver_to_nvs();
@@ -4643,12 +4655,12 @@ static void settings_apply_screensaver(lv_event_t *e)
 static void settings_apply_ap_data(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->access_point_dialog) {
+    if (!ctx || !ctx->graphics.access_point_dialog) {
         return;
     }
 
-    const char *ssid_txt = ctx->access_point_ssid_ta ? lv_textarea_get_text(ctx->access_point_ssid_ta) : "";
-    const char *pwd_txt = ctx->access_point_pwd_ta ? lv_textarea_get_text(ctx->access_point_pwd_ta) : "";
+    const char *ssid_txt = ctx->graphics.access_point_ssid_ta ? lv_textarea_get_text(ctx->graphics.access_point_ssid_ta) : "";
+    const char *pwd_txt = ctx->graphics.access_point_pwd_ta ? lv_textarea_get_text(ctx->graphics.access_point_pwd_ta) : "";
 
     /* Copy into bounded buffers */
     strncpy(ctx->settings.ap_ssid, ssid_txt ? ssid_txt : "", sizeof(ctx->settings.ap_ssid) - 1);
@@ -4663,52 +4675,52 @@ static void settings_apply_ap_data(lv_event_t *e)
 static void settings_close_screensaver(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e); 
-    if (ctx && ctx->screensaver_overlay) {
-        lv_obj_del(ctx->screensaver_overlay);
-        ctx->screensaver_overlay = NULL;
-        ctx->screensaver_dialog = NULL;
-        ctx->ss_dim_lbl = NULL;
-        ctx->ss_dim_switch = NULL;
-        ctx->ss_dim_after_lbl = NULL;
-        ctx->ss_seconds_lbl = NULL;
-        ctx->ss_at_lbl = NULL;
-        ctx->ss_pct_lbl = NULL;
-        ctx->ss_dim_after_ta = NULL;
-        ctx->ss_dim_pct_ta = NULL;
-        ctx->ss_off_lbl = NULL;
-        ctx->ss_off_switch = NULL;
-        ctx->ss_off_after_lbl = NULL;
-        ctx->ss_off_seconds_lbl = NULL;
-        ctx->ss_off_after_ta = NULL;
-        ctx->ss_keyboard = NULL;
+    if (ctx && ctx->graphics.screensaver_overlay) {
+        lv_obj_del(ctx->graphics.screensaver_overlay);
+        ctx->graphics.screensaver_overlay = NULL;
+        ctx->graphics.screensaver_dialog = NULL;
+        ctx->graphics.ss_dim_lbl = NULL;
+        ctx->graphics.ss_dim_switch = NULL;
+        ctx->graphics.ss_dim_after_lbl = NULL;
+        ctx->graphics.ss_seconds_lbl = NULL;
+        ctx->graphics.ss_at_lbl = NULL;
+        ctx->graphics.ss_pct_lbl = NULL;
+        ctx->graphics.ss_dim_after_ta = NULL;
+        ctx->graphics.ss_dim_pct_ta = NULL;
+        ctx->graphics.ss_off_lbl = NULL;
+        ctx->graphics.ss_off_switch = NULL;
+        ctx->graphics.ss_off_after_lbl = NULL;
+        ctx->graphics.ss_off_seconds_lbl = NULL;
+        ctx->graphics.ss_off_after_ta = NULL;
+        ctx->graphics.ss_keyboard = NULL;
     }    
 }
 
 static void settings_close_connection_dialog(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e); 
-    if (ctx && ctx->wifi_sntp_overlay) {
-        lv_obj_del(ctx->wifi_sntp_overlay);
-        ctx->wifi_sntp_dialog = NULL;
-        ctx->wifi_sntp_overlay = NULL;
+    if (ctx && ctx->graphics.wifi_sntp_overlay) {
+        lv_obj_del(ctx->graphics.wifi_sntp_overlay);
+        ctx->graphics.wifi_sntp_dialog = NULL;
+        ctx->graphics.wifi_sntp_overlay = NULL;
         
-        ctx->access_point_dialog = NULL;
-        ctx->access_point_ssid_ta = NULL;
-        ctx->access_point_pwd_ta = NULL;
-        ctx->access_point_keyboard = NULL;
+        ctx->graphics.access_point_dialog = NULL;
+        ctx->graphics.access_point_ssid_ta = NULL;
+        ctx->graphics.access_point_pwd_ta = NULL;
+        ctx->graphics.access_point_keyboard = NULL;
     }    
 }
 
 static void settings_close_access_point_dialog(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e); 
-    if (ctx && ctx->wifi_sntp_overlay) {
-        lv_obj_del(ctx->wifi_sntp_overlay);
-        ctx->wifi_sntp_overlay = NULL;
-        ctx->access_point_dialog = NULL;
-        ctx->access_point_ssid_ta = NULL;
-        ctx->access_point_pwd_ta = NULL;
-        ctx->access_point_keyboard = NULL;
+    if (ctx && ctx->graphics.wifi_sntp_overlay) {
+        lv_obj_del(ctx->graphics.wifi_sntp_overlay);
+        ctx->graphics.wifi_sntp_overlay = NULL;
+        ctx->graphics.access_point_dialog = NULL;
+        ctx->graphics.access_point_ssid_ta = NULL;
+        ctx->graphics.access_point_pwd_ta = NULL;
+        ctx->graphics.access_point_keyboard = NULL;
     }   
     
     settings_build_wifi_sntp_dialog(ctx);
