@@ -554,10 +554,55 @@ static esp_err_t validate_open_opts(const text_viewer_open_opts_t *opts, bool *o
 static esp_err_t load_initial_content(const text_viewer_open_opts_t *opts, bool new_file, char **content_out,
                                       size_t *file_size_kb, size_t *first_offset_kb, size_t *second_offset_kb);
 
+/**
+ * @brief Initialize empty content buffer for a new file.
+ *
+ * Allocates an empty string and assigns it to @p content_out.
+ *
+ * @param[out] content_out Allocated empty string (caller frees).
+ * @return ESP_OK on success; ESP_ERR_NO_MEM on allocation failure.
+ */
 static esp_err_t init_empty_content(char **content_out);
+
+/**
+ * @brief Compute file size metadata and second chunk offset.
+ *
+ * Stat the file to derive size in KB and set second chunk offset (1 KB when size>0).
+ *
+ * @param opts Open options containing the path.
+ * @param[out] file_size_kb   File size in KB.
+ * @param[out] second_offset_kb Second chunk offset (0 or 1).
+ */
 static void compute_file_metadata(const text_viewer_open_opts_t *opts, size_t *file_size_kb, size_t *second_offset_kb);
+
+/**
+ * @brief Read the first (and optional second) text chunks from file.
+ *
+ * Reads chunk 0 and, if @p second_offset_kb != 0, reads that chunk too.
+ *
+ * @param path             File path.
+ * @param second_offset_kb Second chunk offset (may be 0).
+ * @param[out] chunk_a     First chunk buffer.
+ * @param[out] len_a       Length of first chunk.
+ * @param[out] chunk_b     Second chunk buffer (optional).
+ * @param[out] len_b       Length of second chunk.
+ * @return ESP_OK on success, error code otherwise.
+ */
 static esp_err_t read_initial_chunks(const char *path, size_t second_offset_kb, char **chunk_a, size_t *len_a,
                                      char **chunk_b, size_t *len_b);
+
+/**
+ * @brief Concatenate up to two chunks into a single buffer.
+ *
+ * Allocates a new buffer of len_a+len_b+1, copies both chunks, and null-terminates.
+ *
+ * @param chunk_a     First chunk (nullable if len_a==0).
+ * @param len_a       Length of first chunk.
+ * @param chunk_b     Second chunk (nullable if len_b==0).
+ * @param len_b       Length of second chunk.
+ * @param[out] content_out Output concatenated buffer (caller frees).
+ * @return ESP_OK on success; ESP_ERR_NO_MEM on allocation failure.
+ */
 static esp_err_t join_chunks(char *chunk_a, size_t len_a, char *chunk_b, size_t len_b, char **content_out);
 
 /**
