@@ -238,7 +238,7 @@ static void build_on_about_dlg(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = overlay obj.
  */
-static void close_on_about_dlg(lv_event_t *e);
+static void close_about_dlg(lv_event_t *e);
 
 /**
  * @brief Update brightness level when the slider value changes.
@@ -291,7 +291,7 @@ static void update_brightness_value(settings_ctx_t *ctx);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void restart_confirm(lv_event_t *e);
+static void confirm_restart(lv_event_t *e);
 
 /**
  * @brief Close the restart overlay without restarting.
@@ -319,7 +319,7 @@ static void build_reset_ui(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void reset_confirm(lv_event_t *e);
+static void confirm_reset(lv_event_t *e);
 
 /**
  * @brief Toggle theme (light/dark) and restart system.
@@ -340,14 +340,14 @@ static void wifi_sntp_dialog(lv_event_t *e);
  *
  * @return true if auto-connect is persisted as enabled; false otherwise.
  */
-static bool get_auto_connect_enabled(void);
+static bool get_auto_connect_state(void);
 
 /**
  * @brief Persist the Wi-Fi auto-connect preference.
  *
  * @param enable True to enable auto-connect on boot, false to disable.
  */
-static void set_auto_connect_enabled(bool enable);
+static void set_auto_connect_state(bool enable);
 
 /**
  * @brief Event handler for the startup auto-connect switch.
@@ -411,14 +411,14 @@ static void sntp_confirm(lv_event_t *e);
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void theme_not_confirm(lv_event_t *e);
+static void close_theme_msgbox(lv_event_t *e);
 
 /**
  * @brief Cancel SNTP refresh request and close the confirmation dialog.
  *
  * @param e LVGL event (CLICKED) with user data = settings_ctx_t*.
  */
-static void sntp_not_confirm(lv_event_t *e);
+static void cancel_sntp(lv_event_t *e);
 
 /**
  * @brief Show and attach the AP keyboard when SSID/password fields gain focus.
@@ -1456,7 +1456,7 @@ static void sntp_connect(void)
 {
     esp_err_t err = wifi_init_sta();
     if (err == ESP_OK){
-        err = sntp_init();    
+        err = sntp_initialize();    
     }
     s_settings_ctx.settings.time.sntp_last_err = err;
     if (err == ESP_OK){
@@ -1778,10 +1778,10 @@ static void build_on_about_dlg(lv_event_t *e)
     lv_label_set_text(close_lbl, "Close");
     lv_obj_center(close_lbl);
 
-    lv_obj_add_event_cb(close_btn, close_on_about_dlg, LV_EVENT_CLICKED, overlay);
+    lv_obj_add_event_cb(close_btn, close_about_dlg, LV_EVENT_CLICKED, overlay);
 }
 
-static void close_on_about_dlg(lv_event_t *e)
+static void close_about_dlg(lv_event_t *e)
 {
     lv_obj_t *overlay = lv_event_get_user_data(e);
     if (overlay) {
@@ -3782,7 +3782,7 @@ static void build_restart_ui(lv_event_t *e)
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
     lv_obj_set_user_data(yes_btn, (void *)1);
     styles_set_button(yes_btn);
-    lv_obj_add_event_cb(yes_btn, restart_confirm, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(yes_btn, confirm_restart, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     lv_obj_set_user_data(cancel_btn, (void *)0);
@@ -3798,7 +3798,7 @@ static void update_brightness_value(settings_ctx_t *ctx)
     ctx->settings.display.brightness = val;
 }
 
-static void restart_confirm(lv_event_t *e)
+static void confirm_restart(lv_event_t *e)
 {
     bsp_display_backlight_off();
     settings_ctx_t *ctx = lv_event_get_user_data(e);
@@ -3855,7 +3855,7 @@ static void build_reset_ui(lv_event_t *e)
     lv_obj_t *yes_btn = lv_msgbox_add_footer_button(mbox, "Yes");
     lv_obj_set_user_data(yes_btn, (void *)1);
     styles_set_button(yes_btn);
-    lv_obj_add_event_cb(yes_btn, reset_confirm, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(yes_btn, confirm_reset, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     lv_obj_set_user_data(cancel_btn, (void *)0);
@@ -3863,7 +3863,7 @@ static void build_reset_ui(lv_event_t *e)
     lv_obj_add_event_cb(cancel_btn, close_reset, LV_EVENT_CLICKED, ctx);
 }
 
-static void reset_confirm(lv_event_t *e)
+static void confirm_reset(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.reset_confirm_mbox)
@@ -3937,7 +3937,7 @@ static void toggle_theme(lv_event_t *e)
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, theme_not_confirm, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, close_theme_msgbox, LV_EVENT_CLICKED, ctx);
 }
 
 static void build_wifi_sntp_dialog(settings_ctx_t *ctx)
@@ -4046,7 +4046,7 @@ static void build_wifi_sntp_dialog(settings_ctx_t *ctx)
 
     lv_obj_t *startup_switch = lv_switch_create(row_startup_refresh);
     styles_set_switch(startup_switch);
-    bool startup_enabled = get_auto_connect_enabled();
+    bool startup_enabled = get_auto_connect_state();
     if (startup_enabled) {
         lv_obj_add_state(startup_switch, LV_STATE_CHECKED);
     } else {
@@ -4102,7 +4102,7 @@ static void build_refresh_sntp_msgbox(settings_ctx_t *ctx)
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
     styles_set_button(cancel_btn);
-    lv_obj_add_event_cb(cancel_btn, sntp_not_confirm, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(cancel_btn, cancel_sntp, LV_EVENT_CLICKED, ctx);
 }
 
 static void refresh_sntp(lv_event_t *e)
@@ -4278,12 +4278,12 @@ static void wifi_sntp_dialog(lv_event_t *e)
     build_wifi_sntp_dialog(ctx);
 }
 
-static bool get_auto_connect_enabled(void)
+static bool get_auto_connect_state(void)
 {
     return s_settings_ctx.settings.time.startup_sntp_auto_connect;
 }
 
-static void set_auto_connect_enabled(bool enable)
+static void set_auto_connect_state(bool enable)
 {
     if (s_settings_ctx.settings.time.startup_sntp_auto_connect == enable) {
         return;
@@ -4296,7 +4296,7 @@ static void ui_on_startup_switch_changed(lv_event_t *e)
 {
     lv_obj_t *sw = lv_event_get_target(e);
     bool enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
-    set_auto_connect_enabled(enabled);
+    set_auto_connect_state(enabled);
 }
 
 static void theme_confirm(lv_event_t *e)
@@ -4311,7 +4311,7 @@ static void theme_confirm(lv_event_t *e)
     settings_set_dark_theme_flag(new_dark);
     persist_theme_to_nvs();
 
-    restart_confirm(e);
+    confirm_restart(e);
 }
 
 static void sntp_confirm(lv_event_t *e)
@@ -4326,10 +4326,10 @@ static void sntp_confirm(lv_event_t *e)
     s_settings_ctx.settings.display.time_valid = false;
     persist_valid_time_flag_to_nvs();
 
-    restart_confirm(e);
+    confirm_restart(e);
 }
 
-static void theme_not_confirm(lv_event_t *e)
+static void close_theme_msgbox(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.theme_confirm_mbox) {
@@ -4339,7 +4339,7 @@ static void theme_not_confirm(lv_event_t *e)
     ctx->graphics.theme_confirm_mbox = NULL;
 }
 
-static void sntp_not_confirm(lv_event_t *e)
+static void cancel_sntp(lv_event_t *e)
 {
     settings_ctx_t *ctx = lv_event_get_user_data(e);
     if (!ctx || !ctx->graphics.sntp_confirm_mbox) {

@@ -67,7 +67,7 @@ esp_err_t sntp_wait_for_time_blocking(uint32_t timeout_ms)
     return ESP_ERR_TIMEOUT;
 }
 
-esp_err_t sntp_init(void)
+esp_err_t sntp_initialize(void)
 {
     esp_err_t err = start_sntp();
     if (err != ESP_OK){

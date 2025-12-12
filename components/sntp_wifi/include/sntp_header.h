@@ -25,6 +25,6 @@ esp_err_t sntp_wait_for_time_blocking(uint32_t timeout_ms);
  *
  * @return ESP_OK on success or an esp_err_t from SNTP init/sync.
  */
-esp_err_t sntp_init(void);
+esp_err_t sntp_initialize(void);
 
 #endif // SNTP_H
