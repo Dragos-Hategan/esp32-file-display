@@ -711,6 +711,42 @@ static void show_chunk_prompt(text_viewer_ctx_t *ctx);
 static void close_chunk_prompt(text_viewer_ctx_t *ctx);
 
 /**
+ * @brief Clear pending-chunk flags and slider state.
+ *
+ * Resets edge flags, clears pending flag, and refreshes slider.
+ *
+ * @param ctx Viewer context.
+ */
+static void clear_pending_chunk_state(text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Handle the "Save" choice from the chunk prompt.
+ *
+ * Triggers save, applies pending chunk if clean, or clears pending state when appropriate.
+ *
+ * @param ctx Viewer context.
+ */
+static void handle_chunk_prompt_save(text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Handle the "Discard" choice from the chunk prompt.
+ *
+ * Clears dirty flag, updates buttons, and applies the pending chunk.
+ *
+ * @param ctx Viewer context.
+ */
+static void handle_chunk_prompt_discard(text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Handle the "Cancel" choice from the chunk prompt.
+ *
+ * Cancels pending chunk and resets edge/slider state.
+ *
+ * @param ctx Viewer context.
+ */
+static void handle_chunk_prompt_cancel(text_viewer_ctx_t *ctx);
+
+/**
  * @brief Check whether a pending chunk can be applied now.
  *
  * @param ctx Viewer context.
@@ -784,15 +820,62 @@ static void on_sd_retry_timer(lv_timer_t *timer);
  */
 static void schedule_sd_retry(text_viewer_ctx_t *ctx, text_viewer_sd_action_t action);
 
+/**
+ * @brief Check whether the SD reconnection semaphore is ready.
+ *
+ * @param ctx Viewer context.
+ * @return true if reconnection was confirmed; false otherwise.
+ */
+static bool sd_reconnect_ready(text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Perform the pending SD action after reconnection.
+ *
+ * @param ctx    Viewer context.
+ * @param action Pending action to resume.
+ */
+static void perform_sd_retry_action(text_viewer_ctx_t *ctx, text_viewer_sd_action_t action);
+
 /*********************************************************************************************/
 
 /**
  * @brief Validate candidate filename (must end with .txt and contain safe chars).
+ *
+ * @param name Null-terminated candidate name.
+ * @return true if the name is non-empty, contains no invalid characters, and ends with ".txt".
  */
 static bool validate_name(const char *name);
 
 /**
+ * @brief Whether a dot pointer references an existing non-empty ".txt" extension.
+ *
+ * @param dot Pointer to the last '.' in the string (may be NULL).
+ * @return true if @p dot points to a ".txt" suffix with at least one character after the dot.
+ */
+static bool has_txt_extension(const char *dot);
+
+/**
+ * @brief Whether a dot pointer references a non-empty extension different from ".txt".
+ *
+ * @param dot Pointer to the last '.' in the string (may be NULL).
+ * @return true if @p dot points to a non-empty extension that is not ".txt".
+ */
+static bool has_other_extension(const char *dot);
+
+/**
+ * @brief Check if there is enough buffer space to append ".txt".
+ *
+ * @param current_len Current string length (excluding terminator).
+ * @param buf_len     Total buffer capacity (including terminator).
+ * @return true if ".txt" can be appended without overflow.
+ */
+static bool can_append_txt(size_t current_len, size_t buf_len);
+
+/**
  * @brief Ensure \".txt\" suffix (adds or fixes trailing dot cases).
+ *
+ * @param name Buffer containing the filename to update (in-place).
+ * @param len  Total size of @p name buffer.
  */
 static void ensure_txt_extension(char *name, size_t len);
 
@@ -2346,6 +2429,51 @@ static void close_chunk_prompt(text_viewer_ctx_t *ctx)
     }
 }
 
+static void clear_pending_chunk_state(text_viewer_ctx_t *ctx)
+{
+    if (!ctx)
+    {
+        return;
+    }
+    ctx->flags.pending_chunk = false;
+    ctx->flags.at_top_edge = false;
+    ctx->flags.at_bottom_edge = false;
+    update_slider(ctx);
+}
+
+static void handle_chunk_prompt_save(text_viewer_ctx_t *ctx)
+{
+    if (!ctx)
+    {
+        return;
+    }
+    handle_save(ctx);
+    if (!ctx->flags.dirty)
+    {
+        apply_pending_chunk(ctx);
+    }
+    else if (!ctx->flags.waiting_sd)
+    {
+        clear_pending_chunk_state(ctx);
+    }
+}
+
+static void handle_chunk_prompt_discard(text_viewer_ctx_t *ctx)
+{
+    if (!ctx)
+    {
+        return;
+    }
+    ctx->flags.dirty = false;
+    update_buttons(ctx);
+    apply_pending_chunk(ctx);
+}
+
+static void handle_chunk_prompt_cancel(text_viewer_ctx_t *ctx)
+{
+    clear_pending_chunk_state(ctx);
+}
+
 static bool should_apply_pending_chunk(const text_viewer_ctx_t *ctx)
 {
     return ctx && ctx->flags.pending_chunk && !ctx->flags.waiting_sd;
@@ -2413,31 +2541,15 @@ static void on_chunk_prompt(lv_event_t *e)
 
     if (ud == (void *)TEXT_VIEWER_CHUNK_SAVE)
     {
-        handle_save(ctx);
-        if (!ctx->flags.dirty)
-        {
-            apply_pending_chunk(ctx);
-        }
-        else if (!ctx->flags.waiting_sd)
-        {
-            ctx->flags.pending_chunk = false;
-            ctx->flags.at_top_edge = false;
-            ctx->flags.at_bottom_edge = false;
-            update_slider(ctx);
-        }
+        handle_chunk_prompt_save(ctx);
     }
     else if (ud == (void *)TEXT_VIEWER_CHUNK_DISCARD)
     {
-        ctx->flags.dirty = false;
-        update_buttons(ctx);
-        apply_pending_chunk(ctx);
+        handle_chunk_prompt_discard(ctx);
     }
     else
     {
-        ctx->flags.pending_chunk = false; // Cancel
-        ctx->flags.at_top_edge = false;
-        ctx->flags.at_bottom_edge = false;
-        update_slider(ctx);
+        handle_chunk_prompt_cancel(ctx);
     }
 }
 
@@ -2471,29 +2583,23 @@ static void request_chunk_load(text_viewer_ctx_t *ctx, size_t first_offset_kb, s
     }
 }
 
-static void on_sd_retry_timer(lv_timer_t *timer)
+static bool sd_reconnect_ready(text_viewer_ctx_t *ctx)
 {
-    text_viewer_ctx_t *ctx = lv_timer_get_user_data(timer);
-    if (!ctx || !ctx->flags.waiting_sd)
-    {
-        return;
-    }
     if (!reconnection_success)
     {
         set_status(ctx, "Reconnect SD");
-        return;
+        return false;
     }
     if (xSemaphoreTake(reconnection_success, 0) != pdTRUE)
     {
         set_status(ctx, "Reconnect SD");
-        return;
+        return false;
     }
+    return true;
+}
 
-    ctx->flags.waiting_sd = false;
-    text_viewer_sd_action_t action = ctx->sd_retry_action;
-    ctx->sd_retry_action = TEXT_VIEWER_SD_NONE;
-    set_status(ctx, "SD reconnected");
-
+static void perform_sd_retry_action(text_viewer_ctx_t *ctx, text_viewer_sd_action_t action)
+{
     if (action == TEXT_VIEWER_SD_SAVE)
     {
         handle_save(ctx);
@@ -2506,6 +2612,26 @@ static void on_sd_retry_timer(lv_timer_t *timer)
     {
         apply_pending_chunk(ctx);
     }
+}
+
+static void on_sd_retry_timer(lv_timer_t *timer)
+{
+    text_viewer_ctx_t *ctx = lv_timer_get_user_data(timer);
+    if (!ctx || !ctx->flags.waiting_sd)
+    {
+        return;
+    }
+    if (!sd_reconnect_ready(ctx))
+    {
+        return;
+    }
+
+    ctx->flags.waiting_sd = false;
+    text_viewer_sd_action_t action = ctx->sd_retry_action;
+    ctx->sd_retry_action = TEXT_VIEWER_SD_NONE;
+    set_status(ctx, "SD reconnected");
+
+    perform_sd_retry_action(ctx, action);
 }
 
 static void schedule_sd_retry(text_viewer_ctx_t *ctx, text_viewer_sd_action_t action)
@@ -2552,6 +2678,21 @@ static bool validate_name(const char *name)
     return fs_text_is_txt(name);
 }
 
+static bool has_txt_extension(const char *dot)
+{
+    return dot && dot[1] != '\0' && strcasecmp(dot, ".txt") == 0;
+}
+
+static bool has_other_extension(const char *dot)
+{
+    return dot && dot[1] != '\0' && strcasecmp(dot, ".txt") != 0;
+}
+
+static bool can_append_txt(size_t current_len, size_t buf_len)
+{
+    return current_len + 4 < buf_len;
+}
+
 static void ensure_txt_extension(char *name, size_t len)
 {
     if (!name || len == 0)
@@ -2565,15 +2706,11 @@ static void ensure_txt_extension(char *name, size_t len)
         return;
     }
     const char *dot = strrchr(name, '.');
-    if (dot && dot[1] != '\0')
+    if (has_txt_extension(dot) || has_other_extension(dot))
     {
-        if (strcasecmp(dot, ".txt") == 0)
-        {
-            return;
-        }
         return;
     }
-    if (n + 4 >= len)
+    if (!can_append_txt(n, len))
     {
         return;
     }
