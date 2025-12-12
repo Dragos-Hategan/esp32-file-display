@@ -257,6 +257,46 @@ static const fs_nav_item_t *items_for_sorted(const fs_nav_t *nav, size_t *count)
  */
 static const fs_nav_item_t *items_for_unsorted(const fs_nav_t *nav, size_t *count);
 
+/**
+ * @brief Validate fs_nav_enter request and resolve directory item.
+ *
+ * Checks arguments, applies window offset for sorted mode, and requires target to be a directory.
+ *
+ * @param nav      Navigator context.
+ * @param index    Index within current window.
+ * @param item_out Out pointer to resolved directory item (may be NULL).
+ * @return ESP_OK on success; ESP_ERR_INVALID_ARG/ESP_ERR_INVALID_STATE otherwise.
+ */
+static esp_err_t validate_enter_target(fs_nav_t *nav, size_t index, const fs_nav_item_t **item_out);
+
+/**
+ * @brief Copy current relative path into a caller-provided buffer.
+ *
+ * @param nav  Navigator context.
+ * @param dest Destination buffer sized for FS_NAV_MAX_PATH.
+ */
+static void snapshot_relative_path(const fs_nav_t *nav, char dest[FS_NAV_MAX_PATH]);
+
+/**
+ * @brief Build next relative path when descending into a child directory.
+ *
+ * @param prev_relative Existing relative path ("" for root).
+ * @param item          Target directory entry.
+ * @param next_relative Out buffer sized for FS_NAV_MAX_PATH.
+ * @return ESP_OK on success; ESP_ERR_INVALID_SIZE on overflow.
+ */
+static esp_err_t compose_next_relative_path(const char *prev_relative, const fs_nav_item_t *item, char next_relative[FS_NAV_MAX_PATH]);
+
+/**
+ * @brief Apply next path, refresh listing, and rollback on failure.
+ *
+ * @param nav           Navigator context.
+ * @param prev_relative Previous relative path for rollback.
+ * @param next_relative New relative path to apply.
+ * @return Result from fs_nav_refresh or set_relative.
+ */
+static esp_err_t commit_enter_and_refresh(fs_nav_t *nav, const char *prev_relative, const char *next_relative);
+
 esp_err_t fs_nav_init(fs_nav_t *nav, const fs_nav_config_t *cfg)
 {
     esp_err_t err = init_nav_defaults(nav, cfg);
@@ -358,46 +398,22 @@ bool fs_nav_can_go_parent(const fs_nav_t *nav)
 
 esp_err_t fs_nav_enter(fs_nav_t *nav, size_t index)
 {
-    if (!nav || index >= nav->item_count) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    size_t actual_index = nav->sort_enabled ? (nav->window_start + index) : index;
-    if (actual_index >= nav->item_count) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    const fs_nav_item_t *item = &nav->items[actual_index];
-    if (!item->is_dir) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    char prev_relative[FS_NAV_MAX_PATH];
-    strlcpy(prev_relative, nav->relative, sizeof(prev_relative));
-
-    char next_relative[FS_NAV_MAX_PATH];
-    if (prev_relative[0] == '\0') {
-        strlcpy(next_relative, item->name, sizeof(next_relative));
-    } else {
-        int written = snprintf(next_relative, sizeof(next_relative), "%s/%s", prev_relative, item->name);
-        if (written <= 0 || (size_t)written >= sizeof(next_relative)) {
-            return ESP_ERR_INVALID_SIZE;
-        }
-    }
-
-    esp_err_t err = set_relative(nav, next_relative);
+    const fs_nav_item_t *item = NULL;
+    esp_err_t err = validate_enter_target(nav, index, &item);
     if (err != ESP_OK) {
         return err;
     }
 
-    err = fs_nav_refresh(nav);
-    if (err == ESP_OK) {
-        store_state(nav);
-    } else {
-        // best-effort restore previous location if refresh failed
-        set_relative(nav, prev_relative);
+    char prev_relative[FS_NAV_MAX_PATH];
+    snapshot_relative_path(nav, prev_relative);
+
+    char next_relative[FS_NAV_MAX_PATH];
+    err = compose_next_relative_path(prev_relative, item, next_relative);
+    if (err != ESP_OK) {
+        return err;
     }
-    return err;
+
+    return commit_enter_and_refresh(nav, prev_relative, next_relative);
 }
 
 esp_err_t fs_nav_go_parent(fs_nav_t *nav)
@@ -1083,4 +1099,62 @@ static const fs_nav_item_t *items_for_unsorted(const fs_nav_t *nav, size_t *coun
         *count = nav->item_count;
     }
     return nav->items;
+}
+
+static esp_err_t validate_enter_target(fs_nav_t *nav, size_t index, const fs_nav_item_t **item_out)
+{
+    if (!nav || index >= nav->item_count) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    size_t actual_index = nav->sort_enabled ? (nav->window_start + index) : index;
+    if (actual_index >= nav->item_count) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const fs_nav_item_t *item = &nav->items[actual_index];
+    if (!item->is_dir) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (item_out) {
+        *item_out = item;
+    }
+    return ESP_OK;
+}
+
+static void snapshot_relative_path(const fs_nav_t *nav, char dest[FS_NAV_MAX_PATH])
+{
+    strlcpy(dest, nav->relative, FS_NAV_MAX_PATH);
+}
+
+static esp_err_t compose_next_relative_path(const char *prev_relative, const fs_nav_item_t *item, char next_relative[FS_NAV_MAX_PATH])
+{
+    if (prev_relative[0] == '\0') {
+        strlcpy(next_relative, item->name, FS_NAV_MAX_PATH);
+        return ESP_OK;
+    }
+
+    int written = snprintf(next_relative, FS_NAV_MAX_PATH, "%s/%s", prev_relative, item->name);
+    if (written <= 0 || (size_t)written >= FS_NAV_MAX_PATH) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+    return ESP_OK;
+}
+
+static esp_err_t commit_enter_and_refresh(fs_nav_t *nav, const char *prev_relative, const char *next_relative)
+{
+    esp_err_t err = set_relative(nav, next_relative);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    err = fs_nav_refresh(nav);
+    if (err == ESP_OK) {
+        store_state(nav);
+    } else {
+        // best-effort restore previous location if refresh failed
+        set_relative(nav, prev_relative);
+    }
+    return err;
 }
