@@ -313,6 +313,65 @@ static esp_err_t validate_go_parent(const fs_nav_t *nav);
  */
 static void compose_parent_relative(const char prev_relative[FS_NAV_MAX_PATH], char new_relative[FS_NAV_MAX_PATH]);
 
+/**
+ * @brief Validate fs_nav_set_window arguments.
+ *
+ * @param nav  Navigator context.
+ * @param size Window size (must be >0).
+ * @return ESP_OK on success; ESP_ERR_INVALID_ARG otherwise.
+ */
+static esp_err_t validate_window_request(const fs_nav_t *nav, size_t size);
+
+/**
+ * @brief Handle empty directory case for windowing.
+ *
+ * Clears items and sets window fields when total_items==0.
+ *
+ * @param nav  Navigator context.
+ * @param size Requested window size.
+ * @return true if handled (caller should return ESP_OK); false otherwise.
+ */
+static bool handle_empty_window(fs_nav_t *nav, size_t size);
+
+/**
+ * @brief Clamp start to valid range based on total_items.
+ *
+ * @param nav   Navigator context.
+ * @param start Requested start index.
+ * @return Clamped start.
+ */
+static size_t clamp_window_start(const fs_nav_t *nav, size_t start);
+
+/**
+ * @brief Ensure capacity for unsorted window items.
+ *
+ * @param nav  Navigator context.
+ * @param size Required capacity.
+ * @return ESP_OK on success; ESP_ERR_NO_MEM on failure.
+ */
+static esp_err_t ensure_window_capacity(fs_nav_t *nav, size_t size);
+
+/**
+ * @brief Open directory for window population, logging on failure.
+ *
+ * @param nav Navigator context.
+ * @return DIR* on success; NULL on failure (nav->item_count cleared).
+ */
+static DIR *open_directory_for_window(fs_nav_t *nav);
+
+/**
+ * @brief Load a window of entries from an open directory.
+ *
+ * Performs skip, load, close, and sets item_count. Clears items and logs on read error.
+ *
+ * @param nav   Navigator context.
+ * @param dir   Open directory (closed inside).
+ * @param start Starting offset (post-clamp).
+ * @param size  Maximum items to load.
+ * @return ESP_OK on success; ESP_FAIL on read errors.
+ */
+static esp_err_t load_window_entries(fs_nav_t *nav, DIR *dir, size_t start, size_t size);
+
 esp_err_t fs_nav_init(fs_nav_t *nav, const fs_nav_config_t *cfg)
 {
     esp_err_t err = init_nav_defaults(nav, cfg);
@@ -479,22 +538,17 @@ bool fs_nav_is_sort_enabled(const fs_nav_t *nav)
 
 esp_err_t fs_nav_set_window(fs_nav_t *nav, size_t start, size_t size)
 {
-    if (!nav || size == 0) {
-        return ESP_ERR_INVALID_ARG;
+    esp_err_t err = validate_window_request(nav, size);
+    if (err != ESP_OK) {
+        return err;
     }
 
-    if (nav->total_items == 0) {
-        clear_items(nav);
-        nav->window_start = 0;
-        nav->window_size = size;
+    if (handle_empty_window(nav, size)) {
         return ESP_OK;
     }
 
-    if (start >= nav->total_items) {
-        start = nav->total_items ? (nav->total_items - 1) : 0;
-    }
-
-    nav->window_start = start;
+    size_t clamped_start = clamp_window_start(nav, start);
+    nav->window_start = clamped_start;
     nav->window_size = size;
 
     if (nav->sort_enabled) {
@@ -504,77 +558,17 @@ esp_err_t fs_nav_set_window(fs_nav_t *nav, size_t start, size_t size)
 
     clear_items(nav);
 
-    if (nav->capacity < size) {
-        fs_nav_item_t *new_items = heap_caps_realloc(nav->items,
-                                                        size * sizeof(fs_nav_item_t),
-                                                        MALLOC_CAP_8BIT);
-        if (!new_items) {
-            ESP_LOGE(TAG, "Out of memory while allocating window of %zu items for \"%s\"", size, nav->current);
-            return ESP_ERR_NO_MEM;
-        }
-        nav->items = new_items;
-        nav->capacity = size;
+    err = ensure_window_capacity(nav, size);
+    if (err != ESP_OK) {
+        return err;
     }
 
-    DIR *dir = opendir(nav->current);
+    DIR *dir = open_directory_for_window(nav);
     if (!dir) {
-        ESP_LOGE(TAG, "opendir(%s) failed while setting window: errno=%d", nav->current, errno);
-        nav->item_count = 0;
         return ESP_FAIL;
     }
 
-    struct dirent *dent = NULL;
-    errno = 0;
-    /* Skip to start */
-    size_t skipped = 0;
-    while (skipped < start && (dent = readdir(dir)) != NULL) {
-        if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
-            continue;
-        }
-        skipped++;
-    }
-
-    size_t idx = 0;
-    errno = 0;
-    while ((dent = readdir(dir)) != NULL) {
-        if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
-            continue;
-        }
-        if (idx >= size) {
-            break;
-        }
-
-        fs_nav_item_t *dest = &nav->items[idx];
-        memset(dest, 0, sizeof(*dest));
-
-        size_t name_len = strnlen(dent->d_name, FS_NAV_MAX_NAME - 1);
-        dest->name = (char *)heap_caps_malloc(name_len + 1, MALLOC_CAP_8BIT);
-        if (!dest->name) {
-            ESP_LOGE(TAG, "Out of memory duplicating item name");
-            break;
-        }
-        memcpy(dest->name, dent->d_name, name_len);
-        dest->name[name_len] = '\0';
-
-        dest->needs_stat = true;
-        dest->is_dir = (dent->d_type == DT_DIR);
-        dest->size_bytes = 0;
-        dest->modified = 0;
-
-        idx++;
-    }
-    int load_errno = errno;
-    closedir(dir);
-
-    nav->item_count = idx;
-
-    if (load_errno != 0) {
-        clear_items(nav);
-        ESP_LOGE(TAG, "readdir(%s) failed while loading window: errno=%d", nav->current, load_errno);
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
+    return load_window_entries(nav, dir, clamped_start, size);
 }
 
 size_t fs_nav_total_items(const fs_nav_t *nav)
@@ -1172,4 +1166,113 @@ static void compose_parent_relative(const char prev_relative[FS_NAV_MAX_PATH], c
     } else {
         new_relative[0] = '\0';
     }
+}
+
+static esp_err_t validate_window_request(const fs_nav_t *nav, size_t size)
+{
+    if (!nav || size == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return ESP_OK;
+}
+
+static bool handle_empty_window(fs_nav_t *nav, size_t size)
+{
+    if (nav->total_items != 0) {
+        return false;
+    }
+    clear_items(nav);
+    nav->window_start = 0;
+    nav->window_size = size;
+    return true;
+}
+
+static size_t clamp_window_start(const fs_nav_t *nav, size_t start)
+{
+    if (start >= nav->total_items) {
+        return nav->total_items ? (nav->total_items - 1) : 0;
+    }
+    return start;
+}
+
+static esp_err_t ensure_window_capacity(fs_nav_t *nav, size_t size)
+{
+    if (nav->capacity >= size) {
+        return ESP_OK;
+    }
+    fs_nav_item_t *new_items = heap_caps_realloc(nav->items,
+                                                 size * sizeof(fs_nav_item_t),
+                                                 MALLOC_CAP_8BIT);
+    if (!new_items) {
+        ESP_LOGE(TAG, "Out of memory while allocating window of %zu items for \"%s\"", size, nav->current);
+        return ESP_ERR_NO_MEM;
+    }
+    nav->items = new_items;
+    nav->capacity = size;
+    return ESP_OK;
+}
+
+static DIR *open_directory_for_window(fs_nav_t *nav)
+{
+    DIR *dir = opendir(nav->current);
+    if (!dir) {
+        ESP_LOGE(TAG, "opendir(%s) failed while setting window: errno=%d", nav->current, errno);
+        nav->item_count = 0;
+    }
+    return dir;
+}
+
+static esp_err_t load_window_entries(fs_nav_t *nav, DIR *dir, size_t start, size_t size)
+{
+    struct dirent *dent = NULL;
+    errno = 0;
+    size_t skipped = 0;
+    while (skipped < start && (dent = readdir(dir)) != NULL) {
+        if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
+            continue;
+        }
+        skipped++;
+    }
+
+    size_t idx = 0;
+    errno = 0;
+    while ((dent = readdir(dir)) != NULL) {
+        if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
+            continue;
+        }
+        if (idx >= size) {
+            break;
+        }
+
+        fs_nav_item_t *dest = &nav->items[idx];
+        memset(dest, 0, sizeof(*dest));
+
+        size_t name_len = strnlen(dent->d_name, FS_NAV_MAX_NAME - 1);
+        dest->name = (char *)heap_caps_malloc(name_len + 1, MALLOC_CAP_8BIT);
+        if (!dest->name) {
+            ESP_LOGE(TAG, "Out of memory duplicating item name");
+            break;
+        }
+        memcpy(dest->name, dent->d_name, name_len);
+        dest->name[name_len] = '\0';
+
+        dest->needs_stat = true;
+        dest->is_dir = (dent->d_type == DT_DIR);
+        dest->size_bytes = 0;
+        dest->modified = 0;
+
+        idx++;
+    }
+    int load_errno = errno;
+    closedir(dir);
+
+    nav->item_count = idx;
+
+    if (load_errno != 0) {
+        clear_items(nav);
+        ESP_LOGE(TAG, "readdir(%s) failed while loading window: errno=%d", nav->current, load_errno);
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
 }
