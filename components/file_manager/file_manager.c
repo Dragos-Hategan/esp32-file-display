@@ -29,15 +29,25 @@
 
 #define TAG "file_manager"
 
-#define FILE_BROWSER_MAX_SORTABLE_ITEMS     64   // CAUTION! BIGGER NUMBER OR 0 MEANS MEMORY CRASHES
-#define FILE_BROWSER_LIST_WINDOW_SIZE       32   // CAUTION! BIGGER NUMBER MEANS OUT OF MEMORY CRASHES
-#define FILE_BROWSER_LIST_WINDOW_STEP       16   // CAUTION! BIGGER NUMBER MEANS OUT OF MEMORY CRASHES
-#define FILE_BROWSER_PATH_SCROLL_DELAY_MS   2000
-#define FILE_BROWSER_ENTRY_SCROLL_DELAY_MS  FILE_BROWSER_PATH_SCROLL_DELAY_MS
-#define FILE_BROWSER_SLIDER_GAP             8
+#define FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT     64
+#define FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT       32
+#define FILE_BROWSER_LIST_WINDOW_STEP_DEFAULT       16
+#define FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT   2000
+#define FILE_BROWSER_ENTRY_SCROLL_DELAY_MS_DEFAULT  FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT
+#define FILE_BROWSER_SLIDER_GAP_DEFAULT             8
+#define FILE_BROWSER_WAIT_STACK_SIZE_B_DEFAULT      (6 * 1024)
+#define FILE_BROWSER_WAIT_PRIO_DEFAULT              4
 
-#define FILE_BROWSER_WAIT_STACK_SIZE_B      (6 * 1024)
-#define FILE_BROWSER_WAIT_PRIO              (4)
+_Static_assert(FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT <= FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT,
+               "List window size cannot exceed max sortable items");
+_Static_assert(FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT > 0,
+               "List window size must be non-zero");
+_Static_assert(FILE_BROWSER_LIST_WINDOW_STEP_DEFAULT <= (FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT / 2),
+               "List window step cannot exceed window size");
+_Static_assert(FILE_BROWSER_LIST_WINDOW_STEP_DEFAULT > 0,
+               "List window step must be non-zero");
+_Static_assert(FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT > 0,
+               "Max sortable items must be non-zero");
 
 typedef struct {
     bool active;
@@ -73,9 +83,6 @@ typedef struct {
     lv_obj_t *tools_dd;
     lv_obj_t *datetime_btn;
     lv_obj_t *datetime_label;
-    esp_timer_handle_t clock_timer;
-    bool clock_timer_running;
-    bool clock_user_set;
     lv_obj_t *sort_overlay;
     lv_obj_t *date_time_overlay;
     lv_obj_t *sort_criteria_dd;
@@ -123,8 +130,8 @@ typedef struct {
     size_t reload_anchor_index;
 } file_manager_ctx_t;
 
-static file_manager_ctx_t s_browser;
-static TaskHandle_t file_manager_wait_task = NULL;
+static file_manager_ctx_t s_browser;                /* Singleton UI context */
+static TaskHandle_t file_manager_wait_task = NULL;  /* Used to wait for sd card after a sd card failure */
 
 /***************************************** Image Helpers *****************************************/
 /**
@@ -255,7 +262,7 @@ static void file_manager_clock_update_async(void *arg);
  *
  * This function cancels any existing scroll-start timer, forces the path label into
  * clipped mode, and creates a new one-shot timer that will re-enable circular
- * scrolling after FILE_BROWSER_PATH_SCROLL_DELAY_MS milliseconds.
+ * scrolling after FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT milliseconds.
  *
  * It is typically used whenever the displayed path changes, ensuring the scroll
  * animation restarts cleanly and does not begin immediately.
@@ -280,7 +287,7 @@ static void file_manager_path_scroll_timer_cb(lv_timer_t *timer);
  * @brief Restart delayed scrolling for list item labels.
  *
  * Forces all visible item labels into clipped mode, then schedules a one-shot
- * timer to re-enable circular scrolling after FILE_BROWSER_ENTRY_SCROLL_DELAY_MS.
+ * timer to re-enable circular scrolling after FILE_BROWSER_ENTRY_SCROLL_DELAY_MS_DEFAULT.
  *
  * @param ctx Browser context containing the list widget.
  */
@@ -1197,7 +1204,7 @@ esp_err_t file_manager_start(void)
 
     file_manager_config_t browser_cfg = {
         .root_path = CONFIG_SDSPI_MOUNT_POINT,
-        .max_items = FILE_BROWSER_MAX_SORTABLE_ITEMS,
+        .max_items = FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT,
     };
 
     if (!browser_cfg.root_path) {
@@ -1213,7 +1220,7 @@ esp_err_t file_manager_start(void)
 
     fs_nav_config_t nav_cfg = {
         .root_path = browser_cfg.root_path,
-        .max_items = browser_cfg.max_items ? browser_cfg.max_items : FILE_BROWSER_MAX_SORTABLE_ITEMS,
+        .max_items = browser_cfg.max_items ? browser_cfg.max_items : FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT,
     };
 
     esp_err_t nav_err = fs_nav_init(&ctx->nav, &nav_cfg);
@@ -1383,8 +1390,8 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_size(list_row, LV_PCT(100), LV_PCT(100));
     lv_obj_set_flex_flow(list_row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(list_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(list_row, FILE_BROWSER_SLIDER_GAP, 0);
-    lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP, 0);
+    lv_obj_set_style_pad_gap(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
+    lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
     lv_obj_set_flex_grow(list_row, 1);
 
     ctx->list = lv_list_create(list_row);
@@ -1430,7 +1437,7 @@ static void file_manager_reset_window(file_manager_ctx_t *ctx)
         return;
     }
     ctx->list_window_start = 0;
-    ctx->list_window_size = FILE_BROWSER_LIST_WINDOW_SIZE;
+    ctx->list_window_size = FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT;
     ctx->list_at_top_edge = false;
     ctx->list_at_bottom_edge = false;
     ctx->list_suppress_scroll = false;
@@ -1459,12 +1466,12 @@ static void file_manager_get_window_params(file_manager_ctx_t *ctx, size_t *wind
         return;
     }
 
-    size_t ws = ctx->list_window_size ? ctx->list_window_size : FILE_BROWSER_LIST_WINDOW_SIZE;
+    size_t ws = ctx->list_window_size ? ctx->list_window_size : FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT;
     if (ws == 0) {
         ws = 1;
     }
 
-    size_t st = FILE_BROWSER_LIST_WINDOW_STEP ? FILE_BROWSER_LIST_WINDOW_STEP : (ws / 2);
+    size_t st = FILE_BROWSER_LIST_WINDOW_STEP_DEFAULT ? FILE_BROWSER_LIST_WINDOW_STEP_DEFAULT : (ws / 2);
     if (st == 0) {
         st = 1;
     }
@@ -1561,7 +1568,7 @@ static void file_manager_update_slider(file_manager_ctx_t *ctx)
         ctx->slider_drag_active = false;
         lv_obj_add_state(ctx->list_slider, LV_STATE_DISABLED);
         if (list_row) {
-            lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP, 0);
+            lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
         }
         return;
     }
@@ -1589,7 +1596,7 @@ static void file_manager_update_slider(file_manager_ctx_t *ctx)
 
     lv_obj_remove_state(ctx->list_slider, LV_STATE_DISABLED);
     if (list_row) {
-        lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP, 0);
+        lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
     }
 }
 
@@ -1601,9 +1608,9 @@ static void file_manager_schedule_wait_for_reconnection(void)
     
     BaseType_t res = xTaskCreatePinnedToCore(file_manager_wait_for_reconnection_task,
                                              "file_manager_wait_task",
-                                             FILE_BROWSER_WAIT_STACK_SIZE_B,
+                                             FILE_BROWSER_WAIT_STACK_SIZE_B_DEFAULT,
                                              NULL,
-                                             FILE_BROWSER_WAIT_PRIO,
+                                             FILE_BROWSER_WAIT_PRIO_DEFAULT,
                                              &file_manager_wait_task,
                                              tskNO_AFFINITY);
 
@@ -1747,7 +1754,7 @@ static void file_manager_restart_path_scroll(file_manager_ctx_t *ctx)
 
     /* Start clipped, then enable scroll after a short delay. */
     lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_CLIP);
-    ctx->path_scroll_timer = lv_timer_create(file_manager_path_scroll_timer_cb, FILE_BROWSER_PATH_SCROLL_DELAY_MS, ctx);
+    ctx->path_scroll_timer = lv_timer_create(file_manager_path_scroll_timer_cb, FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT, ctx);
     if (ctx->path_scroll_timer) {
         lv_timer_set_repeat_count(ctx->path_scroll_timer, 1);
     }
@@ -1869,7 +1876,7 @@ static void file_manager_restart_entry_scroll(file_manager_ctx_t *ctx)
         return;
     }
 
-    ctx->list_scroll_timer = lv_timer_create(file_manager_entry_scroll_timer_cb, FILE_BROWSER_ENTRY_SCROLL_DELAY_MS, ctx);
+    ctx->list_scroll_timer = lv_timer_create(file_manager_entry_scroll_timer_cb, FILE_BROWSER_ENTRY_SCROLL_DELAY_MS_DEFAULT, ctx);
     if (ctx->list_scroll_timer) {
         lv_timer_set_repeat_count(ctx->list_scroll_timer, 1);
     }
