@@ -200,6 +200,38 @@ static void get_slider_params(text_viewer_ctx_t *ctx, size_t *window_size, size_
 static void update_slider(text_viewer_ctx_t *ctx);
 
 /**
+ * @brief Disable the slider when only one window fits.
+ *
+ * Resets range/value, clears drag state, and disables the widget.
+ *
+ * @param ctx Viewer context.
+ */
+static void update_slider_disabled(text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Update slider range/value based on total chunks and window size.
+ *
+ * Configures slider range (top=0, bottom=max), sets current position, and clears disabled state.
+ *
+ * @param ctx          Viewer context.
+ * @param window_size  Chunks per window.
+ * @param step         Chunks per slider step.
+ * @param total_chunks Total chunks available.
+ */
+static void update_slider_range(text_viewer_ctx_t *ctx, size_t window_size, size_t step, size_t total_chunks);
+
+/**
+ * @brief Clamp the current step based on offsets and limits.
+ *
+ * @param ctx            Viewer context.
+ * @param step           Chunks per slider step.
+ * @param max_start      Maximum starting chunk index.
+ * @param max_step_index Maximum slider step index.
+ * @return Clamped current step.
+ */
+static size_t clamp_current_step(const text_viewer_ctx_t *ctx, size_t step, size_t max_start, size_t max_step_index);
+
+/**
  * @brief Handle slider press/drag/release to jump between chunk windows.
  *
  * Tracks the target step while dragging and applies the chunk load on release; no-ops
@@ -1119,21 +1151,27 @@ static void update_slider(text_viewer_ctx_t *ctx)
     }
 
     if (total_chunks <= window_size) {
-        bool prev = ctx->flags.slider_suppress_change;
-        ctx->flags.slider_suppress_change = true;
-        lv_slider_set_range(ctx->graphics.chunk_slider, 0, 0);
-        lv_slider_set_value(ctx->graphics.chunk_slider, 0, LV_ANIM_OFF);
-        ctx->flags.slider_suppress_change = prev;
-        ctx->slider_pending_step = 0;
-        ctx->flags.slider_drag_active = false;
-        lv_obj_add_state(ctx->graphics.chunk_slider, LV_STATE_DISABLED);
+        update_slider_disabled(ctx);
         return;
     }
 
-    size_t max_start = total_chunks - window_size;
-    size_t max_step_index = step ? ((max_start + step - 1) / step) : 0;
-    int32_t max_val = (int32_t)max_step_index;
+    update_slider_range(ctx, window_size, step, total_chunks);
+}
 
+static void update_slider_disabled(text_viewer_ctx_t *ctx)
+{
+    bool prev = ctx->flags.slider_suppress_change;
+    ctx->flags.slider_suppress_change = true;
+    lv_slider_set_range(ctx->graphics.chunk_slider, 0, 0);
+    lv_slider_set_value(ctx->graphics.chunk_slider, 0, LV_ANIM_OFF);
+    ctx->flags.slider_suppress_change = prev;
+    ctx->slider_pending_step = 0;
+    ctx->flags.slider_drag_active = false;
+    lv_obj_add_state(ctx->graphics.chunk_slider, LV_STATE_DISABLED);
+}
+
+static size_t clamp_current_step(const text_viewer_ctx_t *ctx, size_t step, size_t max_start, size_t max_step_index)
+{
     size_t current_start = ctx->last_file_offset_kb;
     if (current_start > max_start) {
         current_start = max_start;
@@ -1142,6 +1180,16 @@ static void update_slider(text_viewer_ctx_t *ctx)
     if (current_step > max_step_index) {
         current_step = max_step_index;
     }
+    return current_step;
+}
+
+static void update_slider_range(text_viewer_ctx_t *ctx, size_t window_size, size_t step, size_t total_chunks)
+{
+    size_t max_start = total_chunks - window_size;
+    size_t max_step_index = step ? ((max_start + step - 1) / step) : 0;
+    int32_t max_val = (int32_t)max_step_index;
+
+    size_t current_step = clamp_current_step(ctx, step, max_start, max_step_index);
 
     bool prev = ctx->flags.slider_suppress_change;
     ctx->flags.slider_suppress_change = true;
