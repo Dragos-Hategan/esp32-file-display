@@ -65,18 +65,7 @@ typedef struct {
     char src_path[FS_NAV_MAX_PATH];
 } file_manager_clipboard_t;
 
-typedef enum {
-    FILE_BROWSER_ACTION_EDIT = 1,
-    FILE_BROWSER_ACTION_DELETE = 2,
-    FILE_BROWSER_ACTION_CANCEL = 3,
-    FILE_BROWSER_ACTION_RENAME = 4,
-    FILE_BROWSER_ACTION_COPY = 5,
-    FILE_BROWSER_ACTION_CUT = 6,
-} file_manager_action_type_t;
-
-typedef struct {
-    bool initialized;
-    fs_nav_t nav;
+typedef struct{
     lv_obj_t *screen;
     lv_obj_t *path_label;
     lv_obj_t *settings_btn;
@@ -108,27 +97,49 @@ typedef struct {
     lv_obj_t *rename_textarea;
     lv_obj_t *rename_keyboard;
     lv_timer_t *path_scroll_timer;
-    lv_timer_t *list_scroll_timer;
-    file_manager_action_item_t action_item;
-    file_manager_clipboard_t clipboard;
-    char paste_conflict_path[FS_NAV_MAX_PATH];
-    char paste_conflict_name[FS_NAV_MAX_NAME];
-    char paste_target_path[FS_NAV_MAX_PATH];
+    lv_timer_t *list_scroll_timer;   
+}file_manager_graphics_t;
+
+typedef struct{
+    bool clock_timer_running;
+    bool clock_user_set;
     bool paste_target_valid;
     bool suppress_click;
     bool pending_go_parent;
-    size_t list_window_start;
-    size_t list_window_size;
     bool list_at_top_edge;
     bool list_at_bottom_edge;
     bool list_suppress_scroll;
     bool list_has_paged;
     bool slider_suppress_change;
     bool slider_drag_active;
-    size_t slider_pending_step;
     bool preserve_window_on_reload;
-    size_t reload_anchor_index;
+}file_manager_flags_t;
+
+typedef struct {
+    fs_nav_t nav;
+    bool initialized;
+    esp_timer_handle_t clock_timer;
+    file_manager_clipboard_t clipboard;
+    file_manager_action_item_t action_item;
+    char paste_conflict_path[FS_NAV_MAX_PATH];
+    char paste_conflict_name[FS_NAV_MAX_NAME];
+    char paste_target_path[FS_NAV_MAX_PATH];    
+    file_manager_graphics_t graphics;
+    size_t list_window_start;
+    size_t list_window_size;
+    size_t slider_pending_step;
+    size_t reload_anchor_index;    
+    file_manager_flags_t flags;
 } file_manager_ctx_t;
+
+typedef enum {
+    FILE_BROWSER_ACTION_EDIT = 1,
+    FILE_BROWSER_ACTION_DELETE = 2,
+    FILE_BROWSER_ACTION_CANCEL = 3,
+    FILE_BROWSER_ACTION_RENAME = 4,
+    FILE_BROWSER_ACTION_COPY = 5,
+    FILE_BROWSER_ACTION_CUT = 6,
+} file_manager_action_type_t;
 
 static file_manager_ctx_t s_browser;                /* Singleton UI context */
 static TaskHandle_t file_manager_wait_task = NULL;  /* Used to wait for sd card after a sd card failure */
@@ -674,7 +685,7 @@ static void file_manager_start_new_folder(file_manager_ctx_t *ctx);
  *
  * Creates a semi-transparent overlay with a card containing title, status label,
  * folder-name text area, action buttons and an on-screen keyboard. The dialog is
- * stored in @c ctx->folder_dialog and related pointers.
+ * stored in @c ctx->graphics.folder_dialog and related pointers.
  *
  * @param[in,out] ctx Browser context that owns the dialog.
  */
@@ -1241,7 +1252,7 @@ esp_err_t file_manager_start(void)
 
     file_manager_build_screen(ctx);
     file_manager_sync_view(ctx);
-    lv_screen_load(ctx->screen);
+    lv_screen_load(ctx->graphics.screen);
     bsp_display_unlock();
     return ESP_OK;
 }
@@ -1254,7 +1265,7 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_style_pad_all(scr, 2, 0);
     lv_obj_set_style_pad_gap(scr, 5, 0);
     lv_obj_set_flex_flow(scr, LV_FLEX_FLOW_COLUMN);
-    ctx->screen = scr;
+    ctx->graphics.screen = scr;
 
     lv_obj_t *main_header = lv_obj_create(scr);
     lv_obj_remove_style_all(main_header);
@@ -1265,13 +1276,13 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     styles_set_card_color(main_header, 0);
     lv_obj_set_style_bg_opa(main_header, LV_OPA_COVER, 0);
 
-    ctx->settings_btn = lv_button_create(main_header);
-    lv_obj_set_style_radius(ctx->settings_btn, 6, 0);
-    lv_obj_set_style_pad_all(ctx->settings_btn, 6, 0);
-    styles_set_button(ctx->settings_btn);
-    lv_obj_t *settings_lbl = lv_label_create(ctx->settings_btn);
+    ctx->graphics.settings_btn = lv_button_create(main_header);
+    lv_obj_set_style_radius(ctx->graphics.settings_btn, 6, 0);
+    lv_obj_set_style_pad_all(ctx->graphics.settings_btn, 6, 0);
+    styles_set_button(ctx->graphics.settings_btn);
+    lv_obj_t *settings_lbl = lv_label_create(ctx->graphics.settings_btn);
     lv_label_set_text(settings_lbl, LV_SYMBOL_SETTINGS " Settings");
-    lv_obj_add_event_cb(ctx->settings_btn, file_manager_on_settings_click, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.settings_btn, file_manager_on_settings_click, LV_EVENT_CLICKED, ctx);
     lv_obj_set_style_text_align(settings_lbl, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *tools_dd = lv_dropdown_create(main_header);
@@ -1286,9 +1297,9 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_style_radius(tools_dd, 6, LV_PART_MAIN);
     styles_set_button(tools_dd);
     lv_obj_add_event_cb(tools_dd, file_manager_on_tools_changed, LV_EVENT_VALUE_CHANGED, ctx);
-    ctx->tools_dd = tools_dd;
+    ctx->graphics.tools_dd = tools_dd;
 
-    lv_obj_t *tools_list = lv_dropdown_get_list(ctx->tools_dd);
+    lv_obj_t *tools_list = lv_dropdown_get_list(ctx->graphics.tools_dd);
     styles_set_dropdown(tools_list);
 
     /* Spacer to consume remaining header width before centering the clock label/button area. */
@@ -1298,22 +1309,22 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_height(header_spacer_left, 1);
 
     /* Date&Time placeholder button (visible by default). */
-    ctx->datetime_btn = lv_button_create(main_header);
-    lv_obj_set_style_radius(ctx->datetime_btn, 6, 0);
-    lv_obj_set_style_pad_all(ctx->datetime_btn, 6, 0);
-    styles_set_button(ctx->datetime_btn);
-    lv_obj_t *datetime_btn_lbl = lv_label_create(ctx->datetime_btn);
+    ctx->graphics.datetime_btn = lv_button_create(main_header);
+    lv_obj_set_style_radius(ctx->graphics.datetime_btn, 6, 0);
+    lv_obj_set_style_pad_all(ctx->graphics.datetime_btn, 6, 0);
+    styles_set_button(ctx->graphics.datetime_btn);
+    lv_obj_t *datetime_btn_lbl = lv_label_create(ctx->graphics.datetime_btn);
     lv_label_set_text(datetime_btn_lbl, "Set Date&Time");
     lv_obj_center(datetime_btn_lbl);
-    lv_obj_add_event_cb(ctx->datetime_btn, file_manager_on_datetime_click, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.datetime_btn, file_manager_on_datetime_click, LV_EVENT_CLICKED, ctx);
 
     /* Date&Time label (hidden until a time is set). */
-    ctx->datetime_label = lv_label_create(main_header);
-    lv_label_set_text(ctx->datetime_label, "00:00 - 01/01/70");
-    lv_obj_set_style_text_align(ctx->datetime_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(ctx->datetime_label, &Domine_16, 0);
-    styles_set_text_color(ctx->datetime_label, 0);
-    lv_obj_add_flag(ctx->datetime_label, LV_OBJ_FLAG_HIDDEN);
+    ctx->graphics.datetime_label = lv_label_create(main_header);
+    lv_label_set_text(ctx->graphics.datetime_label, "00:00 - 01/01/70");
+    lv_obj_set_style_text_align(ctx->graphics.datetime_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(ctx->graphics.datetime_label, &Domine_16, 0);
+    styles_set_text_color(ctx->graphics.datetime_label, 0);
+    lv_obj_add_flag(ctx->graphics.datetime_label, LV_OBJ_FLAG_HIDDEN);
 
     /* Spacer to balance layout so the button stays centered in the remaining space. */
     lv_obj_t *header_spacer_right = lv_obj_create(main_header);
@@ -1334,55 +1345,55 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_style_text_align(path_prefix, LV_TEXT_ALIGN_LEFT, 0);
     styles_set_text_color(path_prefix, 0);
 
-    ctx->path_label = lv_label_create(path_row);
-    lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_CLIP);
-    lv_obj_set_flex_grow(ctx->path_label, 1);
-    lv_obj_set_width(ctx->path_label, LV_PCT(100));
-    lv_obj_set_style_text_align(ctx->path_label, LV_TEXT_ALIGN_LEFT, 0);
-    styles_set_text_color(ctx->path_label, 0);
-    lv_label_set_text(ctx->path_label, "/");
+    ctx->graphics.path_label = lv_label_create(path_row);
+    lv_label_set_long_mode(ctx->graphics.path_label, LV_LABEL_LONG_CLIP);
+    lv_obj_set_flex_grow(ctx->graphics.path_label, 1);
+    lv_obj_set_width(ctx->graphics.path_label, LV_PCT(100));
+    lv_obj_set_style_text_align(ctx->graphics.path_label, LV_TEXT_ALIGN_LEFT, 0);
+    styles_set_text_color(ctx->graphics.path_label, 0);
+    lv_label_set_text(ctx->graphics.path_label, "/");
 
-    ctx->second_header = lv_obj_create(scr);
-    lv_obj_remove_style_all(ctx->second_header);
-    lv_obj_set_size(ctx->second_header, LV_PCT(100), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(ctx->second_header, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(ctx->second_header, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(ctx->second_header, 3, 0);
+    ctx->graphics.second_header = lv_obj_create(scr);
+    lv_obj_remove_style_all(ctx->graphics.second_header);
+    lv_obj_set_size(ctx->graphics.second_header, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(ctx->graphics.second_header, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(ctx->graphics.second_header, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(ctx->graphics.second_header, 3, 0);
 
-    ctx->parent_btn = lv_button_create(ctx->second_header);
-    lv_obj_set_size(ctx->parent_btn, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_radius(ctx->parent_btn, 6, 0);
-    lv_obj_set_style_pad_all(ctx->parent_btn, 5, 0);
-    styles_set_button(ctx->parent_btn);
-    lv_obj_add_event_cb(ctx->parent_btn, file_manager_on_parent_click, LV_EVENT_CLICKED, ctx);
-    lv_obj_t *parent_lbl = lv_label_create(ctx->parent_btn);
+    ctx->graphics.parent_btn = lv_button_create(ctx->graphics.second_header);
+    lv_obj_set_size(ctx->graphics.parent_btn, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_radius(ctx->graphics.parent_btn, 6, 0);
+    lv_obj_set_style_pad_all(ctx->graphics.parent_btn, 5, 0);
+    styles_set_button(ctx->graphics.parent_btn);
+    lv_obj_add_event_cb(ctx->graphics.parent_btn, file_manager_on_parent_click, LV_EVENT_CLICKED, ctx);
+    lv_obj_t *parent_lbl = lv_label_create(ctx->graphics.parent_btn);
     lv_label_set_text(parent_lbl, LV_SYMBOL_UP " Parent Folder");
     lv_obj_set_style_text_align(parent_lbl, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_add_flag(ctx->parent_btn, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ctx->graphics.parent_btn, LV_OBJ_FLAG_HIDDEN);
 
     /* Spacer grows to push paste/cancel to the right edge. */
-    lv_obj_t *header_spacer = lv_obj_create(ctx->second_header);
+    lv_obj_t *header_spacer = lv_obj_create(ctx->graphics.second_header);
     lv_obj_remove_style_all(header_spacer);
     lv_obj_set_flex_grow(header_spacer, 1);
     lv_obj_set_height(header_spacer, 1);
 
-    ctx->paste_btn = lv_button_create(ctx->second_header);
-    lv_obj_set_style_radius(ctx->paste_btn, 6, 0);
-    lv_obj_set_style_pad_all(ctx->paste_btn, 5, 0);
-    styles_set_button(ctx->paste_btn);
-    lv_obj_add_event_cb(ctx->paste_btn, file_manager_on_paste_click, LV_EVENT_CLICKED, ctx);
-    ctx->paste_label = lv_label_create(ctx->paste_btn);
-    lv_label_set_text(ctx->paste_label, "Paste");
-    lv_obj_set_style_text_align(ctx->paste_label, LV_TEXT_ALIGN_CENTER, 0);
+    ctx->graphics.paste_btn = lv_button_create(ctx->graphics.second_header);
+    lv_obj_set_style_radius(ctx->graphics.paste_btn, 6, 0);
+    lv_obj_set_style_pad_all(ctx->graphics.paste_btn, 5, 0);
+    styles_set_button(ctx->graphics.paste_btn);
+    lv_obj_add_event_cb(ctx->graphics.paste_btn, file_manager_on_paste_click, LV_EVENT_CLICKED, ctx);
+    ctx->graphics.paste_label = lv_label_create(ctx->graphics.paste_btn);
+    lv_label_set_text(ctx->graphics.paste_label, "Paste");
+    lv_obj_set_style_text_align(ctx->graphics.paste_label, LV_TEXT_ALIGN_CENTER, 0);
 
-    ctx->cancel_paste_btn = lv_button_create(ctx->second_header);
-    lv_obj_set_style_radius(ctx->cancel_paste_btn, 6, 0);
-    lv_obj_set_style_pad_all(ctx->cancel_paste_btn, 5, 0);
-    styles_set_button(ctx->cancel_paste_btn);
-    lv_obj_add_event_cb(ctx->cancel_paste_btn, file_manager_on_cancel_paste_click, LV_EVENT_CLICKED, ctx);
-    ctx->cancel_paste_label = lv_label_create(ctx->cancel_paste_btn);
-    lv_label_set_text(ctx->cancel_paste_label, "Cancel");
-    lv_obj_set_style_text_align(ctx->cancel_paste_label, LV_TEXT_ALIGN_CENTER, 0);
+    ctx->graphics.cancel_paste_btn = lv_button_create(ctx->graphics.second_header);
+    lv_obj_set_style_radius(ctx->graphics.cancel_paste_btn, 6, 0);
+    lv_obj_set_style_pad_all(ctx->graphics.cancel_paste_btn, 5, 0);
+    styles_set_button(ctx->graphics.cancel_paste_btn);
+    lv_obj_add_event_cb(ctx->graphics.cancel_paste_btn, file_manager_on_cancel_paste_click, LV_EVENT_CLICKED, ctx);
+    ctx->graphics.cancel_paste_label = lv_label_create(ctx->graphics.cancel_paste_btn);
+    lv_label_set_text(ctx->graphics.cancel_paste_label, "Cancel");
+    lv_obj_set_style_text_align(ctx->graphics.cancel_paste_label, LV_TEXT_ALIGN_CENTER, 0);
     file_manager_update_second_header(ctx);
 
     lv_obj_t *list_row = lv_obj_create(scr);
@@ -1394,19 +1405,19 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
     lv_obj_set_flex_grow(list_row, 1);
 
-    ctx->list = lv_list_create(list_row);
-    lv_obj_set_flex_grow(ctx->list, 1);
-    lv_obj_set_width(ctx->list, LV_PCT(100));
-    lv_obj_set_style_min_width(ctx->list, 0, 0);
-    lv_obj_set_height(ctx->list, LV_PCT(100));
-    lv_obj_set_style_pad_left(ctx->list, 1, 0);
-    lv_obj_set_style_pad_right(ctx->list, 1, 0);
-    lv_obj_set_style_pad_bottom(ctx->list, 1, 0);
-    styles_set_card_color(ctx->list, 0);
-    styles_set_border_color(ctx->list, 0);
-    lv_obj_set_style_bg_opa(ctx->list, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(ctx->list, 1, 0);
-    lv_obj_add_event_cb(ctx->list, file_manager_on_list_scrolled, LV_EVENT_SCROLL, ctx);
+    ctx->graphics.list = lv_list_create(list_row);
+    lv_obj_set_flex_grow(ctx->graphics.list, 1);
+    lv_obj_set_width(ctx->graphics.list, LV_PCT(100));
+    lv_obj_set_style_min_width(ctx->graphics.list, 0, 0);
+    lv_obj_set_height(ctx->graphics.list, LV_PCT(100));
+    lv_obj_set_style_pad_left(ctx->graphics.list, 1, 0);
+    lv_obj_set_style_pad_right(ctx->graphics.list, 1, 0);
+    lv_obj_set_style_pad_bottom(ctx->graphics.list, 1, 0);
+    styles_set_card_color(ctx->graphics.list, 0);
+    styles_set_border_color(ctx->graphics.list, 0);
+    lv_obj_set_style_bg_opa(ctx->graphics.list, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(ctx->graphics.list, 1, 0);
+    lv_obj_add_event_cb(ctx->graphics.list, file_manager_on_list_scrolled, LV_EVENT_SCROLL, ctx);
 
     lv_obj_t *list_slider = lv_slider_create(list_row);
     lv_slider_set_orientation(list_slider, LV_SLIDER_ORIENTATION_VERTICAL);
@@ -1428,7 +1439,7 @@ static void file_manager_build_screen(file_manager_ctx_t *ctx)
     lv_obj_add_event_cb(list_slider, file_manager_on_slider_value_changed, LV_EVENT_RELEASED, ctx);
     lv_obj_add_event_cb(list_slider, file_manager_on_slider_value_changed, LV_EVENT_PRESS_LOST, ctx);
     lv_obj_clear_flag(list_slider, LV_OBJ_FLAG_SCROLL_CHAIN); /* Keep list from scrolling when dragging slider */
-    ctx->list_slider = list_slider;
+    ctx->graphics.list_slider = list_slider;
 }
 
 static void file_manager_reset_window(file_manager_ctx_t *ctx)
@@ -1438,13 +1449,13 @@ static void file_manager_reset_window(file_manager_ctx_t *ctx)
     }
     ctx->list_window_start = 0;
     ctx->list_window_size = FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT;
-    ctx->list_at_top_edge = false;
-    ctx->list_at_bottom_edge = false;
-    ctx->list_suppress_scroll = false;
-    ctx->list_has_paged = false;
-    ctx->slider_drag_active = false;
+    ctx->flags.list_at_top_edge = false;
+    ctx->flags.list_at_bottom_edge = false;
+    ctx->flags.list_suppress_scroll = false;
+    ctx->flags.list_has_paged = false;
+    ctx->flags.slider_drag_active = false;
     ctx->slider_pending_step = SIZE_MAX;
-    ctx->preserve_window_on_reload = false;
+    ctx->flags.preserve_window_on_reload = false;
     ctx->reload_anchor_index = SIZE_MAX;
 }
 
@@ -1482,7 +1493,7 @@ static void file_manager_get_window_params(file_manager_ctx_t *ctx, size_t *wind
 
 static void file_manager_apply_window(file_manager_ctx_t *ctx, size_t start_index, size_t anchor_index, bool center_anchor, bool scroll_to_top)
 {
-    if (!ctx || !ctx->list) {
+    if (!ctx || !ctx->graphics.list) {
         return;
     }
 
@@ -1494,15 +1505,15 @@ static void file_manager_apply_window(file_manager_ctx_t *ctx, size_t start_inde
     }
 
     ctx->list_window_start = fs_nav_window_start(&ctx->nav);
-    ctx->list_at_top_edge = false;
-    ctx->list_at_bottom_edge = false;
+    ctx->flags.list_at_top_edge = false;
+    ctx->flags.list_at_bottom_edge = false;
 
-    bool prev_suppress = ctx->list_suppress_scroll;
-    ctx->list_suppress_scroll = true;
+    bool prev_suppress = ctx->flags.list_suppress_scroll;
+    ctx->flags.list_suppress_scroll = true;
     file_manager_show_loading(ctx);
     file_manager_populate_list(ctx);
     file_manager_hide_loading(ctx);
-    lv_obj_update_layout(ctx->list);
+    lv_obj_update_layout(ctx->graphics.list);
     file_manager_update_slider(ctx);
 
     lv_obj_t *anchor_obj = NULL;
@@ -1511,9 +1522,9 @@ static void file_manager_apply_window(file_manager_ctx_t *ctx, size_t start_inde
         fs_nav_items(&ctx->nav, &count);
         if (anchor_index >= ctx->list_window_start && anchor_index < ctx->list_window_start + count) {
             size_t rel = anchor_index - ctx->list_window_start;
-            uint32_t child_cnt = lv_obj_get_child_count(ctx->list);
+            uint32_t child_cnt = lv_obj_get_child_count(ctx->graphics.list);
             for (uint32_t i = 0; i < child_cnt; i++) {
-                lv_obj_t *child = lv_obj_get_child(ctx->list, i);
+                lv_obj_t *child = lv_obj_get_child(ctx->graphics.list, i);
                 if ((size_t)(uintptr_t)lv_obj_get_user_data(child) == rel) {
                     anchor_obj = child;
                     break;
@@ -1526,27 +1537,27 @@ static void file_manager_apply_window(file_manager_ctx_t *ctx, size_t start_inde
         if (center_anchor) {
             lv_obj_scroll_to_view(anchor_obj, LV_ANIM_OFF);
             lv_coord_t mid = lv_obj_get_y(anchor_obj) + lv_obj_get_height(anchor_obj) / 2;
-            lv_coord_t list_h = lv_obj_get_height(ctx->list);
+            lv_coord_t list_h = lv_obj_get_height(ctx->graphics.list);
             lv_coord_t target = mid - list_h / 2;
-            lv_obj_scroll_to_y(ctx->list, target, LV_ANIM_OFF);
+            lv_obj_scroll_to_y(ctx->graphics.list, target, LV_ANIM_OFF);
         } else {
             lv_obj_scroll_to_view(anchor_obj, LV_ANIM_OFF);
         }
-    } else if (ctx->list_has_paged) {
+    } else if (ctx->flags.list_has_paged) {
         /* Center only after the first paging has occurred. */
-        lv_obj_scroll_to_y(ctx->list, lv_obj_get_scroll_bottom(ctx->list) / 2, LV_ANIM_OFF);
+        lv_obj_scroll_to_y(ctx->graphics.list, lv_obj_get_scroll_bottom(ctx->graphics.list) / 2, LV_ANIM_OFF);
     } else if (scroll_to_top) {
-        lv_obj_scroll_to_y(ctx->list, 0, LV_ANIM_OFF);
+        lv_obj_scroll_to_y(ctx->graphics.list, 0, LV_ANIM_OFF);
     } else {
-        lv_obj_scroll_to_y(ctx->list, lv_obj_get_scroll_bottom(ctx->list), LV_ANIM_OFF);
+        lv_obj_scroll_to_y(ctx->graphics.list, lv_obj_get_scroll_bottom(ctx->graphics.list), LV_ANIM_OFF);
     }
 
-    ctx->list_suppress_scroll = prev_suppress;
+    ctx->flags.list_suppress_scroll = prev_suppress;
 }
 
 static void file_manager_update_slider(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->list_slider) {
+    if (!ctx || !ctx->graphics.list_slider) {
         return;
     }
 
@@ -1555,18 +1566,18 @@ static void file_manager_update_slider(file_manager_ctx_t *ctx)
     file_manager_get_window_params(ctx, &window_size, &step);
     size_t total = fs_nav_total_items(&ctx->nav);
 
-    lv_obj_t *list_row = ctx->list ? lv_obj_get_parent(ctx->list) : NULL;
+    lv_obj_t *list_row = ctx->graphics.list ? lv_obj_get_parent(ctx->graphics.list) : NULL;
 
     /* If everything fits in one window, lock the slider at start. */
     if (total <= window_size) {
-        bool prev_suppress = ctx->slider_suppress_change;
-        ctx->slider_suppress_change = true;
-        lv_slider_set_range(ctx->list_slider, 0, 0);
-        lv_slider_set_value(ctx->list_slider, 0, LV_ANIM_OFF);
-        ctx->slider_suppress_change = prev_suppress;
+        bool prev_suppress = ctx->flags.slider_suppress_change;
+        ctx->flags.slider_suppress_change = true;
+        lv_slider_set_range(ctx->graphics.list_slider, 0, 0);
+        lv_slider_set_value(ctx->graphics.list_slider, 0, LV_ANIM_OFF);
+        ctx->flags.slider_suppress_change = prev_suppress;
         ctx->slider_pending_step = 0;
-        ctx->slider_drag_active = false;
-        lv_obj_add_state(ctx->list_slider, LV_STATE_DISABLED);
+        ctx->flags.slider_drag_active = false;
+        lv_obj_add_state(ctx->graphics.list_slider, LV_STATE_DISABLED);
         if (list_row) {
             lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
         }
@@ -1587,14 +1598,14 @@ static void file_manager_update_slider(file_manager_ctx_t *ctx)
         }
     }
 
-    bool prev_suppress = ctx->slider_suppress_change;
-    ctx->slider_suppress_change = true;
-    lv_slider_set_range(ctx->list_slider, max_val, 0); /* min at top, max at bottom */
-    lv_slider_set_value(ctx->list_slider, (int32_t)current_step, LV_ANIM_OFF);
-    ctx->slider_suppress_change = prev_suppress;
+    bool prev_suppress = ctx->flags.slider_suppress_change;
+    ctx->flags.slider_suppress_change = true;
+    lv_slider_set_range(ctx->graphics.list_slider, max_val, 0); /* min at top, max at bottom */
+    lv_slider_set_value(ctx->graphics.list_slider, (int32_t)current_step, LV_ANIM_OFF);
+    ctx->flags.slider_suppress_change = prev_suppress;
     ctx->slider_pending_step = current_step;
 
-    lv_obj_remove_state(ctx->list_slider, LV_STATE_DISABLED);
+    lv_obj_remove_state(ctx->graphics.list_slider, LV_STATE_DISABLED);
     if (list_row) {
         lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
     }
@@ -1629,8 +1640,8 @@ static void file_manager_wait_for_reconnection_task(void* arg)
         ESP_LOGE(TAG, "Failed to wait for SD reconnection, scheduling retry...");
         schedule_retry = true;
     } else if (ctx->initialized) {
-        if (ctx->pending_go_parent) {
-            ctx->pending_go_parent = false;
+        if (ctx->flags.pending_go_parent) {
+            ctx->flags.pending_go_parent = false;
             esp_err_t nav_err = fs_nav_go_parent(&ctx->nav);
             if (nav_err != ESP_OK){
                 ESP_LOGE(TAG, "fs_nav_go_parent() failed after reconnection (%s), scheduling retry...", esp_err_to_name(nav_err));
@@ -1663,11 +1674,11 @@ static void file_manager_wait_for_reconnection_task(void* arg)
 
 static void file_manager_sync_view(file_manager_ctx_t *ctx)
 {
-    if (!ctx->screen) {
+    if (!ctx->graphics.screen) {
         return;
     }
-    bool preserve = ctx->preserve_window_on_reload;
-    ctx->preserve_window_on_reload = false;
+    bool preserve = ctx->flags.preserve_window_on_reload;
+    ctx->flags.preserve_window_on_reload = false;
     if (preserve && ctx->reload_anchor_index == SIZE_MAX) {
         file_manager_set_reload_anchor_current(ctx);
     }
@@ -1676,10 +1687,10 @@ static void file_manager_sync_view(file_manager_ctx_t *ctx)
     if (!preserve) {
         file_manager_reset_window(ctx);
     } else {
-        ctx->list_at_top_edge = false;
-        ctx->list_at_bottom_edge = false;
-        ctx->list_suppress_scroll = false;
-        ctx->list_has_paged = false;
+        ctx->flags.list_at_top_edge = false;
+        ctx->flags.list_at_bottom_edge = false;
+        ctx->flags.list_suppress_scroll = false;
+        ctx->flags.list_has_paged = false;
     }
     file_manager_update_path_label(ctx);
     file_manager_update_sort_badges(ctx);
@@ -1689,11 +1700,11 @@ static void file_manager_sync_view(file_manager_ctx_t *ctx)
 
 static bool check_second_header(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->second_header){
+    if (!ctx || !ctx->graphics.second_header){
         return false;
     }    
 
-    if(!ctx->parent_btn || !ctx->paste_btn || !ctx->cancel_paste_btn) {
+    if(!ctx->graphics.parent_btn || !ctx->graphics.paste_btn || !ctx->graphics.cancel_paste_btn) {
         return false;
     }
 
@@ -1710,22 +1721,22 @@ static void file_manager_update_second_header(file_manager_ctx_t *ctx)
     file_manager_update_paste_button(ctx);
 
     if (!fs_nav_can_go_parent(&ctx->nav) && !ctx->clipboard.has_item){
-        lv_obj_add_flag(ctx->second_header, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ctx->graphics.second_header, LV_OBJ_FLAG_HIDDEN);
     }else{
-        lv_obj_clear_flag(ctx->second_header, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ctx->graphics.second_header, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
 static void file_manager_update_parent_button(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->parent_btn) {
+    if (!ctx || !ctx->graphics.parent_btn) {
         return;
     }
 
     if (fs_nav_can_go_parent(&ctx->nav)) {
-        lv_obj_clear_flag(ctx->parent_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ctx->graphics.parent_btn, LV_OBJ_FLAG_HIDDEN);
     } else {
-        lv_obj_add_flag(ctx->parent_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ctx->graphics.parent_btn, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -1733,9 +1744,9 @@ static void file_manager_path_scroll_timer_cb(lv_timer_t *timer)
 {
     file_manager_ctx_t *ctx = (file_manager_ctx_t *)lv_timer_get_user_data(timer);
     if (ctx) {
-        ctx->path_scroll_timer = NULL;
-        if (ctx->path_label && lv_obj_is_valid(ctx->path_label)) {
-            lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+        ctx->graphics.path_scroll_timer = NULL;
+        if (ctx->graphics.path_label && lv_obj_is_valid(ctx->graphics.path_label)) {
+            lv_label_set_long_mode(ctx->graphics.path_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
         }
     }
     lv_timer_del(timer);
@@ -1743,26 +1754,26 @@ static void file_manager_path_scroll_timer_cb(lv_timer_t *timer)
 
 static void file_manager_restart_path_scroll(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->path_label) {
+    if (!ctx || !ctx->graphics.path_label) {
         return;
     }
 
-    if (ctx->path_scroll_timer) {
-        lv_timer_del(ctx->path_scroll_timer);
-        ctx->path_scroll_timer = NULL;
+    if (ctx->graphics.path_scroll_timer) {
+        lv_timer_del(ctx->graphics.path_scroll_timer);
+        ctx->graphics.path_scroll_timer = NULL;
     }
 
     /* Start clipped, then enable scroll after a short delay. */
-    lv_label_set_long_mode(ctx->path_label, LV_LABEL_LONG_CLIP);
-    ctx->path_scroll_timer = lv_timer_create(file_manager_path_scroll_timer_cb, FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT, ctx);
-    if (ctx->path_scroll_timer) {
-        lv_timer_set_repeat_count(ctx->path_scroll_timer, 1);
+    lv_label_set_long_mode(ctx->graphics.path_label, LV_LABEL_LONG_CLIP);
+    ctx->graphics.path_scroll_timer = lv_timer_create(file_manager_path_scroll_timer_cb, FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT, ctx);
+    if (ctx->graphics.path_scroll_timer) {
+        lv_timer_set_repeat_count(ctx->graphics.path_scroll_timer, 1);
     }
 }
 
 static void file_manager_update_path_label(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->path_label) {
+    if (!ctx || !ctx->graphics.path_label) {
         return;
     }
     const char *path = fs_nav_current_path(&ctx->nav);
@@ -1783,7 +1794,7 @@ static void file_manager_update_path_label(file_manager_ctx_t *ctx)
         snprintf(display, sizeof(display), "%s", path ? path : "-");
     }
 
-    lv_label_set_text(ctx->path_label, display);
+    lv_label_set_text(ctx->graphics.path_label, display);
     file_manager_restart_path_scroll(ctx);
 }
 
@@ -1797,21 +1808,21 @@ static void file_manager_update_sort_badges(file_manager_ctx_t *ctx)
     fs_nav_sort_mode_t mode = fs_nav_get_sort(&ctx->nav);
     bool asc = fs_nav_is_sort_ascending(&ctx->nav);
 
-    if (ctx->sort_criteria_dd) {
-        lv_dropdown_set_selected(ctx->sort_criteria_dd, (uint16_t)mode);
+    if (ctx->graphics.sort_criteria_dd) {
+        lv_dropdown_set_selected(ctx->graphics.sort_criteria_dd, (uint16_t)mode);
         if (sort_enabled) {
-            lv_obj_clear_state(ctx->sort_criteria_dd, LV_STATE_DISABLED);
+            lv_obj_clear_state(ctx->graphics.sort_criteria_dd, LV_STATE_DISABLED);
         } else {
-            lv_obj_add_state(ctx->sort_criteria_dd, LV_STATE_DISABLED);
+            lv_obj_add_state(ctx->graphics.sort_criteria_dd, LV_STATE_DISABLED);
         }
     }
 
-    if (ctx->sort_direction_dd) {
-        lv_dropdown_set_selected(ctx->sort_direction_dd, asc ? 0 : 1);
+    if (ctx->graphics.sort_direction_dd) {
+        lv_dropdown_set_selected(ctx->graphics.sort_direction_dd, asc ? 0 : 1);
         if (sort_enabled) {
-            lv_obj_clear_state(ctx->sort_direction_dd, LV_STATE_DISABLED);
+            lv_obj_clear_state(ctx->graphics.sort_direction_dd, LV_STATE_DISABLED);
         } else {
-            lv_obj_add_state(ctx->sort_direction_dd, LV_STATE_DISABLED);
+            lv_obj_add_state(ctx->graphics.sort_direction_dd, LV_STATE_DISABLED);
         }
     }
 }
@@ -1837,11 +1848,11 @@ static void file_manager_entry_scroll_timer_cb(lv_timer_t *timer)
 {
     file_manager_ctx_t *ctx = (file_manager_ctx_t *)lv_timer_get_user_data(timer);
     if (ctx) {
-        ctx->list_scroll_timer = NULL;
-        if (ctx->list) {
-            uint32_t child_cnt = lv_obj_get_child_count(ctx->list);
+        ctx->graphics.list_scroll_timer = NULL;
+        if (ctx->graphics.list) {
+            uint32_t child_cnt = lv_obj_get_child_count(ctx->graphics.list);
             for (uint32_t i = 0; i < child_cnt; ++i) {
-                lv_obj_t *label = file_manager_get_list_btn_label(lv_obj_get_child(ctx->list, i));
+                lv_obj_t *label = file_manager_get_list_btn_label(lv_obj_get_child(ctx->graphics.list, i));
                 if (label) {
                     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
                 }
@@ -1853,19 +1864,19 @@ static void file_manager_entry_scroll_timer_cb(lv_timer_t *timer)
 
 static void file_manager_restart_entry_scroll(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->list) {
+    if (!ctx || !ctx->graphics.list) {
         return;
     }
 
-    if (ctx->list_scroll_timer) {
-        lv_timer_del(ctx->list_scroll_timer);
-        ctx->list_scroll_timer = NULL;
+    if (ctx->graphics.list_scroll_timer) {
+        lv_timer_del(ctx->graphics.list_scroll_timer);
+        ctx->graphics.list_scroll_timer = NULL;
     }
 
-    uint32_t child_cnt = lv_obj_get_child_count(ctx->list);
+    uint32_t child_cnt = lv_obj_get_child_count(ctx->graphics.list);
     bool has_labels = false;
     for (uint32_t i = 0; i < child_cnt; ++i) {
-        lv_obj_t *label = file_manager_get_list_btn_label(lv_obj_get_child(ctx->list, i));
+        lv_obj_t *label = file_manager_get_list_btn_label(lv_obj_get_child(ctx->graphics.list, i));
         if (label) {
             lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
             has_labels = true;
@@ -1876,25 +1887,25 @@ static void file_manager_restart_entry_scroll(file_manager_ctx_t *ctx)
         return;
     }
 
-    ctx->list_scroll_timer = lv_timer_create(file_manager_entry_scroll_timer_cb, FILE_BROWSER_ENTRY_SCROLL_DELAY_MS_DEFAULT, ctx);
-    if (ctx->list_scroll_timer) {
-        lv_timer_set_repeat_count(ctx->list_scroll_timer, 1);
+    ctx->graphics.list_scroll_timer = lv_timer_create(file_manager_entry_scroll_timer_cb, FILE_BROWSER_ENTRY_SCROLL_DELAY_MS_DEFAULT, ctx);
+    if (ctx->graphics.list_scroll_timer) {
+        lv_timer_set_repeat_count(ctx->graphics.list_scroll_timer, 1);
     }
 }
 
 static void file_manager_populate_list(file_manager_ctx_t *ctx)
 {
-    if (ctx->list_scroll_timer) {
-        lv_timer_del(ctx->list_scroll_timer);
-        ctx->list_scroll_timer = NULL;
+    if (ctx->graphics.list_scroll_timer) {
+        lv_timer_del(ctx->graphics.list_scroll_timer);
+        ctx->graphics.list_scroll_timer = NULL;
     }
 
-    lv_obj_clean(ctx->list);
+    lv_obj_clean(ctx->graphics.list);
 
     size_t count = 0;
     const fs_nav_item_t *items = fs_nav_items(&ctx->nav, &count);
     if (!items || count == 0) {
-        lv_obj_t *lbl = lv_label_create(ctx->list);
+        lv_obj_t *lbl = lv_label_create(ctx->graphics.list);
         styles_set_text_color(lbl, 0);
         lv_label_set_text(lbl, "Empty folder");
         lv_obj_center(lbl);
@@ -1930,7 +1941,7 @@ static void file_manager_populate_list(file_manager_ctx_t *ctx)
                                ? LV_SYMBOL_DIRECTORY
                                : (file_manager_is_image(item->name) ? LV_SYMBOL_IMAGE : LV_SYMBOL_FILE);
 
-        lv_obj_t *btn = lv_list_add_btn(ctx->list, icon, text);
+        lv_obj_t *btn = lv_list_add_btn(ctx->graphics.list, icon, text);
         lv_obj_set_style_pad_all(btn, 3, LV_PART_MAIN);
         lv_obj_set_style_radius(btn, 6, LV_PART_MAIN);
         lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
@@ -2060,7 +2071,7 @@ static void file_manager_handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_
 
     jpg_viewer_open_opts_t opts = {
         .path = lv_path,
-        .return_screen = ctx->screen
+        .return_screen = ctx->graphics.screen
     };
 
     esp_err_t err = jpg_viewer_open(&opts);
@@ -2094,8 +2105,8 @@ static esp_err_t file_manager_reload(void)
     }
 
     size_t saved_start = ctx->list_window_start;
-    bool preserve_window = ctx->preserve_window_on_reload;
-    ctx->preserve_window_on_reload = preserve_window;
+    bool preserve_window = ctx->flags.preserve_window_on_reload;
+    ctx->flags.preserve_window_on_reload = preserve_window;
 
     if (preserve_window) {
         size_t window_size = 1;
@@ -2226,7 +2237,7 @@ static void file_manager_on_unsupported_ok(lv_event_t *e)
 static void file_manager_on_datetime_click(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->screen){
+    if (!ctx || !ctx->graphics.screen){
         return;
     }
     
@@ -2235,9 +2246,9 @@ static void file_manager_on_datetime_click(lv_event_t *e)
 
 static void file_manager_build_date_time_dialog(file_manager_ctx_t *ctx)
 {
-    if (ctx->date_time_overlay){
-        lv_obj_delete(ctx->date_time_overlay);
-        ctx->date_time_overlay = NULL;
+    if (ctx->graphics.date_time_overlay){
+        lv_obj_delete(ctx->graphics.date_time_overlay);
+        ctx->graphics.date_time_overlay = NULL;
     }
 
     lv_obj_t *overlay = lv_obj_create(lv_layer_top());
@@ -2246,7 +2257,7 @@ static void file_manager_build_date_time_dialog(file_manager_ctx_t *ctx)
     styles_set_bg_color(overlay, 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    ctx->date_time_overlay = overlay;
+    ctx->graphics.date_time_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
     lv_obj_set_style_radius(dlg, 12, 0);
@@ -2262,7 +2273,7 @@ static void file_manager_build_date_time_dialog(file_manager_ctx_t *ctx)
     styles_set_dialog(dlg);
     lv_obj_set_style_border_width(dlg, 2, 0);
     lv_obj_center(dlg);
-    ctx->date_time_dialog = dlg;
+    ctx->graphics.date_time_dialog = dlg;
 
     lv_obj_t *title = lv_label_create(dlg);
     lv_label_set_text(title, "Set Date&Time");
@@ -2345,36 +2356,36 @@ static void file_manager_build_date_time_dialog(file_manager_ctx_t *ctx)
 static void close_date_time_dialog(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e); 
-    if (ctx && ctx->date_time_overlay) {
-        lv_obj_del(ctx->date_time_overlay);
-        ctx->date_time_dialog = NULL;
-        ctx->date_time_overlay = NULL;
+    if (ctx && ctx->graphics.date_time_overlay) {
+        lv_obj_del(ctx->graphics.date_time_overlay);
+        ctx->graphics.date_time_dialog = NULL;
+        ctx->graphics.date_time_overlay = NULL;
     }    
 }
 
 static void manual_date_time(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->screen){
+    if (!ctx || !ctx->graphics.screen){
         return;
     }
     
-    settings_show_date_time_dialog(ctx ? ctx->screen : NULL);
+    settings_show_date_time_dialog(ctx ? ctx->graphics.screen : NULL);
 }
 
 static void sntp_date_time(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->screen){
+    if (!ctx || !ctx->graphics.screen){
         return;
     }
     
-    settings_show_sntp_dialog(ctx ? ctx->screen : NULL);
+    settings_show_sntp_dialog(ctx ? ctx->graphics.screen : NULL);
 }
 
 static void file_manager_start_clock_timer(file_manager_ctx_t *ctx)
 {
-    if (!ctx || ctx->clock_timer_running) {
+    if (!ctx || ctx->flags.clock_timer_running) {
         return;
     }
 
@@ -2396,7 +2407,7 @@ static void file_manager_start_clock_timer(file_manager_ctx_t *ctx)
         ESP_LOGE(TAG, "Failed to start clock timer: %s", esp_err_to_name(err));
         return;
     }
-    ctx->clock_timer_running = true;
+    ctx->flags.clock_timer_running = true;
 }
 
 static void file_manager_clock_timer_cb(void *arg)
@@ -2408,16 +2419,16 @@ static void file_manager_clock_timer_cb(void *arg)
 static void file_manager_clock_update_async(void *arg)
 {
     file_manager_ctx_t *ctx = &s_browser;
-    if (!ctx->datetime_label) {
+    if (!ctx->graphics.datetime_label) {
         return;
     }
 
-    if (!ctx->clock_user_set) {
-        if (ctx->datetime_btn) {
-            lv_obj_clear_flag(ctx->datetime_btn, LV_OBJ_FLAG_HIDDEN);
+    if (!ctx->flags.clock_user_set) {
+        if (ctx->graphics.datetime_btn) {
+            lv_obj_clear_flag(ctx->graphics.datetime_btn, LV_OBJ_FLAG_HIDDEN);
         }
-        if (ctx->datetime_label) {
-            lv_obj_add_flag(ctx->datetime_label, LV_OBJ_FLAG_HIDDEN);
+        if (ctx->graphics.datetime_label) {
+            lv_obj_add_flag(ctx->graphics.datetime_label, LV_OBJ_FLAG_HIDDEN);
         }
         return;
     }
@@ -2434,33 +2445,33 @@ static void file_manager_clock_update_async(void *arg)
              tm_info.tm_mday,
              (tm_info.tm_year + 1900) % 100);
 
-    lv_label_set_text(ctx->datetime_label, buf);
+    lv_label_set_text(ctx->graphics.datetime_label, buf);
 
     /* Show the label and hide the button */
-    if (ctx->datetime_btn) {
-        lv_obj_add_flag(ctx->datetime_btn, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->graphics.datetime_btn) {
+        lv_obj_add_flag(ctx->graphics.datetime_btn, LV_OBJ_FLAG_HIDDEN);
     }
-    lv_obj_clear_flag(ctx->datetime_label, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ctx->graphics.datetime_label, LV_OBJ_FLAG_HIDDEN);
 }
 
 void file_manager_reset_clock_display(void)
 {
     file_manager_ctx_t *ctx = &s_browser;
-    ctx->clock_user_set = false;
+    ctx->flags.clock_user_set = false;
 
-    if (ctx->datetime_label) {
-        lv_label_set_text(ctx->datetime_label, "00:00 - 01/01/70");
-        lv_obj_add_flag(ctx->datetime_label, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->graphics.datetime_label) {
+        lv_label_set_text(ctx->graphics.datetime_label, "00:00 - 01/01/70");
+        lv_obj_add_flag(ctx->graphics.datetime_label, LV_OBJ_FLAG_HIDDEN);
     }
-    if (ctx->datetime_btn) {
-        lv_obj_clear_flag(ctx->datetime_btn, LV_OBJ_FLAG_HIDDEN);
+    if (ctx->graphics.datetime_btn) {
+        lv_obj_clear_flag(ctx->graphics.datetime_btn, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
 void file_manager_on_time_set(void)
 {
     file_manager_ctx_t *ctx = &s_browser;
-    ctx->clock_user_set = true;
+    ctx->flags.clock_user_set = true;
     file_manager_clock_update_async(NULL);
 }
 
@@ -2471,8 +2482,8 @@ static void file_manager_on_item_click(lv_event_t *e)
         return;
     }
 
-    if (ctx->suppress_click) {
-        ctx->suppress_click = false;
+    if (ctx->flags.suppress_click) {
+        ctx->flags.suppress_click = false;
         return;
     }
 
@@ -2509,7 +2520,7 @@ static void file_manager_on_item_click(lv_event_t *e)
         if (fs_nav_compose_path(&ctx->nav, item->name, path, sizeof(path)) == ESP_OK) {
             text_viewer_open_opts_t opts = {
                 .path = path,
-                .return_screen = ctx->screen,
+                .return_screen = ctx->graphics.screen,
                 .editable = false,
             };
             file_manager_show_loading(ctx);
@@ -2536,12 +2547,12 @@ static void file_manager_on_item_click(lv_event_t *e)
 static void file_manager_on_list_scrolled(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || ctx->list_suppress_scroll) {
+    if (!ctx || ctx->flags.list_suppress_scroll) {
         return;
     }
 
-    bool at_top = lv_obj_get_scroll_top(ctx->list) <= 0;
-    bool at_bottom = lv_obj_get_scroll_bottom(ctx->list) <= 0;
+    bool at_top = lv_obj_get_scroll_top(ctx->graphics.list) <= 0;
+    bool at_bottom = lv_obj_get_scroll_bottom(ctx->graphics.list) <= 0;
 
     size_t total = fs_nav_total_items(&ctx->nav);
 
@@ -2549,8 +2560,8 @@ static void file_manager_on_list_scrolled(lv_event_t *e)
     size_t step = 1;
     file_manager_get_window_params(ctx, &window_size, &step);
 
-    if (at_bottom && !ctx->list_at_bottom_edge) {
-        ctx->list_at_bottom_edge = true;
+    if (at_bottom && !ctx->flags.list_at_bottom_edge) {
+        ctx->flags.list_at_bottom_edge = true;
         size_t current_count = 0;
         fs_nav_items(&ctx->nav, &current_count);
         size_t available_end = ctx->list_window_start + current_count;
@@ -2560,31 +2571,31 @@ static void file_manager_on_list_scrolled(lv_event_t *e)
             if (new_start > max_start) new_start = max_start;
             size_t anchor_global = new_start + (step ? (step - 1) : 0); /* last overlapping item */
             if (anchor_global >= total) anchor_global = total ? (total - 1) : 0;
-            ctx->list_has_paged = true;
+            ctx->flags.list_has_paged = true;
             file_manager_apply_window(ctx, new_start, anchor_global, true, false);
         }
     } else if (!at_bottom) {
-        ctx->list_at_bottom_edge = false;
+        ctx->flags.list_at_bottom_edge = false;
     }
 
-    if (at_top && !ctx->list_at_top_edge) {
-        ctx->list_at_top_edge = true;
+    if (at_top && !ctx->flags.list_at_top_edge) {
+        ctx->flags.list_at_top_edge = true;
         if (total > window_size && ctx->list_window_start > 0) {
             size_t new_start = (ctx->list_window_start > step) ? (ctx->list_window_start - step) : 0;
             size_t anchor_global = new_start + step; /* first overlapping item from previous window */
             if (anchor_global >= total) anchor_global = total ? (total - 1) : 0;
-            ctx->list_has_paged = true;
+            ctx->flags.list_has_paged = true;
             file_manager_apply_window(ctx, new_start, anchor_global, true, false);
         }
     } else if (!at_top) {
-        ctx->list_at_top_edge = false;
+        ctx->flags.list_at_top_edge = false;
     }
 }
 
 static void file_manager_on_slider_value_changed(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || ctx->slider_suppress_change) {
+    if (!ctx || ctx->flags.slider_suppress_change) {
         return;
     }
 
@@ -2613,7 +2624,7 @@ static void file_manager_on_slider_value_changed(lv_event_t *e)
 
     /* Track the step during drag; apply only on release. */
     if (code == LV_EVENT_PRESSED) {
-        ctx->slider_drag_active = true;
+        ctx->flags.slider_drag_active = true;
         ctx->slider_pending_step = clamped_step;
         return;
     }
@@ -2636,7 +2647,7 @@ static void file_manager_on_slider_value_changed(lv_event_t *e)
         }
         if (target_step == current_step) {
             ctx->slider_pending_step = SIZE_MAX;
-            ctx->slider_drag_active = false;
+            ctx->flags.slider_drag_active = false;
             return;
         }
 
@@ -2646,8 +2657,8 @@ static void file_manager_on_slider_value_changed(lv_event_t *e)
         }
 
         ctx->slider_pending_step = SIZE_MAX;
-        ctx->slider_drag_active = false;
-        ctx->list_has_paged = true;
+        ctx->flags.slider_drag_active = false;
+        ctx->flags.list_has_paged = true;
         file_manager_apply_window(ctx, new_start, SIZE_MAX, true, true);
     }
 }
@@ -2658,7 +2669,7 @@ static void file_manager_on_item_long_press(lv_event_t *e)
     if (!ctx) {
         return;
     }
-    ctx->suppress_click = true;
+    ctx->flags.suppress_click = true;
 
     lv_obj_t *btn = lv_event_get_target(e);
     lv_obj_remove_state(btn, LV_STATE_PRESSED | LV_STATE_FOCUSED);
@@ -2691,7 +2702,7 @@ static void file_manager_on_parent_click(lv_event_t *e)
         file_manager_sync_view(ctx);
     } else {
         ESP_LOGE(TAG, "Failed to go parent: %s", esp_err_to_name(err));
-        ctx->pending_go_parent = true;
+        ctx->flags.pending_go_parent = true;
         sd_card_schedule_retry();
         file_manager_schedule_wait_for_reconnection();
     }
@@ -2701,11 +2712,11 @@ static void file_manager_on_parent_click(lv_event_t *e)
 static void file_manager_on_settings_click(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->screen || !ctx->settings_btn){
+    if (!ctx || !ctx->graphics.screen || !ctx->graphics.settings_btn){
         return;
     }
 
-    esp_err_t err = settings_open_settings(ctx->screen);
+    esp_err_t err = settings_open_settings(ctx->graphics.screen);
     if (err != ESP_OK){
         ESP_LOGE(TAG, "Failed to open settings: (%s)", esp_err_to_name(err));
     }
@@ -2759,13 +2770,13 @@ static void file_manager_apply_sort(file_manager_ctx_t *ctx, fs_nav_sort_mode_t 
 
 static void file_manager_close_sort_dialog(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->sort_overlay) {
+    if (!ctx || !ctx->graphics.sort_overlay) {
         return;
     }
-    lv_obj_del(ctx->sort_overlay);
-    ctx->sort_overlay = NULL;
-    ctx->sort_criteria_dd = NULL;
-    ctx->sort_direction_dd = NULL;
+    lv_obj_del(ctx->graphics.sort_overlay);
+    ctx->graphics.sort_overlay = NULL;
+    ctx->graphics.sort_criteria_dd = NULL;
+    ctx->graphics.sort_direction_dd = NULL;
 }
 
 static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
@@ -2781,7 +2792,7 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    ctx->sort_overlay = overlay;
+    ctx->graphics.sort_overlay = overlay;
 
     lv_obj_t *dlg = lv_obj_create(overlay);
     lv_obj_set_style_radius(dlg, 12, 0);
@@ -2816,13 +2827,13 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     styles_set_text_color(dir_lbl, 0);
     lv_label_set_text(dir_lbl, "Direction:");
     
-    ctx->sort_direction_dd = lv_dropdown_create(row_dir);
-    lv_dropdown_set_options_static(ctx->sort_direction_dd, "Ascending\nDescending");
-    lv_obj_set_width(ctx->sort_direction_dd, 120);
-    styles_set_button(ctx->sort_direction_dd);
-    lv_obj_add_event_cb(ctx->sort_direction_dd, file_manager_on_sort_direction_changed, LV_EVENT_VALUE_CHANGED, ctx);
+    ctx->graphics.sort_direction_dd = lv_dropdown_create(row_dir);
+    lv_dropdown_set_options_static(ctx->graphics.sort_direction_dd, "Ascending\nDescending");
+    lv_obj_set_width(ctx->graphics.sort_direction_dd, 120);
+    styles_set_button(ctx->graphics.sort_direction_dd);
+    lv_obj_add_event_cb(ctx->graphics.sort_direction_dd, file_manager_on_sort_direction_changed, LV_EVENT_VALUE_CHANGED, ctx);
 
-    lv_obj_t *direction_list = lv_dropdown_get_list(ctx->sort_direction_dd);
+    lv_obj_t *direction_list = lv_dropdown_get_list(ctx->graphics.sort_direction_dd);
     styles_set_dropdown(direction_list);
 
     lv_obj_update_layout(row_dir);
@@ -2843,13 +2854,13 @@ static void file_manager_show_sort_dialog(file_manager_ctx_t *ctx)
     styles_set_text_color(crit_lbl, 0);
     lv_label_set_text(crit_lbl, "Criteria:");
 
-    ctx->sort_criteria_dd = lv_dropdown_create(row_crit);
-    lv_dropdown_set_options_static(ctx->sort_criteria_dd, "Name\nDate\nSize");
-    lv_obj_set_width(ctx->sort_criteria_dd, 120);
-    lv_obj_add_event_cb(ctx->sort_criteria_dd, file_manager_on_sort_criteria_changed, LV_EVENT_VALUE_CHANGED, ctx);
-    styles_set_button(ctx->sort_criteria_dd);
+    ctx->graphics.sort_criteria_dd = lv_dropdown_create(row_crit);
+    lv_dropdown_set_options_static(ctx->graphics.sort_criteria_dd, "Name\nDate\nSize");
+    lv_obj_set_width(ctx->graphics.sort_criteria_dd, 120);
+    lv_obj_add_event_cb(ctx->graphics.sort_criteria_dd, file_manager_on_sort_criteria_changed, LV_EVENT_VALUE_CHANGED, ctx);
+    styles_set_button(ctx->graphics.sort_criteria_dd);
 
-    lv_obj_t *sort_list = lv_dropdown_get_list(ctx->sort_criteria_dd);
+    lv_obj_t *sort_list = lv_dropdown_get_list(ctx->graphics.sort_criteria_dd);
     styles_set_dropdown(sort_list);
 
     /* Place Criteria row above Direction while keeping aligned widths. */
@@ -2899,7 +2910,7 @@ static void file_manager_start_new_txt(file_manager_ctx_t *ctx)
     text_viewer_open_opts_t opts = {
         .directory = dir,
         .suggested_name = "new_file.txt",
-        .return_screen = ctx->screen,
+        .return_screen = ctx->graphics.screen,
         .editable = true,
         .on_close = file_manager_editor_closed,
         .user_ctx = ctx,
@@ -2944,14 +2955,14 @@ static void file_manager_on_sort_apply(lv_event_t *e)
     fs_nav_sort_mode_t mode = fs_nav_get_sort(&ctx->nav);
     bool ascending = fs_nav_is_sort_ascending(&ctx->nav);
 
-    if (ctx->sort_criteria_dd) {
-        uint16_t sel = lv_dropdown_get_selected(ctx->sort_criteria_dd);
+    if (ctx->graphics.sort_criteria_dd) {
+        uint16_t sel = lv_dropdown_get_selected(ctx->graphics.sort_criteria_dd);
         if (sel < FS_NAV_SORT_COUNT) {
             mode = (fs_nav_sort_mode_t)sel;
         }
     }
-    if (ctx->sort_direction_dd) {
-        uint16_t sel = lv_dropdown_get_selected(ctx->sort_direction_dd);
+    if (ctx->graphics.sort_direction_dd) {
+        uint16_t sel = lv_dropdown_get_selected(ctx->graphics.sort_direction_dd);
         ascending = (sel == 0);
     }
 
@@ -2976,7 +2987,7 @@ static void file_manager_editor_closed(bool changed, void *user_ctx)
         return;
     }
 
-    ctx->preserve_window_on_reload = true;
+    ctx->flags.preserve_window_on_reload = true;
     esp_err_t err = file_manager_reload();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to reload after editor: %s", esp_err_to_name(err));
@@ -2986,7 +2997,7 @@ static void file_manager_editor_closed(bool changed, void *user_ctx)
 
 static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
 {
-    if (ctx->folder_dialog) {
+    if (ctx->graphics.folder_dialog) {
         return;
     }
 
@@ -2996,7 +3007,7 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    ctx->folder_dialog = overlay;
+    ctx->graphics.folder_dialog = overlay;
 
     lv_obj_t *dlg = lv_msgbox_create(overlay);
     styles_set_msgbox(dlg);
@@ -3016,23 +3027,23 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, 0);
 
-    ctx->folder_textarea = lv_textarea_create(content);
-    lv_textarea_set_one_line(ctx->folder_textarea, true);
-    lv_textarea_set_max_length(ctx->folder_textarea, FS_NAV_MAX_NAME - 1);
-    lv_textarea_set_text(ctx->folder_textarea, "");
-    styles_set_textarea(ctx->folder_textarea );
-    lv_textarea_set_cursor_pos(ctx->folder_textarea, 0);
-    lv_obj_set_width(ctx->folder_textarea, LV_PCT(100));
+    ctx->graphics.folder_textarea = lv_textarea_create(content);
+    lv_textarea_set_one_line(ctx->graphics.folder_textarea, true);
+    lv_textarea_set_max_length(ctx->graphics.folder_textarea, FS_NAV_MAX_NAME - 1);
+    lv_textarea_set_text(ctx->graphics.folder_textarea, "");
+    styles_set_textarea(ctx->graphics.folder_textarea );
+    lv_textarea_set_cursor_pos(ctx->graphics.folder_textarea, 0);
+    lv_obj_set_width(ctx->graphics.folder_textarea, LV_PCT(100));
 
-    ctx->folder_keyboard = lv_keyboard_create(overlay);
-    styles_set_keyboard(ctx->folder_keyboard);
-    lv_keyboard_set_textarea(ctx->folder_keyboard, ctx->folder_textarea);
-    lv_obj_clear_flag(ctx->folder_keyboard, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_state(ctx->folder_textarea, LV_STATE_FOCUSED);
-    lv_obj_add_event_cb(ctx->folder_keyboard, file_manager_on_folder_keyboard_cancel, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->folder_textarea, file_manager_on_folder_textarea_clicked, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_flag(ctx->folder_keyboard, LV_OBJ_FLAG_FLOATING);
-    lv_obj_align(ctx->folder_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    ctx->graphics.folder_keyboard = lv_keyboard_create(overlay);
+    styles_set_keyboard(ctx->graphics.folder_keyboard);
+    lv_keyboard_set_textarea(ctx->graphics.folder_keyboard, ctx->graphics.folder_textarea);
+    lv_obj_clear_flag(ctx->graphics.folder_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_state(ctx->graphics.folder_textarea, LV_STATE_FOCUSED);
+    lv_obj_add_event_cb(ctx->graphics.folder_keyboard, file_manager_on_folder_keyboard_cancel, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.folder_textarea, file_manager_on_folder_textarea_clicked, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_flag(ctx->graphics.folder_keyboard, LV_OBJ_FLAG_FLOATING);
+    lv_obj_align(ctx->graphics.folder_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 
     lv_obj_t *save_btn = lv_msgbox_add_footer_button(dlg, "Save");
     lv_obj_set_user_data(save_btn, (void *)1);
@@ -3052,11 +3063,11 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
     styles_set_button(cancel_btn);
     lv_obj_add_event_cb(cancel_btn, file_manager_on_folder_cancel, LV_EVENT_CLICKED, ctx);
 
-    lv_obj_add_event_cb(ctx->folder_textarea, file_manager_on_folder_create, LV_EVENT_READY, ctx);
+    lv_obj_add_event_cb(ctx->graphics.folder_textarea, file_manager_on_folder_create, LV_EVENT_READY, ctx);
 
-    lv_obj_update_layout(ctx->folder_keyboard);
+    lv_obj_update_layout(ctx->graphics.folder_keyboard);
     lv_obj_update_layout(dlg);
-    lv_coord_t keyboard_top = lv_obj_get_y(ctx->folder_keyboard);
+    lv_coord_t keyboard_top = lv_obj_get_y(ctx->graphics.folder_keyboard);
     lv_coord_t dialog_h = lv_obj_get_height(dlg);
     lv_coord_t margin = 10;
     if (keyboard_top > dialog_h) {
@@ -3070,13 +3081,13 @@ static void file_manager_show_folder_dialog(file_manager_ctx_t *ctx)
 
 static void file_manager_close_folder_dialog(file_manager_ctx_t *ctx)
 {
-    if (!ctx->folder_dialog) {
+    if (!ctx->graphics.folder_dialog) {
         return;
     }
-    lv_obj_del(ctx->folder_dialog);
-    ctx->folder_dialog = NULL;
-    ctx->folder_textarea = NULL;
-    ctx->folder_keyboard = NULL;
+    lv_obj_del(ctx->graphics.folder_dialog);
+    ctx->graphics.folder_dialog = NULL;
+    ctx->graphics.folder_textarea = NULL;
+    ctx->graphics.folder_keyboard = NULL;
 }
 
 static void file_manager_on_folder_create(lv_event_t *e)
@@ -3086,7 +3097,7 @@ static void file_manager_on_folder_create(lv_event_t *e)
         return;
     }
 
-    const char *text = ctx->folder_textarea ? lv_textarea_get_text(ctx->folder_textarea) : NULL;
+    const char *text = ctx->graphics.folder_textarea ? lv_textarea_get_text(ctx->graphics.folder_textarea) : NULL;
     if (!text) {
         file_manager_set_folder_status(ctx, "Invalid name", true);
         return;
@@ -3132,10 +3143,10 @@ static void file_manager_on_folder_cancel(lv_event_t *e)
 
 static void file_manager_set_folder_status(file_manager_ctx_t *ctx, const char *msg, bool error)
 {
-    if (!ctx || !ctx->folder_dialog || !msg) {
+    if (!ctx || !ctx->graphics.folder_dialog || !msg) {
         return;
     }
-    lv_obj_t *dlg = lv_obj_get_child(ctx->folder_dialog, 0);
+    lv_obj_t *dlg = lv_obj_get_child(ctx->graphics.folder_dialog, 0);
     if (!dlg) {
         return;
     }
@@ -3172,21 +3183,21 @@ static esp_err_t file_manager_create_folder(file_manager_ctx_t *ctx, const char 
 static void file_manager_on_folder_keyboard_cancel(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->folder_keyboard) {
+    if (!ctx || !ctx->graphics.folder_keyboard) {
         return;
     }
-    lv_keyboard_set_textarea(ctx->folder_keyboard, NULL);
-    lv_obj_add_flag(ctx->folder_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.folder_keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.folder_keyboard, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void file_manager_on_folder_textarea_clicked(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->folder_keyboard || !ctx->folder_textarea) {
+    if (!ctx || !ctx->graphics.folder_keyboard || !ctx->graphics.folder_textarea) {
         return;
     }
-    lv_keyboard_set_textarea(ctx->folder_keyboard, ctx->folder_textarea);
-    lv_obj_clear_flag(ctx->folder_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.folder_keyboard, ctx->graphics.folder_textarea);
+    lv_obj_clear_flag(ctx->graphics.folder_keyboard, LV_OBJ_FLAG_HIDDEN);
 }
 
 static bool file_manager_is_valid_name(const char *name)
@@ -3351,20 +3362,20 @@ static void file_manager_clear_clipboard(file_manager_ctx_t *ctx)
 
 static void file_manager_update_paste_button(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->paste_btn || !ctx->paste_label || !ctx->cancel_paste_btn) {
+    if (!ctx || !ctx->graphics.paste_btn || !ctx->graphics.paste_label || !ctx->graphics.cancel_paste_btn) {
         return;
     }
 
     if (!ctx->clipboard.has_item) {
-        lv_obj_add_flag(ctx->paste_btn, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_state(ctx->paste_btn, LV_STATE_DISABLED);
-        lv_obj_add_flag(ctx->cancel_paste_btn, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_state(ctx->cancel_paste_btn, LV_STATE_DISABLED);
+        lv_obj_add_flag(ctx->graphics.paste_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_state(ctx->graphics.paste_btn, LV_STATE_DISABLED);
+        lv_obj_add_flag(ctx->graphics.cancel_paste_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_state(ctx->graphics.cancel_paste_btn, LV_STATE_DISABLED);
     } else {
-        lv_obj_clear_flag(ctx->paste_btn, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_remove_state(ctx->paste_btn, LV_STATE_DISABLED);
-        lv_obj_clear_flag(ctx->cancel_paste_btn, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_remove_state(ctx->cancel_paste_btn, LV_STATE_DISABLED);
+        lv_obj_clear_flag(ctx->graphics.paste_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_state(ctx->graphics.paste_btn, LV_STATE_DISABLED);
+        lv_obj_clear_flag(ctx->graphics.cancel_paste_btn, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_remove_state(ctx->graphics.cancel_paste_btn, LV_STATE_DISABLED);
     }
 }
 
@@ -3556,9 +3567,9 @@ static esp_err_t file_manager_generate_copy_name(const char *directory, const ch
 
 static void file_manager_close_paste_conflict(file_manager_ctx_t *ctx)
 {
-    if (ctx && ctx->paste_conflict_mbox) {
-        lv_msgbox_close(ctx->paste_conflict_mbox);
-        ctx->paste_conflict_mbox = NULL;
+    if (ctx && ctx->graphics.paste_conflict_mbox) {
+        lv_msgbox_close(ctx->graphics.paste_conflict_mbox);
+        ctx->graphics.paste_conflict_mbox = NULL;
         ctx->paste_conflict_path[0] = '\0';
         ctx->paste_conflict_name[0] = '\0';
     }
@@ -3575,7 +3586,7 @@ static void file_manager_show_paste_conflict(file_manager_ctx_t *ctx, const char
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
-    ctx->paste_conflict_mbox = mbox;
+    ctx->graphics.paste_conflict_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -3686,7 +3697,7 @@ static void file_manager_on_paste_click(lv_event_t *e)
             return;
         }
         strlcpy(ctx->paste_target_path, dest_path, sizeof(ctx->paste_target_path));
-        ctx->paste_target_valid = true;
+        ctx->flags.paste_target_valid = true;
         file_manager_show_copy_confirm(ctx, total);
         return;
     }
@@ -3704,7 +3715,7 @@ static void file_manager_on_paste_click(lv_event_t *e)
         return;
     }
 
-    ctx->preserve_window_on_reload = true;
+    ctx->flags.preserve_window_on_reload = true;
     file_manager_set_reload_anchor_current(ctx);
     err = file_manager_reload();
     if (err != ESP_OK) {
@@ -3784,7 +3795,7 @@ static void file_manager_on_paste_conflict(lv_event_t *e)
         return;
     }
 
-    ctx->preserve_window_on_reload = true;
+    ctx->flags.preserve_window_on_reload = true;
     file_manager_set_reload_anchor_current(ctx);
     err = file_manager_reload();
     if (err != ESP_OK) {
@@ -3797,7 +3808,7 @@ static void file_manager_on_cancel_paste_click(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
 
-    if (!ctx || !ctx->cancel_paste_btn || !ctx->cancel_paste_label){
+    if (!ctx || !ctx->graphics.cancel_paste_btn || !ctx->graphics.cancel_paste_label){
         return;
     }
 
@@ -3807,15 +3818,15 @@ static void file_manager_on_cancel_paste_click(lv_event_t *e)
 
 static void file_manager_close_copy_confirm(file_manager_ctx_t *ctx)
 {
-    if (ctx && ctx->copy_confirm_mbox) {
-        lv_msgbox_close(ctx->copy_confirm_mbox);
-        ctx->copy_confirm_mbox = NULL;
+    if (ctx && ctx->graphics.copy_confirm_mbox) {
+        lv_msgbox_close(ctx->graphics.copy_confirm_mbox);
+        ctx->graphics.copy_confirm_mbox = NULL;
     }
 }
 
 static void file_manager_show_copy_confirm(file_manager_ctx_t *ctx, uint64_t bytes)
 {
-    if (!ctx || !ctx->clipboard.has_item || !ctx->paste_target_valid) {
+    if (!ctx || !ctx->clipboard.has_item || !ctx->flags.paste_target_valid) {
         return;
     }
     file_manager_close_copy_confirm(ctx);
@@ -3825,7 +3836,7 @@ static void file_manager_show_copy_confirm(file_manager_ctx_t *ctx, uint64_t byt
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
-    ctx->copy_confirm_mbox = mbox;
+    ctx->graphics.copy_confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -3856,15 +3867,15 @@ static void file_manager_on_copy_confirm(lv_event_t *e)
     bool confirm = (bool)(uintptr_t)lv_obj_get_user_data(lv_event_get_target(e));
     file_manager_close_copy_confirm(ctx);
 
-    if (!confirm || !ctx->paste_target_valid) {
-        ctx->paste_target_valid = false;
+    if (!confirm || !ctx->flags.paste_target_valid) {
+        ctx->flags.paste_target_valid = false;
         ctx->paste_target_path[0] = '\0';
         return;
     }
 
     char dest_path[FS_NAV_MAX_PATH];
     strlcpy(dest_path, ctx->paste_target_path, sizeof(dest_path));
-    ctx->paste_target_valid = false;
+    ctx->flags.paste_target_valid = false;
     ctx->paste_target_path[0] = '\0';
 
     if (file_manager_path_exists(dest_path)) {
@@ -3881,7 +3892,7 @@ static void file_manager_on_copy_confirm(lv_event_t *e)
         return;
     }
 
-    ctx->preserve_window_on_reload = true;
+    ctx->flags.preserve_window_on_reload = true;
     file_manager_set_reload_anchor_current(ctx);
     err = file_manager_reload();
     if (err != ESP_OK) {
@@ -3917,7 +3928,7 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
     styles_set_msgbox(mbox);
     lv_coord_t mbox_pad = lv_obj_get_style_pad_left(mbox, 0);
     lv_obj_set_style_pad_all(mbox, mbox_pad + 8, 0);
-    ctx->action_mbox = mbox;
+    ctx->graphics.action_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -4032,9 +4043,9 @@ static void file_manager_show_action_menu(file_manager_ctx_t *ctx)
 
 static void file_manager_close_action_menu(file_manager_ctx_t *ctx)
 {
-    if (ctx && ctx->action_mbox) {
-        lv_msgbox_close(ctx->action_mbox);
-        ctx->action_mbox = NULL;
+    if (ctx && ctx->graphics.action_mbox) {
+        lv_msgbox_close(ctx->graphics.action_mbox);
+        ctx->graphics.action_mbox = NULL;
     }
 }
 
@@ -4060,7 +4071,7 @@ static void file_manager_on_action_button(lv_event_t *e)
             }
             text_viewer_open_opts_t opts = {
                 .path = path,
-                .return_screen = ctx->screen,
+                .return_screen = ctx->graphics.screen,
                 .editable = true,
                 .on_close = file_manager_editor_closed,
                 .user_ctx = ctx,
@@ -4116,7 +4127,7 @@ static void file_manager_show_delete_confirm(file_manager_ctx_t *ctx)
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
-    ctx->confirm_mbox = mbox;
+    ctx->graphics.confirm_mbox = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -4140,29 +4151,29 @@ static void file_manager_show_delete_confirm(file_manager_ctx_t *ctx)
 
 static void file_manager_close_delete_confirm(file_manager_ctx_t *ctx)
 {
-    if (ctx && ctx->confirm_mbox) {
-        lv_msgbox_close(ctx->confirm_mbox);
-        ctx->confirm_mbox = NULL;
+    if (ctx && ctx->graphics.confirm_mbox) {
+        lv_msgbox_close(ctx->graphics.confirm_mbox);
+        ctx->graphics.confirm_mbox = NULL;
     }
 }
 
 static void file_manager_hide_loading(file_manager_ctx_t *ctx)
 {
-    if (ctx && ctx->loading_dialog) {
-        lv_msgbox_close(ctx->loading_dialog);
-        ctx->loading_dialog = NULL;
+    if (ctx && ctx->graphics.loading_dialog) {
+        lv_msgbox_close(ctx->graphics.loading_dialog);
+        ctx->graphics.loading_dialog = NULL;
     }
 }
 
 static void file_manager_show_loading(file_manager_ctx_t *ctx)
 {
-    if (!ctx || ctx->loading_dialog) {
+    if (!ctx || ctx->graphics.loading_dialog) {
         return;
     }
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
-    ctx->loading_dialog = mbox;
+    ctx->graphics.loading_dialog = mbox;
     lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
     lv_obj_center(mbox);
 
@@ -4220,7 +4231,7 @@ static esp_err_t file_manager_delete_selected_item(file_manager_ctx_t *ctx)
     }
 
     file_manager_clear_action_state(ctx);
-    ctx->preserve_window_on_reload = true;
+    ctx->flags.preserve_window_on_reload = true;
     file_manager_set_reload_anchor_current(ctx);
     return file_manager_reload();
 }
@@ -4254,16 +4265,16 @@ static void file_manager_clear_action_state(file_manager_ctx_t *ctx)
     ctx->action_item.is_txt = false;
     ctx->action_item.name[0] = '\0';
     ctx->action_item.directory[0] = '\0';
-    ctx->paste_target_valid = false;
+    ctx->flags.paste_target_valid = false;
     ctx->paste_target_path[0] = '\0';
 }
 
 static void file_manager_set_rename_status(file_manager_ctx_t *ctx, const char *msg, bool error)
 {
-    if (!ctx || !ctx->rename_dialog || !msg) {
+    if (!ctx || !ctx->graphics.rename_dialog || !msg) {
         return;
     }
-    lv_obj_t *dlg = lv_obj_get_child(ctx->rename_dialog, 0);
+    lv_obj_t *dlg = lv_obj_get_child(ctx->graphics.rename_dialog, 0);
     if (!dlg) {
         return;
     }
@@ -4292,7 +4303,7 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(overlay, LV_OPA_30, 0);
     lv_obj_add_flag(overlay, LV_OBJ_FLAG_FLOATING | LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CLICK_FOCUSABLE);
-    ctx->rename_dialog = overlay;
+    ctx->graphics.rename_dialog = overlay;
 
     lv_obj_t *dlg = lv_msgbox_create(overlay);
     styles_set_msgbox(dlg);
@@ -4311,25 +4322,25 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
     lv_obj_set_style_pad_left(content, 8, 0);
     lv_obj_set_style_pad_right(content, 8, 0);
 
-    ctx->rename_textarea = lv_textarea_create(content);
-    lv_textarea_set_one_line(ctx->rename_textarea, true);
-    lv_textarea_set_max_length(ctx->rename_textarea, FS_NAV_MAX_NAME - 1);
-    lv_textarea_set_text(ctx->rename_textarea, ctx->action_item.name);
-    lv_textarea_set_cursor_pos(ctx->rename_textarea, LV_TEXTAREA_CURSOR_LAST);
-    lv_obj_set_width(ctx->rename_textarea, LV_PCT(100));
-    styles_set_textarea(ctx->rename_textarea);
+    ctx->graphics.rename_textarea = lv_textarea_create(content);
+    lv_textarea_set_one_line(ctx->graphics.rename_textarea, true);
+    lv_textarea_set_max_length(ctx->graphics.rename_textarea, FS_NAV_MAX_NAME - 1);
+    lv_textarea_set_text(ctx->graphics.rename_textarea, ctx->action_item.name);
+    lv_textarea_set_cursor_pos(ctx->graphics.rename_textarea, LV_TEXTAREA_CURSOR_LAST);
+    lv_obj_set_width(ctx->graphics.rename_textarea, LV_PCT(100));
+    styles_set_textarea(ctx->graphics.rename_textarea);
 
-    ctx->rename_keyboard = lv_keyboard_create(overlay);
-    styles_set_keyboard(ctx->rename_keyboard);
-    lv_keyboard_set_textarea(ctx->rename_keyboard, ctx->rename_textarea);
-    lv_obj_clear_flag(ctx->rename_keyboard, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_state(ctx->rename_textarea, LV_STATE_FOCUSED);
-    lv_obj_add_event_cb(ctx->rename_keyboard, file_manager_on_rename_keyboard_cancel, LV_EVENT_CANCEL, ctx);
-    lv_obj_add_event_cb(ctx->rename_textarea, file_manager_on_rename_textarea_clicked, LV_EVENT_CLICKED, ctx);
-    lv_obj_add_event_cb(ctx->rename_textarea, file_manager_on_rename_accept, LV_EVENT_READY, ctx);
-    lv_obj_update_layout(ctx->rename_keyboard);
-    lv_obj_add_flag(ctx->rename_keyboard, LV_OBJ_FLAG_FLOATING);
-    lv_obj_align(ctx->rename_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    ctx->graphics.rename_keyboard = lv_keyboard_create(overlay);
+    styles_set_keyboard(ctx->graphics.rename_keyboard);
+    lv_keyboard_set_textarea(ctx->graphics.rename_keyboard, ctx->graphics.rename_textarea);
+    lv_obj_clear_flag(ctx->graphics.rename_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_state(ctx->graphics.rename_textarea, LV_STATE_FOCUSED);
+    lv_obj_add_event_cb(ctx->graphics.rename_keyboard, file_manager_on_rename_keyboard_cancel, LV_EVENT_CANCEL, ctx);
+    lv_obj_add_event_cb(ctx->graphics.rename_textarea, file_manager_on_rename_textarea_clicked, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(ctx->graphics.rename_textarea, file_manager_on_rename_accept, LV_EVENT_READY, ctx);
+    lv_obj_update_layout(ctx->graphics.rename_keyboard);
+    lv_obj_add_flag(ctx->graphics.rename_keyboard, LV_OBJ_FLAG_FLOATING);
+    lv_obj_align(ctx->graphics.rename_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
 
     lv_obj_t *save_btn = lv_msgbox_add_footer_button(dlg, "Save");
     styles_set_button(save_btn);
@@ -4350,7 +4361,7 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
     lv_obj_add_event_cb(cancel_btn, file_manager_on_rename_cancel, LV_EVENT_CLICKED, ctx);
 
     lv_obj_update_layout(dlg);
-    lv_coord_t keyboard_top = lv_obj_get_y(ctx->rename_keyboard);
+    lv_coord_t keyboard_top = lv_obj_get_y(ctx->graphics.rename_keyboard);
     lv_coord_t dialog_h = lv_obj_get_height(dlg);
     lv_coord_t margin = 10;
     if (keyboard_top > dialog_h) {
@@ -4364,23 +4375,23 @@ static void file_manager_show_rename_dialog(file_manager_ctx_t *ctx)
 
 static void file_manager_close_rename_dialog(file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->rename_dialog) {
+    if (!ctx || !ctx->graphics.rename_dialog) {
         return;
     }
-    lv_obj_del(ctx->rename_dialog);
-    ctx->rename_dialog = NULL;
-    ctx->rename_textarea = NULL;
-    ctx->rename_keyboard = NULL;
+    lv_obj_del(ctx->graphics.rename_dialog);
+    ctx->graphics.rename_dialog = NULL;
+    ctx->graphics.rename_textarea = NULL;
+    ctx->graphics.rename_keyboard = NULL;
 }
 
 static void file_manager_on_rename_accept(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->rename_textarea) {
+    if (!ctx || !ctx->graphics.rename_textarea) {
         return;
     }
 
-    const char *text = lv_textarea_get_text(ctx->rename_textarea);
+    const char *text = lv_textarea_get_text(ctx->graphics.rename_textarea);
     if (!text) {
         file_manager_set_rename_status(ctx, "Invalid name", true);
         return;
@@ -4415,7 +4426,7 @@ static void file_manager_on_rename_accept(lv_event_t *e)
 
     file_manager_close_rename_dialog(ctx);
     file_manager_clear_action_state(ctx);
-    ctx->preserve_window_on_reload = true;
+    ctx->flags.preserve_window_on_reload = true;
     esp_err_t reload = file_manager_reload();
     if (reload != ESP_OK) {
         ESP_LOGE(TAG, "Failed to refresh after rename: %s", esp_err_to_name(reload));
@@ -4465,19 +4476,19 @@ static esp_err_t file_manager_perform_rename(file_manager_ctx_t *ctx, const char
 static void file_manager_on_rename_keyboard_cancel(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->rename_keyboard) {
+    if (!ctx || !ctx->graphics.rename_keyboard) {
         return;
     }
-    lv_keyboard_set_textarea(ctx->rename_keyboard, NULL);
-    lv_obj_add_flag(ctx->rename_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.rename_keyboard, NULL);
+    lv_obj_add_flag(ctx->graphics.rename_keyboard, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void file_manager_on_rename_textarea_clicked(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->rename_keyboard || !ctx->rename_textarea) {
+    if (!ctx || !ctx->graphics.rename_keyboard || !ctx->graphics.rename_textarea) {
         return;
     }
-    lv_keyboard_set_textarea(ctx->rename_keyboard, ctx->rename_textarea);
-    lv_obj_clear_flag(ctx->rename_keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_keyboard_set_textarea(ctx->graphics.rename_keyboard, ctx->graphics.rename_textarea);
+    lv_obj_clear_flag(ctx->graphics.rename_keyboard, LV_OBJ_FLAG_HIDDEN);
 }
