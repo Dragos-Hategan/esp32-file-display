@@ -9,7 +9,7 @@ extern "C" {
 
 #include "esp_err.h"
 
-#define READ_CHUNK_SIZE_B   (1 * 1024)
+#define FS_TEXT_READ_CHUNK_SIZE_B   (1 * 1024)
 #define FS_TEXT_MAX_PATH    512
 
 /**
@@ -41,7 +41,7 @@ esp_err_t fs_text_create(const char *path);
 /**
  * @brief Read a fixed-size block of text bytes from a file starting at a given offset.
  *
- * This function reads a chunk of data (READ_CHUNK_SIZE_B bytes) from a file,
+ * This function reads a chunk of data (FS_TEXT_READ_CHUNK_SIZE_B bytes) from a file,
  * starting at an offset specified in kilobytes. It validates the file path,
  * ensures the offset does not exceed the file size, adjusts the read length
  * when near EOF, and allocates a null-terminated buffer for the output.
@@ -66,7 +66,7 @@ esp_err_t fs_text_create(const char *path);
  * @note
  * - The output buffer is always null-terminated, even when reading binary data.
  * - If the offset lands beyond EOF, a zero-length read is performed.
- * - READ_CHUNK_SIZE_B defines the number of bytes to read per call.
+ * - FS_TEXT_READ_CHUNK_SIZE_B defines the number of bytes to read per call.
  * - The function only works with regular files.
  */
 esp_err_t fs_text_read_range(const char *path, size_t offset_kb, char **out_buf, size_t *out_len);

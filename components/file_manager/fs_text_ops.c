@@ -112,7 +112,7 @@ static esp_err_t read_chunk(FILE *f, size_t to_read, char **out_buf, size_t *out
 /**
  * @brief Compute file read offset and byte count for a chunked read.
  *
- * Validates file existence, clamps offset to EOF, applies READ_CHUNK_SIZE_B
+ * Validates file existence, clamps offset to EOF, applies FS_TEXT_READ_CHUNK_SIZE_B
  * and optional FS_TEXT_MAX_BYTES limit.
  *
  * @param path          File path.
@@ -335,7 +335,7 @@ static esp_err_t clamp_read_offset(const struct stat *st, size_t offset_kb, size
 static esp_err_t compute_bytes_to_read(size_t file_size, size_t offset_b, size_t *bytes_to_read)
 {
     size_t max_available = file_size - offset_b;
-    size_t chunk = READ_CHUNK_SIZE_B;
+    size_t chunk = FS_TEXT_READ_CHUNK_SIZE_B;
     if (chunk > max_available) {
         chunk = max_available;
     }

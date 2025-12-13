@@ -654,7 +654,7 @@ static void on_text_changed(lv_event_t *e);
  *   the function returns without writing.
  * - If the file name is still missing, a "Missing file name" status is set.
  * - Computes a byte window [window_start, window_end) for the loaded text
- *   (based on chunk offsets and READ_CHUNK_SIZE_B), with overflow checks.
+ *   (based on chunk offsets and FS_TEXT_READ_CHUNK_SIZE_B), with overflow checks.
  * - Clamps the window to the existing file size to avoid seeking past EOF.
  * - Builds a temporary file path in the same directory as @p dest_path.
  * - Opens the existing file (if any) as @p src and a temporary file as @p tmp.
@@ -2146,13 +2146,13 @@ static bool compute_save_window(text_viewer_ctx_t *ctx, size_t *window_start, si
     size_t second_kb = ctx->current_file_offset_kb;
     size_t chunk_count = (second_kb > first_kb) ? (second_kb - first_kb + 1u) : 1u;
 
-    if (first_kb > SIZE_MAX / 1024u || chunk_count > SIZE_MAX / READ_CHUNK_SIZE_B) {
+    if (first_kb > SIZE_MAX / 1024u || chunk_count > SIZE_MAX / FS_TEXT_READ_CHUNK_SIZE_B) {
         set_status(ctx, "Range overflow");
         return false;
     }
 
     size_t start = first_kb * 1024u;
-    size_t span = chunk_count * READ_CHUNK_SIZE_B;
+    size_t span = chunk_count * FS_TEXT_READ_CHUNK_SIZE_B;
     size_t end = start + span;
     if (end < start) {
         set_status(ctx, "Range overflow");
@@ -2242,7 +2242,7 @@ static bool copy_prefix(FILE *src, FILE *tmp, size_t prefix_size, const char *de
     if (prefix_size == 0) {
         return true;
     }
-    char buf[READ_CHUNK_SIZE_B];
+    char buf[FS_TEXT_READ_CHUNK_SIZE_B];
     size_t remaining = prefix_size;
     while (remaining > 0) {
         size_t chunk = remaining > sizeof(buf) ? sizeof(buf) : remaining;
@@ -2292,7 +2292,7 @@ static bool copy_suffix(FILE *src, FILE *tmp, size_t suffix_start, size_t suffix
         return false;
     }
 
-    char buf[READ_CHUNK_SIZE_B];
+    char buf[FS_TEXT_READ_CHUNK_SIZE_B];
     size_t remaining = suffix_size;
     while (remaining > 0) {
         size_t chunk = remaining > sizeof(buf) ? sizeof(buf) : remaining;
@@ -2483,11 +2483,11 @@ static void update_cursor_after_chunk(text_viewer_ctx_t *ctx, lv_coord_t content
 {
     if (ctx->flags.pending_scroll_up)
     {
-        lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)READ_CHUNK_SIZE_B + content_h);
+        lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)FS_TEXT_READ_CHUNK_SIZE_B + content_h);
     }
     else
     {
-        lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)READ_CHUNK_SIZE_B - content_h);
+        lv_textarea_set_cursor_pos(ctx->graphics.text_area, (int32_t)FS_TEXT_READ_CHUNK_SIZE_B - content_h);
     }
     skip_cursor_animation(ctx);
 }
