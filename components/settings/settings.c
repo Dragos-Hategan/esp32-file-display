@@ -16,6 +16,7 @@
 #include "esp_wifi.h"
 #include "esp_log.h"
 
+#include "Goldman_Regular_35.h"
 #include "bsp/esp-bsp.h"
 #include "Domine_14.h"
 #include "Domine_16.h"
@@ -775,6 +776,18 @@ static void set_date_time(lv_event_t *e);
  * @brief Build the splash screen shown at startup.
  */
 static void build_splash_screen(void);
+
+/**
+ * @brief Translate the last SNTP/Wi-Fi error into a short user-facing reason.
+ *
+ * Provides readable text for common connection and time-sync failures. When
+ * the code is not handled explicitly, the esp_err_to_name string is used as a
+ * fallback.
+ *
+ * @param err Last esp_err_t recorded during SNTP/Wi-Fi initialization.
+ * @return const char* Static description of the failure reason.
+ */
+static const char *get_time_failure_reason(esp_err_t err);
 
 /**
  * @brief Build the connection result screen after Wi-Fi/SNTP attempt.
@@ -2624,22 +2637,13 @@ static void build_splash_screen(void)
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
 
     lv_obj_t *label = lv_label_create(scr);
-    lv_label_set_text(label, "File Manager");
+    lv_label_set_text(label, "FILE MANAGER");
+    lv_obj_set_style_text_font(label, &Goldman_Regular_35, 0);
     lv_obj_center(label);
 
     lv_screen_load(scr);
 }
 
-/**
- * @brief Translate the last SNTP/Wi-Fi error into a short user-facing reason.
- *
- * Provides readable text for common connection and time-sync failures. When
- * the code is not handled explicitly, the esp_err_to_name string is used as a
- * fallback.
- *
- * @param err Last esp_err_t recorded during SNTP/Wi-Fi initialization.
- * @return const char* Static description of the failure reason.
- */
 static const char *get_time_failure_reason(esp_err_t err)
 {
     switch (err) {
