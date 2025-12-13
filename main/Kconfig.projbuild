@@ -4,4 +4,11 @@ menu "App Settings"
         default n
         help
           When enabled, starts the periodic heap logging task.
+
+    config DUAL_CORE
+      bool "Is the used esp dual core?"
+      default n
+      help
+        When enabled, it uses both cores to run tasks. Mainly used for heap stats task.          
+
 endmenu

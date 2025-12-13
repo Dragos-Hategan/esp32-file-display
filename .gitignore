@@ -7,3 +7,6 @@
 /.vscode/
 /.clangd
 /Fonts
+/build_esp32s3/
+/build_esp32c6/
+/build_esp32/
