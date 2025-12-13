@@ -691,6 +691,52 @@ static void populate_list_create_button(file_manager_ctx_t *ctx, const fs_nav_it
  */
  static esp_err_t refresh_current_dir(void);
 
+/**
+ * @brief Check that the file manager is initialized.
+ *
+ * @param ctx Browser context.
+ * @return true if initialized, false otherwise.
+ */
+static bool refresh_dir_is_initialized(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Refresh navigator items.
+ *
+ * @param ctx Browser context.
+ * @return ESP_OK or error from fs_nav_refresh.
+ */
+static esp_err_t refresh_dir_nav_refresh(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Apply preserved window positioning and anchor selection.
+ *
+ * @param ctx Browser context.
+ * @param saved_start Previous list window start.
+ */
+static void refresh_dir_preserve_window(file_manager_ctx_t *ctx, size_t saved_start);
+
+/**
+ * @brief Decide whether to preserve or reset the window based on flags.
+ *
+ * @param ctx Browser context.
+ * @param saved_start Previous list window start.
+ */
+static void refresh_dir_handle_window(file_manager_ctx_t *ctx, size_t saved_start);
+
+/**
+ * @brief Try to lock the display for LVGL updates.
+ *
+ * @return true if lock acquired, false otherwise.
+ */
+static bool refresh_dir_lock_display(void);
+
+/**
+ * @brief Update UI after refresh while the display is locked.
+ *
+ * @param ctx Browser context.
+ */
+static void refresh_dir_apply_ui_updates(file_manager_ctx_t *ctx);
+
 /**************************************************************************************************/
 
 
@@ -2773,60 +2819,91 @@ static void handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_t *item)
     handle_jpeg_open_with_prompts(ctx, lv_path, path);
 }
 
+static bool refresh_dir_is_initialized(const file_manager_ctx_t *ctx)
+{
+    return (ctx && ctx->flags.initialized);
+}
+
+static esp_err_t refresh_dir_nav_refresh(file_manager_ctx_t *ctx)
+{
+    return fs_nav_refresh(&ctx->nav);
+}
+
+static void refresh_dir_preserve_window(file_manager_ctx_t *ctx, size_t saved_start)
+{
+    size_t window_size = 1;
+    size_t step = 1;
+    get_window_params(ctx, &window_size, &step);
+    size_t total = fs_nav_total_items(&ctx->nav);
+    if (window_size == 0) {
+        window_size = 1;
+    }
+    if (total > 0 && total > window_size) {
+        size_t max_start = total - window_size;
+        if (saved_start > max_start) {
+            saved_start = max_start;
+        }
+    } else {
+        saved_start = 0;
+    }
+    ctx->list_window_start = saved_start;
+    if (ctx->reload_anchor_index == SIZE_MAX) {
+        size_t anchor = saved_start;
+        if (window_size > 1) {
+            anchor += window_size / 2;
+        }
+        if (total > 0 && anchor >= total) {
+            anchor = total - 1;
+        }
+        ctx->reload_anchor_index = anchor;
+    }
+}
+
+static void refresh_dir_handle_window(file_manager_ctx_t *ctx, size_t saved_start)
+{
+    bool preserve_window = ctx->flags.preserve_window_on_reload;
+    ctx->flags.preserve_window_on_reload = preserve_window;
+
+    if (preserve_window) {
+        refresh_dir_preserve_window(ctx, saved_start);
+    } else {
+        reset_window(ctx);
+    }
+}
+
+static bool refresh_dir_lock_display(void)
+{
+    return bsp_display_lock(0);
+}
+
+static void refresh_dir_apply_ui_updates(file_manager_ctx_t *ctx)
+{
+    sync_view(ctx);
+    clear_action_state(ctx);
+    close_paste_conflict(ctx);
+    hide_loading(ctx);
+}
+
 static esp_err_t refresh_current_dir(void)
 {
     file_manager_ctx_t *ctx = &s_file_manager;
-    if (!ctx->flags.initialized) {
+    if (!refresh_dir_is_initialized(ctx)) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    esp_err_t err = fs_nav_refresh(&ctx->nav);
+    esp_err_t err = refresh_dir_nav_refresh(ctx);
     if (err != ESP_OK) {
         return err;
     }
 
     size_t saved_start = ctx->list_window_start;
-    bool preserve_window = ctx->flags.preserve_window_on_reload;
-    ctx->flags.preserve_window_on_reload = preserve_window;
 
-    if (preserve_window) {
-        size_t window_size = 1;
-        size_t step = 1;
-        get_window_params(ctx, &window_size, &step);
-        size_t total = fs_nav_total_items(&ctx->nav);
-        if (window_size == 0) {
-            window_size = 1;
-        }
-        if (total > 0 && total > window_size) {
-            size_t max_start = total - window_size;
-            if (saved_start > max_start) {
-                saved_start = max_start;
-            }
-        } else {
-            saved_start = 0;
-        }
-        ctx->list_window_start = saved_start;
-        if (ctx->reload_anchor_index == SIZE_MAX) {
-            size_t anchor = saved_start;
-            if (window_size > 1) {
-                anchor += window_size / 2;
-            }
-            if (total > 0 && anchor >= total) {
-                anchor = total - 1;
-            }
-            ctx->reload_anchor_index = anchor;
-        }
-    } else {
-        reset_window(ctx);
-    }
+    refresh_dir_handle_window(ctx, saved_start);
 
-    if (!bsp_display_lock(0)) {
+    if (!refresh_dir_lock_display()) {
         return ESP_ERR_TIMEOUT;
     }
-    sync_view(ctx);
-    clear_action_state(ctx);
-    close_paste_conflict(ctx);
-    hide_loading(ctx);
+    refresh_dir_apply_ui_updates(ctx);
     bsp_display_unlock();
     return ESP_OK;
 }
