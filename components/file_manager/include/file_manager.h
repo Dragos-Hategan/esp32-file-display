@@ -8,11 +8,6 @@ extern "C" {
 #include "esp_err.h"
 #include "sd_card.h"
 
-typedef struct {
-    const char *root_path;
-    size_t max_items;
-} file_manager_config_t;
-
 /**
  * @brief Create the LVGL file-browser screen using the default SDSPI root.
  *

@@ -59,6 +59,11 @@ typedef enum {
 } file_manager_action_type_t;
 
 typedef struct {
+    const char *root_path;
+    size_t max_items;
+} file_manager_config_t;
+
+typedef struct {
     bool active;
     bool is_dir;
     bool is_txt;
