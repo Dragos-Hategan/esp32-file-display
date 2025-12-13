@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <dirent.h>
+#include <strings.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -17,7 +18,6 @@
 #include "sdkconfig.h"
 #include "esp_timer.h"
 #include "esp_log.h"
-#include "esp_err.h"
 #include "lvgl.h"
 
 #include "text_viewer_screen.h"

@@ -26,7 +26,8 @@ extern "C" {
  * @brief Initialize the color palette for light and dark themes.
  *
  * Loads the UI_COLOR_* macro values into internal theme structures.
- * Call once before applying any styles to LVGL objects.
+ * Call once before applying any styles to LVGL objects; uses the current
+ * theme selection provided by the settings module.
  */
 void styles_init_colors(void);
 

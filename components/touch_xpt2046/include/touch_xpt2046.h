@@ -35,7 +35,7 @@ extern "C" {
  *
  * @note The SPI bus is initialized with automatic DMA channel selection.
  * @note The XPT2046 interrupt pin is expected to be active-low.
- * @note The recommended SPI clock for XPT2046 is typically ≤ 2.5 MHz.
+ * @note The recommended SPI clock for XPT2046 is typically ~2.5 MHz.
  *
  */
 esp_err_t touch_init(void);

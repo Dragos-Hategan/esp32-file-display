@@ -4,6 +4,7 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include "esp_err.h"
 #include "lvgl.h"
 

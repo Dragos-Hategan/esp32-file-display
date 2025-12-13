@@ -11,6 +11,7 @@ extern "C" {
 #include <stdbool.h>
 #include "esp_err.h"
 
+/* Internal reconnect semaphore exposed for legacy use; prefer sd_card_schedule_retry(). */
 extern SemaphoreHandle_t reconnection_success;
 
 /**

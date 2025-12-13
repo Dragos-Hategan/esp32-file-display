@@ -4,6 +4,8 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+
 #include "esp_err.h"
 #include "lvgl.h"
 
@@ -49,6 +51,8 @@ void settings_show_sntp_dialog(lv_obj_t *return_screen);
  *
  * @param on_time_set   Called after a successful Apply in the date&time dialog.
  * @param on_time_reset Called when settings are reset (to clear clock UI).
+ *
+ * Callbacks run in the LVGL/task context that owns the dialog; avoid heavy work.
  */
 void settings_register_time_callbacks(void (*on_time_set)(void),
                                       void (*on_time_reset)(void));
@@ -136,14 +140,14 @@ void settings_set_dark_theme_flag(bool is_dark);
 /**
  * @brief Get the configured Access Point SSID string.
  *
- * @return Pointer to the null-terminated SSID stored in settings (do not free).
+ * @return Pointer to the null-terminated SSID stored in settings (do not free or modify).
  */
 char* settings_get_ap_ssid(void);
 
 /**
  * @brief Get the configured Access Point password string.
  *
- * @return Pointer to the null-terminated password stored in settings (do not free).
+ * @return Pointer to the null-terminated password stored in settings (do not free or modify).
  */
 char* settings_get_ap_pwd(void);
 

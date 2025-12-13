@@ -4,7 +4,8 @@ idf_component_register(
     REQUIRES
         esp_bsp_generic 
         esp_common     
-        lvgl          
+        freertos
+        lvgl
     PRIV_REQUIRES
         esp_driver_sdspi
         esp_hw_support  

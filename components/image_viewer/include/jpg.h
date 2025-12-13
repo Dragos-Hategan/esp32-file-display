@@ -19,6 +19,8 @@ typedef struct {
  * whose source is the provided @p path. On close, it returns to @p return_screen
  * if provided; otherwise it loads the previously active screen.
  *
+ * Must be called from the LVGL/task context that owns the display lock.
+ *
  * @param opts Options struct (must not be NULL); @p path must be non-empty.
  * @return 
  *         - ESP_OK on success

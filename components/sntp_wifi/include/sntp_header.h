@@ -1,10 +1,14 @@
-#ifndef SNTP_H
-#define SNTP_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "esp_err.h"
+#include <stdint.h>
 
 #define TZ_EUROPE_BUCHAREST "EET-2EEST,M3.5.0/3,M10.5.0/4"
-#define SNTP_DEFAULT_TIMEZONE TZ_EUROPE_BUCHAREST
+#define SNTP_DEFAULT_TIMEZONE TZ_EUROPE_BUCHAREST  /* Override via Kconfig/env if needed. */
 
 /**
  * @brief Block until time is synced or a timeout elapses.
@@ -27,4 +31,6 @@ esp_err_t sntp_wait_for_time_blocking(uint32_t timeout_ms);
  */
 esp_err_t sntp_initialize(void);
 
-#endif // SNTP_H
+#ifdef __cplusplus
+}
+#endif

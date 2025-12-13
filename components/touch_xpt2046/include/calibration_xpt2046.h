@@ -7,6 +7,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "esp_err.h"
 #include "esp_lcd_touch.h"
 #include "lvgl.h"
 
@@ -42,6 +43,8 @@ void calibration_load_cal_data(bool *calibration_found);
  *      - On "Yes": runs run_5point_touch_calibration().
  *      - On "No" : keeps the existing calibration (@ref s_cal) and clears
  *                 the active LVGL screen.
+ *
+ * UI objects used during the prompt are created and cleaned up internally.
  *
  * @param[in] calibration_found  True if a valid calibration was loaded from NVS,
  *                               false if no calibration data is available.
