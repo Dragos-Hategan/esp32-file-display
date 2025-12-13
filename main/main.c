@@ -15,7 +15,7 @@
 enum {
     MAIN_TASK_STACK_WORDS       = 8 * 1024,
     MAIN_TASK_PRIORITY          = 1,
-#if CONFIG_DUAL_CORE    
+#if CONFIG_APP_DUAL_CORE    
     MAIN_TASK_CORE              = 1,
 #else
     MAIN_TASK_CORE              = 0,

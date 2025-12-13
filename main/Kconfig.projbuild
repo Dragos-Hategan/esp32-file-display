@@ -5,7 +5,7 @@ menu "App Settings"
         help
           When enabled, starts the periodic heap logging task.
 
-    config DUAL_CORE
+    config APP_DUAL_CORE
       bool "Is the used esp dual core?"
       default n
       help
