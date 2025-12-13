@@ -172,9 +172,9 @@ esp_err_t sd_card_init(void)
     if (!sd_spi_bus_ready) {
         ESP_LOGI(TAG, "Initializing SPI bus");
         spi_bus_config_t spi_bus_config = {
-            .mosi_io_num = CONFIG_SDSPI_BUS_MOSI_PIN,
-            .miso_io_num = CONFIG_SDSPI_BUS_MISO_PIN,
-            .sclk_io_num = CONFIG_SPSPI_BUS_SCL_PIN,
+            .mosi_io_num = CONFIG_SDSPI_BUS_MOSI_GPIO,
+            .miso_io_num = CONFIG_SDSPI_BUS_MISO_GPIO,
+            .sclk_io_num = CONFIG_SPSPI_BUS_SCL_GPIO,
             .max_transfer_sz = 4096,
         };
         err = spi_bus_initialize(CONFIG_SDSPI_BUS_HOST, &spi_bus_config, SPI_DMA_CH_AUTO);
@@ -190,7 +190,7 @@ esp_err_t sd_card_init(void)
     host.slot = CONFIG_SDSPI_BUS_HOST;
 
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
-    slot_config.gpio_cs = CONFIG_SDSPI_DEVICE_CS_PIN;
+    slot_config.gpio_cs = CONFIG_SDSPI_DEVICE_CS_GPIO;
     slot_config.host_id = CONFIG_SDSPI_BUS_HOST;
 
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
