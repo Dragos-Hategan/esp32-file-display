@@ -1525,6 +1525,48 @@ static void format_size64(uint64_t bytes, char *out, size_t out_len);
  static void set_rename_status(file_manager_ctx_t *ctx, const char *msg, bool error);
 
 /**
+ * @brief Handle rename dialog acceptance (button or keyboard).
+ *
+ * @param e LVGL event with user data = file_manager_ctx_t*.
+ */
+static void on_rename_accept(lv_event_t *e);
+
+/**
+ * @brief Validate the rename text input and set status on failure.
+ *
+ * @param ctx Browser context.
+ * @param text Input text.
+ * @param[out] out_name Output buffer for trimmed name.
+ * @return true if valid and trimmed, false otherwise.
+ */
+static bool rename_validate_input(file_manager_ctx_t *ctx, const char *text, char *out_name);
+
+/**
+ * @brief Handle no-op rename when the name is unchanged.
+ *
+ * @param ctx Browser context.
+ * @param name New name.
+ * @return true if handled (no-op), false otherwise.
+ */
+static bool rename_handle_noop(file_manager_ctx_t *ctx, const char *name);
+
+/**
+ * @brief Apply rename and report errors in the dialog.
+ *
+ * @param ctx Browser context.
+ * @param name New name.
+ * @return ESP_OK on success or error code.
+ */
+static esp_err_t rename_apply(file_manager_ctx_t *ctx, const char *name);
+
+/**
+ * @brief Finalize UI and refresh after successful rename.
+ *
+ * @param ctx Browser context.
+ */
+static void rename_finalize_success(file_manager_ctx_t *ctx);
+
+/**
  * @brief Show the rename dialog for the currently selected item.
  *
  * Builds an overlay with a card containing the current item name, a status label,
@@ -5181,47 +5223,24 @@ static void on_rename_accept(lv_event_t *e)
         return;
     }
 
-    const char *text = lv_textarea_get_text(ctx->graphics.rename_textarea);
-    if (!text) {
-        set_rename_status(ctx, "Invalid name", true);
-        return;
-    }
-
     char name[FS_NAV_MAX_NAME];
-    strlcpy(name, text, sizeof(name));
-    trim_whitespace(name);
-    if (!is_valid_name(name)) {
-        set_rename_status(ctx, "Invalid name", true);
+    const char *text = lv_textarea_get_text(ctx->graphics.rename_textarea);
+    if (!rename_validate_input(ctx, text, name)) {
         return;
     }
 
     if (strcmp(name, ctx->action_item.name) == 0) {
-        close_rename_dialog(ctx);
-        clear_action_state(ctx);
-        return;
-    }
-
-    esp_err_t err = perform_rename(ctx, name);
-    if (err != ESP_OK) {
-        if (err == ESP_ERR_INVALID_STATE) {
-            set_rename_status(ctx,
-                                           "Name already exists (WARNING: FAT is case-insensitive)",
-                                           true);
-        } else {
-            set_rename_status(ctx, esp_err_to_name(err), true);
-            sd_card_schedule_retry();
+        if (rename_handle_noop(ctx, name)) {
+            return;
         }
+    }
+
+    esp_err_t err = rename_apply(ctx, name);
+    if (err != ESP_OK) {
         return;
     }
 
-    close_rename_dialog(ctx);
-    clear_action_state(ctx);
-    ctx->flags.preserve_window_on_reload = true;
-    esp_err_t reload = refresh_current_dir();
-    if (reload != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to refresh after rename: %s", esp_err_to_name(reload));
-        sd_card_schedule_retry();
-    }
+    rename_finalize_success(ctx);
 }
 
 static void on_rename_cancel(lv_event_t *e)
@@ -5261,6 +5280,59 @@ static esp_err_t perform_rename(file_manager_ctx_t *ctx, const char *new_name)
     }
 
     return ESP_OK;
+}
+
+static bool rename_validate_input(file_manager_ctx_t *ctx, const char *text, char *out_name)
+{
+    if (!text) {
+        set_rename_status(ctx, "Invalid name", true);
+        return false;
+    }
+    strlcpy(out_name, text, FS_NAV_MAX_NAME);
+    trim_whitespace(out_name);
+    if (!is_valid_name(out_name)) {
+        set_rename_status(ctx, "Invalid name", true);
+        return false;
+    }
+    return true;
+}
+
+static bool rename_handle_noop(file_manager_ctx_t *ctx, const char *name)
+{
+    if (strcmp(name, ctx->action_item.name) != 0) {
+        return false;
+    }
+    close_rename_dialog(ctx);
+    clear_action_state(ctx);
+    return true;
+}
+
+static esp_err_t rename_apply(file_manager_ctx_t *ctx, const char *name)
+{
+    esp_err_t err = perform_rename(ctx, name);
+    if (err != ESP_OK) {
+        if (err == ESP_ERR_INVALID_STATE) {
+            set_rename_status(ctx,
+                              "Name already exists (WARNING: FAT is case-insensitive)",
+                              true);
+        } else {
+            set_rename_status(ctx, esp_err_to_name(err), true);
+            sd_card_schedule_retry();
+        }
+    }
+    return err;
+}
+
+static void rename_finalize_success(file_manager_ctx_t *ctx)
+{
+    close_rename_dialog(ctx);
+    clear_action_state(ctx);
+    ctx->flags.preserve_window_on_reload = true;
+    esp_err_t reload = refresh_current_dir();
+    if (reload != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to refresh after rename: %s", esp_err_to_name(reload));
+        sd_card_schedule_retry();
+    }
 }
 
 static void on_rename_keyboard_cancel(lv_event_t *e)
