@@ -188,6 +188,79 @@ static void schedule_wait_for_reconnection(void);
 static void wait_for_reconnection_task(void* arg);
 
 /**
+ * @brief Wait on the reconnection semaphore and set retry flag on failure.
+ *
+ * @param schedule_retry Output flag set true when waiting fails.
+ * @return true if semaphore was taken, false otherwise.
+ */
+static bool wait_task_take_reconnection_sem(bool *schedule_retry);
+
+/**
+ * @brief Handle reconnection flow when the browser is initialized.
+ *
+ * Processes pending parent navigation and refreshes the current directory unless
+ * an earlier step requested a retry.
+ *
+ * @param ctx Browser context.
+ * @param schedule_retry In/out flag to track retry necessity.
+ */
+static void wait_task_handle_initialized(file_manager_ctx_t *ctx, bool *schedule_retry);
+
+/**
+ * @brief Attempt pending parent navigation after reconnection.
+ *
+ * Clears pending_go_parent and tries fs_nav_go_parent, scheduling retry on error.
+ *
+ * @param ctx Browser context.
+ * @param schedule_retry In/out flag to track retry necessity.
+ */
+static void wait_task_handle_pending_parent(file_manager_ctx_t *ctx, bool *schedule_retry);
+
+/**
+ * @brief Refresh the current directory after reconnection if no retry is pending.
+ *
+ * @param ctx Browser context.
+ * @param schedule_retry In/out flag to track retry necessity.
+ */
+static void wait_task_refresh_after_reconnect(file_manager_ctx_t *ctx, bool *schedule_retry);
+
+/**
+ * @brief Restart the file manager when it was not initialized at reconnection time.
+ *
+ * @param schedule_retry In/out flag to track retry necessity.
+ */
+static void wait_task_restart_if_needed(bool *schedule_retry);
+
+/**
+ * @brief Schedule SD card retry when requested.
+ *
+ * @param schedule_retry Retry flag.
+ */
+static void wait_task_schedule_retry(bool schedule_retry);
+
+/**
+ * @brief Clear the wait task handle and delete the current task.
+ */
+static void wait_task_cleanup_and_delete(void);
+
+/**
+ * @brief Stop and delete a previous clock timer if it existed.
+ *
+ * @param timer Clock timer handle.
+ * @param was_running True if it was running.
+ */
+static void cleanup_previous_clock_timer(esp_timer_handle_t timer, bool was_running);
+
+/**
+ * @brief Delete previous LVGL timers and screen after locking the display.
+ *
+ * @param old_screen Previous screen object (nullable).
+ * @param old_path_timer Previous path scroll timer (nullable).
+ * @param old_list_timer Previous list scroll timer (nullable).
+ */
+static void cleanup_previous_ui(lv_obj_t *old_screen, lv_timer_t *old_path_timer, lv_timer_t *old_list_timer);
+
+/**
  * @brief Build the LVGL screen hierarchy (main header + path + secondary header + list).
  *
  * Creates the root screen and child widgets:
@@ -1340,6 +1413,13 @@ static void on_rename_textarea_clicked(lv_event_t *e);
 /************************************ File Manager Start Helpers ***********************************/
 
 /**
+ * @brief Delete previous screen and timers, if any.
+ *
+ * @param cfg Previously initialized configuration.
+ */
+static void file_manager_cleanup(file_manager_ctx_t *ctx);
+
+/**
  * @brief Build a default file manager config using compile-time constants.
  *
  * @return Config with root path from CONFIG_SDSPI_MOUNT_POINT and default max items.
@@ -1409,6 +1489,7 @@ esp_err_t file_manager_start(void)
     }
 
     file_manager_ctx_t *ctx = &s_browser;
+    file_manager_cleanup(ctx);
     initialize_file_manager_context(ctx);
 
     fs_nav_config_t nav_cfg = build_nav_config(&browser_cfg);
@@ -1427,6 +1508,7 @@ esp_err_t file_manager_start(void)
     sync_view(ctx);
     lv_screen_load(ctx->graphics.screen);
     bsp_display_unlock();
+    
     return ESP_OK;
 }
 
@@ -1449,6 +1531,18 @@ void file_manager_on_time_set(void)
     file_manager_ctx_t *ctx = &s_browser;
     ctx->flags.clock_user_set = true;
     clock_update_async(NULL);
+}
+
+static void file_manager_cleanup(file_manager_ctx_t *ctx)
+{
+    lv_obj_t *old_screen = ctx->graphics.screen;
+    lv_timer_t *old_path_timer = ctx->graphics.path_scroll_timer;
+    lv_timer_t *old_list_timer = ctx->graphics.list_scroll_timer;
+    cleanup_previous_ui(old_screen, old_path_timer, old_list_timer);
+    
+    esp_timer_handle_t old_clock_timer = ctx->clock_timer;
+    bool old_clock_running = ctx->flags.clock_timer_running;
+    cleanup_previous_clock_timer(old_clock_timer, old_clock_running);
 }
 
 static file_manager_config_t build_default_file_manager_config(void)
@@ -1475,6 +1569,30 @@ static void initialize_file_manager_context(file_manager_ctx_t *ctx)
     clear_action_state(ctx);
     reset_window(ctx);
     settings_register_time_callbacks(file_manager_on_time_set, file_manager_reset_clock_display);
+}
+
+static void cleanup_previous_clock_timer(esp_timer_handle_t timer, bool was_running)
+{
+    if (!timer) {
+        return;
+    }
+    if (was_running) {
+        esp_timer_stop(timer);
+    }
+    esp_timer_delete(timer);
+}
+
+static void cleanup_previous_ui(lv_obj_t *old_screen, lv_timer_t *old_path_timer, lv_timer_t *old_list_timer)
+{
+    if (old_path_timer) {
+        lv_timer_del(old_path_timer);
+    }
+    if (old_list_timer) {
+        lv_timer_del(old_list_timer);
+    }
+    if (old_screen) {
+        lv_obj_del(old_screen);
+    }
 }
 
 static fs_nav_config_t build_nav_config(const file_manager_config_t *browser_cfg)
@@ -1965,45 +2083,97 @@ static void schedule_wait_for_reconnection(void)
     }                                             
 }
 
+static bool wait_task_take_reconnection_sem(bool *schedule_retry)
+{
+    if (xSemaphoreTake(reconnection_success, portMAX_DELAY) != pdTRUE) {
+        ESP_LOGE(TAG, "Failed to wait for SD reconnection, scheduling retry...");
+        if (schedule_retry) {
+            *schedule_retry = true;
+        }
+        return false;
+    }
+    return true;
+}
+
+static void wait_task_handle_pending_parent(file_manager_ctx_t *ctx, bool *schedule_retry)
+{
+    if (!ctx->flags.pending_go_parent) {
+        return;
+    }
+    ctx->flags.pending_go_parent = false;
+    esp_err_t nav_err = fs_nav_go_parent(&ctx->nav);
+    if (nav_err != ESP_OK){
+        ESP_LOGE(TAG, "fs_nav_go_parent() failed after reconnection (%s), scheduling retry...", esp_err_to_name(nav_err));
+        if (schedule_retry) {
+            *schedule_retry = true;
+        }
+    }
+}
+
+static void wait_task_refresh_after_reconnect(file_manager_ctx_t *ctx, bool *schedule_retry)
+{
+    if (schedule_retry && *schedule_retry) {
+        return;
+    }
+    esp_err_t err = refresh_current_dir();
+    if (err != ESP_OK){
+        ESP_LOGE(TAG, "refresh_current_dir() failed while trying to refresh the screen after an SD card reconnection, scheduling retry...\n");
+        if (schedule_retry) {
+            *schedule_retry = true;
+        }
+    }
+}
+
+static void wait_task_handle_initialized(file_manager_ctx_t *ctx, bool *schedule_retry)
+{
+    wait_task_handle_pending_parent(ctx, schedule_retry);
+    wait_task_refresh_after_reconnect(ctx, schedule_retry);
+}
+
+static void wait_task_restart_if_needed(bool *schedule_retry)
+{
+    if (schedule_retry && *schedule_retry) {
+        return;
+    }
+    esp_err_t err = file_manager_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "file_manager_start() failed after SD reconnection (%s), scheduling retry...", esp_err_to_name(err));
+        if (schedule_retry) {
+            *schedule_retry = true;
+        }
+    }
+}
+
+static void wait_task_schedule_retry(bool schedule_retry)
+{
+    if (schedule_retry) {
+        sd_card_schedule_retry();
+    }
+}
+
+static void wait_task_cleanup_and_delete(void)
+{
+    file_manager_wait_task = NULL;
+    vTaskDelete(NULL);
+}
+
 static void wait_for_reconnection_task(void* arg)
 {
     file_manager_ctx_t *ctx = &s_browser;
     bool schedule_retry = false;
 
-    if (xSemaphoreTake(reconnection_success, portMAX_DELAY) != pdTRUE) {
-        ESP_LOGE(TAG, "Failed to wait for SD reconnection, scheduling retry...");
-        schedule_retry = true;
-    } else if (ctx->flags.initialized) {
-        if (ctx->flags.pending_go_parent) {
-            ctx->flags.pending_go_parent = false;
-            esp_err_t nav_err = fs_nav_go_parent(&ctx->nav);
-            if (nav_err != ESP_OK){
-                ESP_LOGE(TAG, "fs_nav_go_parent() failed after reconnection (%s), scheduling retry...", esp_err_to_name(nav_err));
-                schedule_retry = true;
-            }
+    bool took_sem = wait_task_take_reconnection_sem(&schedule_retry);
+    if (took_sem) {
+        if (ctx->flags.initialized) {
+            wait_task_handle_initialized(ctx, &schedule_retry);
+        } else {
+            wait_task_restart_if_needed(&schedule_retry);
         }
+    }
+    
+    wait_task_schedule_retry(schedule_retry);
 
-        if (!schedule_retry) {
-            esp_err_t err = refresh_current_dir();
-            if (err != ESP_OK){
-                ESP_LOGE(TAG, "refresh_current_dir() failed while trying to refresh the screen after an SD card reconnection, scheduling retry...\n");
-                schedule_retry = true;
-            }
-        }
-    } else {
-        esp_err_t err = file_manager_start();
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "file_manager_start() failed after SD reconnection (%s), scheduling retry...", esp_err_to_name(err));
-            schedule_retry = true;
-        }
-    }
-    
-    if (schedule_retry) {
-        sd_card_schedule_retry();
-    }
-    
-    file_manager_wait_task = NULL;
-    vTaskDelete(NULL);
+    wait_task_cleanup_and_delete();
 }
 
 static void sync_view(file_manager_ctx_t *ctx)
