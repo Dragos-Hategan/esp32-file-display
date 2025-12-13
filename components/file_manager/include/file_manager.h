@@ -4,9 +4,7 @@
 extern "C" {
 #endif
 
-#include <stddef.h>
 #include "esp_err.h"
-#include "sd_card.h"
 
 /**
  * @brief Create the LVGL file-browser screen using the default SDSPI root.

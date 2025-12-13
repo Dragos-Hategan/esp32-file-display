@@ -2,6 +2,7 @@
 
 #include <sys/stat.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <dirent.h>
 #include <string.h>
@@ -24,6 +25,7 @@
 #include "fs_text_ops.h"
 #include "Domine_16.h"
 #include "settings.h"
+#include "sd_card.h"
 #include "styles.h"
 #include "jpg.h"
 
