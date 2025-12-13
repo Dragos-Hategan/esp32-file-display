@@ -141,7 +141,7 @@ typedef struct {
     fs_nav_t nav;
 } file_manager_ctx_t;
 
-static file_manager_ctx_t s_browser;                /* Singleton UI context */
+static file_manager_ctx_t s_file_manager;                /* Singleton UI context */
 static TaskHandle_t file_manager_wait_task = NULL;  /* Task used to wait for sdspi reconnection after a failure */
 
 /***************************************** Image Helpers *****************************************/
@@ -164,6 +164,37 @@ static bool is_file_jpeg(const char *name);
  * @param item  Navigator item selected from the list.
  */
 static void handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_t *item);
+
+/**
+ * @brief Compose the full filesystem path for a JPEG item.
+ *
+ * @param ctx Browser context.
+ * @param item Navigator item.
+ * @param[out] path Output buffer.
+ * @param path_len Output buffer size.
+ * @return true on success, false on failure.
+ */
+static bool handle_jpeg_compose_path(file_manager_ctx_t *ctx, const fs_nav_item_t *item, char *path, size_t path_len);
+
+/**
+ * @brief Convert absolute path to LVGL storage path ("S:" + relative).
+ *
+ * @param relative Relative path (after mount point).
+ * @param item_name Item name for logging.
+ * @param[out] lv_path Output buffer.
+ * @param lv_path_len Output buffer size.
+ * @return true on success, false on failure.
+ */
+static bool handle_jpeg_build_lv_path(const char *relative, const char *item_name, char *lv_path, size_t lv_path_len);
+
+/**
+ * @brief Open JPEG viewer and handle error prompts.
+ *
+ * @param ctx Browser context.
+ * @param lv_path LVGL path to open.
+ * @param full_path Absolute path (for logging).
+ */
+static void handle_jpeg_open_with_prompts(file_manager_ctx_t *ctx, const char *lv_path, const char *full_path);
 
 /************************************ UI & Data Refresh Helpers ***********************************/
 
@@ -1562,19 +1593,17 @@ esp_err_t file_manager_start(void)
 {
     const char* TAG_FILE_BROWSER_START = "file_manager_start";
 
-    file_manager_config_t browser_cfg = build_default_file_manager_config();
+    file_manager_ctx_t *ctx = &s_file_manager;
+    file_manager_cleanup(ctx);
+    initialize_file_manager_context(ctx);
 
+    file_manager_config_t browser_cfg = build_default_file_manager_config();
     esp_err_t config_err = validate_root_path(&browser_cfg, TAG_FILE_BROWSER_START);
     if (config_err != ESP_OK) {
         return config_err;
     }
 
-    file_manager_ctx_t *ctx = &s_browser;
-    file_manager_cleanup(ctx);
-    initialize_file_manager_context(ctx);
-
     fs_nav_config_t nav_cfg = build_nav_config(&browser_cfg);
-
     esp_err_t nav_err = init_file_navigator(ctx, &nav_cfg, TAG_FILE_BROWSER_START);
     if (nav_err != ESP_OK) {
         return nav_err;
@@ -1595,7 +1624,7 @@ esp_err_t file_manager_start(void)
 
 void file_manager_reset_clock_display(void)
 {
-    file_manager_ctx_t *ctx = &s_browser;
+    file_manager_ctx_t *ctx = &s_file_manager;
     ctx->flags.clock_user_set = false;
 
     if (ctx->graphics.datetime_label) {
@@ -1609,7 +1638,7 @@ void file_manager_reset_clock_display(void)
 
 void file_manager_on_time_set(void)
 {
-    file_manager_ctx_t *ctx = &s_browser;
+    file_manager_ctx_t *ctx = &s_file_manager;
     ctx->flags.clock_user_set = true;
     clock_update_async(NULL);
 }
@@ -2240,7 +2269,7 @@ static void wait_task_cleanup_and_delete(void)
 
 static void wait_for_reconnection_task(void* arg)
 {
-    file_manager_ctx_t *ctx = &s_browser;
+    file_manager_ctx_t *ctx = &s_file_manager;
     bool schedule_retry = false;
 
     bool took_sem = wait_task_take_reconnection_sem(&schedule_retry);
@@ -2674,32 +2703,27 @@ static bool is_file_jpeg(const char *name)
     return strcasecmp(dot, ".jpg") == 0 || strcasecmp(dot, ".jpeg") == 0;
 }
 
-static void handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_t *item)
+static bool handle_jpeg_compose_path(file_manager_ctx_t *ctx, const fs_nav_item_t *item, char *path, size_t path_len)
 {
-    if (!ctx || !item) {
-        return;
-    }
-
-    char path[FS_NAV_MAX_PATH];
-    if (fs_nav_compose_path(&ctx->nav, item->name, path, sizeof(path)) != ESP_OK) {
+    if (fs_nav_compose_path(&ctx->nav, item->name, path, path_len) != ESP_OK) {
         ESP_LOGE(TAG, "Path too long for \"%s\"", item->name);
-        return;
+        return false;
     }
+    return true;
+}
 
-    const char *root = CONFIG_SDSPI_MOUNT_POINT;
-    size_t root_len = strlen(root);
-    const char *relative = path;
-    if (strncmp(path, root, root_len) == 0) {
-        relative = path + root_len; /* keep leading slash after mountpoint */
+static bool handle_jpeg_build_lv_path(const char *relative, const char *item_name, char *lv_path, size_t lv_path_len)
+{
+    int needed = snprintf(lv_path, lv_path_len, "S:%s", relative);
+    if (needed < 0 || needed >= (int)lv_path_len) {
+        ESP_LOGE(TAG, "LVGL path too long for \"%s\"", item_name);
+        return false;
     }
+    return true;
+}
 
-    char lv_path[FS_NAV_MAX_PATH + 4];
-    int needed = snprintf(lv_path, sizeof(lv_path), "S:%s", relative);
-    if (needed < 0 || needed >= (int)sizeof(lv_path)) {
-        ESP_LOGE(TAG, "LVGL path too long for \"%s\"", item->name);
-        return;
-    }
-
+static void handle_jpeg_open_with_prompts(file_manager_ctx_t *ctx, const char *lv_path, const char *full_path)
+{
     jpg_viewer_open_opts_t opts = {
         .path = lv_path,
         .return_screen = ctx->graphics.screen
@@ -2717,15 +2741,41 @@ static void handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_t *item)
             ESP_LOGE(TAG, "The image resolution is too large do display.");
             show_image_resolution_too_large_to_display_prompt();
         }else{
-            ESP_LOGE(TAG, "Failed to open JPEG \"%s\": %s", path, esp_err_to_name(err));
+            ESP_LOGE(TAG, "Failed to open JPEG \"%s\": %s", full_path, esp_err_to_name(err));
             sd_card_schedule_retry();
         }
     }
 }
 
+static void handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_t *item)
+{
+    if (!ctx || !item) {
+        return;
+    }
+
+    char path[FS_NAV_MAX_PATH];
+    if (!handle_jpeg_compose_path(ctx, item, path, sizeof(path))) {
+        return;
+    }
+
+    const char *root = CONFIG_SDSPI_MOUNT_POINT;
+    size_t root_len = strlen(root);
+    const char *relative = path;
+    if (strncmp(path, root, root_len) == 0) {
+        relative = path + root_len; /* keep leading slash after mountpoint */
+    }
+
+    char lv_path[FS_NAV_MAX_PATH + 4];
+    if (!handle_jpeg_build_lv_path(relative, item->name, lv_path, sizeof(lv_path))) {
+        return;
+    }
+
+    handle_jpeg_open_with_prompts(ctx, lv_path, path);
+}
+
 static esp_err_t refresh_current_dir(void)
 {
-    file_manager_ctx_t *ctx = &s_browser;
+    file_manager_ctx_t *ctx = &s_file_manager;
     if (!ctx->flags.initialized) {
         return ESP_ERR_INVALID_STATE;
     }
@@ -3049,7 +3099,7 @@ static void clock_timer_cb(void *arg)
 
 static void clock_update_async(void *arg)
 {
-    file_manager_ctx_t *ctx = &s_browser;
+    file_manager_ctx_t *ctx = &s_file_manager;
     if (!ctx->graphics.datetime_label) {
         return;
     }
