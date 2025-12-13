@@ -1850,6 +1850,67 @@ static void format_size64(uint64_t bytes, char *out, size_t out_len);
  static void on_action_button(lv_event_t *e);
 
 /**
+ * @brief Validate if edit action is allowed.
+ *
+ * @param ctx Browser context.
+ * @return true if active, not dir, and is txt.
+ */
+static bool is_item_editable(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Compose path for edit action.
+ *
+ * @param ctx Browser context.
+ * @param[out] path Output buffer.
+ * @param path_len Buffer length.
+ * @return true on success.
+ */
+static bool compose_edit_path(file_manager_ctx_t *ctx, char *path, size_t path_len);
+
+/**
+ * @brief Open text viewer for edit.
+ *
+ * @param ctx Browser context.
+ * @param path Path to open.
+ * @return ESP_OK on success or error from text_viewer_open.
+ */
+static esp_err_t open_editor(file_manager_ctx_t *ctx, const char *path);
+
+/**
+ * @brief Handle edit action flow.
+ *
+ * @param ctx Browser context.
+ */
+static void handle_edit(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Validate if clipboard can be prepared.
+ *
+ * @param ctx Browser context.
+ * @return true if action item is active.
+ */
+static bool can_set_clipboard(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Compose clipboard source path.
+ *
+ * @param ctx Browser context.
+ * @param[out] src_path Output buffer.
+ * @param src_len Buffer length.
+ * @return true on success.
+ */
+static bool compose_clipboard_path(file_manager_ctx_t *ctx, char *src_path, size_t src_len);
+
+/**
+ * @brief Set clipboard fields for copy/cut.
+ *
+ * @param ctx Browser context.
+ * @param src_path Source path.
+ * @param is_cut True for cut, false for copy.
+ */
+static void set_clipboard(file_manager_ctx_t *ctx, const char *src_path, bool is_cut);
+
+/**
  * @brief Show a Yes/No confirmation dialog for deleting the selected item.
  *
  * Creates a message box with the item name in the prompt and two footer
@@ -1857,7 +1918,7 @@ static void format_size64(uint64_t bytes, char *out, size_t out_len);
  *
  * @param[in,out] ctx Browser context with an active @c action_item.
  */
- static void file_manager_show_delete_confirm(file_manager_ctx_t *ctx);
+ static void show_delete_confirm(file_manager_ctx_t *ctx);
 
 /**
  * @brief Close and clear the delete confirmation message box.
@@ -1906,7 +1967,7 @@ static void format_size64(uint64_t bytes, char *out, size_t out_len);
  *         ESP_ERR_INVALID_STATE if state is invalid,
  *         ESP_ERR_INVALID_SIZE if the buffer is too small.
  */
- static esp_err_t action_compose_path(const file_manager_ctx_t *ctx, char *out, size_t out_len);
+ static esp_err_t compose_path(const file_manager_ctx_t *ctx, char *out, size_t out_len);
 
 /**
  * @brief Clear all transient action-related state from the context.
@@ -5587,6 +5648,76 @@ static void close_action_menu(file_manager_ctx_t *ctx)
     }
 }
 
+static bool is_item_editable(const file_manager_ctx_t *ctx)
+{
+    return (ctx && ctx->action_item.active && !ctx->action_item.is_dir && ctx->action_item.is_txt);
+}
+
+static bool compose_edit_path(file_manager_ctx_t *ctx, char *path, size_t path_len)
+{
+    if (compose_path(ctx, path, path_len) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to compose path for edit");
+        return false;
+    }
+    return true;
+}
+
+static esp_err_t open_editor(file_manager_ctx_t *ctx, const char *path)
+{
+    text_viewer_open_opts_t opts = {
+        .path = path,
+        .return_screen = ctx->graphics.screen,
+        .editable = true,
+        .on_close = editor_closed,
+        .user_ctx = ctx,
+    };
+    return text_viewer_open(&opts);
+}
+
+static void handle_edit(file_manager_ctx_t *ctx)
+{
+    if (!is_item_editable(ctx)) {
+        return;
+    }
+    char path[FS_NAV_MAX_PATH];
+    if (!compose_edit_path(ctx, path, sizeof(path))) {
+        return;
+    }
+    esp_err_t err = open_editor(ctx, path);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to edit \"%s\": %s", ctx->action_item.name, esp_err_to_name(err));
+        sd_card_schedule_retry();
+    } else {
+        clear_action_state(ctx);
+    }
+}
+
+static bool can_set_clipboard(const file_manager_ctx_t *ctx)
+{
+    return (ctx && ctx->action_item.active);
+}
+
+static bool compose_clipboard_path(file_manager_ctx_t *ctx, char *src_path, size_t src_len)
+{
+    if (compose_path(ctx, src_path, src_len) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to compose path for clipboard");
+        return false;
+    }
+    return true;
+}
+
+static void set_clipboard(file_manager_ctx_t *ctx, const char *src_path, bool is_cut)
+{
+    memset(&ctx->clipboard, 0, sizeof(ctx->clipboard));
+    ctx->clipboard.has_item = true;
+    ctx->clipboard.cut = is_cut;
+    ctx->clipboard.is_dir = ctx->action_item.is_dir;
+    strlcpy(ctx->clipboard.name, ctx->action_item.name, sizeof(ctx->clipboard.name));
+    strlcpy(ctx->clipboard.src_path, src_path, sizeof(ctx->clipboard.src_path));
+    update_second_header(ctx);
+    clear_action_state(ctx);
+}
+
 static void on_action_button(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
@@ -5599,54 +5730,25 @@ static void on_action_button(lv_event_t *e)
 
     switch (action) {
         case FILE_BROWSER_ACTION_EDIT: {
-            if (!ctx->action_item.active || ctx->action_item.is_dir || !ctx->action_item.is_txt) {
-                return;
-            }
-            char path[FS_NAV_MAX_PATH];
-            if (action_compose_path(ctx, path, sizeof(path)) != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to compose path for edit");
-                return;
-            }
-            text_viewer_open_opts_t opts = {
-                .path = path,
-                .return_screen = ctx->graphics.screen,
-                .editable = true,
-                .on_close = editor_closed,
-                .user_ctx = ctx,
-            };
-            esp_err_t err = text_viewer_open(&opts);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to edit \"%s\": %s", ctx->action_item.name, esp_err_to_name(err));
-                sd_card_schedule_retry();
-            } else {
-                clear_action_state(ctx);
-            }
+            handle_edit(ctx);
             break;
         }
         case FILE_BROWSER_ACTION_RENAME:
             show_rename_dialog(ctx);
             break;
         case FILE_BROWSER_ACTION_DELETE:
-            file_manager_show_delete_confirm(ctx);
+            show_delete_confirm(ctx);
             break;
         case FILE_BROWSER_ACTION_COPY:
         case FILE_BROWSER_ACTION_CUT: {
-            if (!ctx->action_item.active) {
+            if (!can_set_clipboard(ctx)) {
                 return;
             }
             char src_path[FS_NAV_MAX_PATH];
-            if (action_compose_path(ctx, src_path, sizeof(src_path)) != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to compose path for clipboard");
+            if (!compose_clipboard_path(ctx, src_path, sizeof(src_path))) {
                 return;
             }
-            memset(&ctx->clipboard, 0, sizeof(ctx->clipboard));
-            ctx->clipboard.has_item = true;
-            ctx->clipboard.cut = (action == FILE_BROWSER_ACTION_CUT);
-            ctx->clipboard.is_dir = ctx->action_item.is_dir;
-            strlcpy(ctx->clipboard.name, ctx->action_item.name, sizeof(ctx->clipboard.name));
-            strlcpy(ctx->clipboard.src_path, src_path, sizeof(ctx->clipboard.src_path));
-            update_second_header(ctx);
-            clear_action_state(ctx);
+            set_clipboard(ctx, src_path, action == FILE_BROWSER_ACTION_CUT);
             break;
         }
         case FILE_BROWSER_ACTION_CANCEL:
@@ -5656,7 +5758,7 @@ static void on_action_button(lv_event_t *e)
     }
 }
 
-static void file_manager_show_delete_confirm(file_manager_ctx_t *ctx)
+static void show_delete_confirm(file_manager_ctx_t *ctx)
 {
     if (!ctx || !ctx->action_item.active) {
         return;
@@ -5757,7 +5859,7 @@ static esp_err_t selected_item(file_manager_ctx_t *ctx)
     }
 
     char path[FS_NAV_MAX_PATH];
-    esp_err_t err = action_compose_path(ctx, path, sizeof(path));
+    esp_err_t err = compose_path(ctx, path, sizeof(path));
     if (err != ESP_OK) {
         return err;
     }
@@ -5774,7 +5876,7 @@ static esp_err_t selected_item(file_manager_ctx_t *ctx)
     return refresh_current_dir();
 }
 
-static esp_err_t action_compose_path(const file_manager_ctx_t *ctx, char *out, size_t out_len)
+static esp_err_t compose_path(const file_manager_ctx_t *ctx, char *out, size_t out_len)
 {
     if (!ctx || !ctx->action_item.active || !out || out_len == 0) {
         return ESP_ERR_INVALID_STATE;
@@ -5966,7 +6068,7 @@ static esp_err_t perform_rename(file_manager_ctx_t *ctx, const char *new_name)
     }
 
     char old_path[FS_NAV_MAX_PATH];
-    esp_err_t err = action_compose_path(ctx, old_path, sizeof(old_path));
+    esp_err_t err = compose_path(ctx, old_path, sizeof(old_path));
     if (err != ESP_OK) {
         return err;
     }
