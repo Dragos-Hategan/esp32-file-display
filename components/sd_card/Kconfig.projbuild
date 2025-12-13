@@ -20,28 +20,28 @@ menu "SD Card Configuration"
         help
             Clock frequency for the SD card SPI interface.    
         
-    config SDSPI_BUS_MISO_PIN
+    config SDSPI_BUS_MISO_GPIO
         int "SD SPI MISO GPIO"
         range -1 47
         default -1
         help 
             GPIO number for MISO line of the SD card SPI bus.
 
-    config SDSPI_BUS_MOSI_PIN
+    config SDSPI_BUS_MOSI_GPIO
         int "SD SPI MOSI GPIO"
         range -1 47
         default -1
         help
             GPIO number for MOSI line of the SD card SPI bus.
 
-    config SPSPI_BUS_SCL_PIN
+    config SPSPI_BUS_SCL_GPIO
         int "SD SPI SCLK GPIO"
         range -1 47
         default -1   
         help
             GPIO number for SCLK line of the SD card SPI bus.     
 
-    config SDSPI_DEVICE_CS_PIN
+    config SDSPI_DEVICE_CS_GPIO
         int "SD card CS GPIO"
         range -1 47
         default -1
