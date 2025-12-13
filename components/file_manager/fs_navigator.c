@@ -34,6 +34,7 @@ typedef struct {
 
 static fs_nav_sort_mode_t s_cmp_mode = FS_NAV_SORT_NAME;
 static bool s_cmp_ascending = true;
+
 /**
  * @brief Validate a relative path (no leading '/', no '.' or '..' segments).
  *
