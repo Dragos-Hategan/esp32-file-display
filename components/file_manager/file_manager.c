@@ -1531,6 +1531,24 @@ static void hide_loading(file_manager_ctx_t *ctx);
 static esp_err_t perform_paste(file_manager_ctx_t *ctx, const char *dest_path, bool allow_overwrite);
 
 /**
+ * @brief Guard paste click for valid clipboard and context.
+ *
+ * @param ctx Browser context.
+ * @return true if clipboard is present.
+ */
+static bool paste_click_has_clipboard(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Compose destination path for clipboard item.
+ *
+ * @param ctx Browser context.
+ * @param[out] dest_path Output path buffer.
+ * @param dest_len Buffer length.
+ * @return ESP_OK on success or error from fs_nav_compose_path.
+ */
+static esp_err_t paste_click_compose_dest_path(file_manager_ctx_t *ctx, char *dest_path, size_t dest_len);
+
+/**
  * @brief Validate basic paste preconditions.
  *
  * @param ctx Browser context.
@@ -1538,6 +1556,15 @@ static esp_err_t perform_paste(file_manager_ctx_t *ctx, const char *dest_path, b
  * @return ESP_OK if valid, ESP_ERR_INVALID_STATE otherwise.
  */
 static esp_err_t paste_validate_state(const file_manager_ctx_t *ctx, const char *dest_path);
+
+/**
+ * @brief Check if destination equals source path.
+ *
+ * @param ctx Browser context.
+ * @param dest_path Destination path.
+ * @return true if same path.
+ */
+static bool paste_click_is_same_path(const file_manager_ctx_t *ctx, const char *dest_path);
 
 /**
  * @brief Check for invalid subpath paste (dir into its subtree).
@@ -1574,6 +1601,15 @@ static esp_err_t paste_handle_cut(file_manager_ctx_t *ctx, const char *dest_path
  * @return ESP_OK on success or error code.
  */
 static esp_err_t paste_handle_copy(file_manager_ctx_t *ctx, const char *dest_path);
+
+/**
+ * @brief Prepare copy flow: compute size, set target and show confirm.
+ *
+ * @param ctx Browser context.
+ * @param dest_path Destination path.
+ * @return ESP_OK on success or error from compute_total_size.
+ */
+static esp_err_t paste_click_prepare_copy(file_manager_ctx_t *ctx, const char *dest_path);
 
 /**
  * @brief Clear clipboard and update UI on success.
@@ -5009,12 +5045,27 @@ static esp_err_t perform_paste(file_manager_ctx_t *ctx, const char *dest_path, b
     return err;
 }
 
+static bool paste_click_has_clipboard(const file_manager_ctx_t *ctx)
+{
+    return (ctx && ctx->clipboard.has_item);
+}
+
+static esp_err_t paste_click_compose_dest_path(file_manager_ctx_t *ctx, char *dest_path, size_t dest_len)
+{
+    return fs_nav_compose_path(&ctx->nav, ctx->clipboard.name, dest_path, dest_len);
+}
+
 static esp_err_t paste_validate_state(const file_manager_ctx_t *ctx, const char *dest_path)
 {
     if (!ctx || !ctx->clipboard.has_item || !dest_path) {
         return ESP_ERR_INVALID_STATE;
     }
     return ESP_OK;
+}
+
+static bool paste_click_is_same_path(const file_manager_ctx_t *ctx, const char *dest_path)
+{
+    return (strcmp(dest_path, ctx->clipboard.src_path) == 0);
 }
 
 static esp_err_t paste_validate_subpath(const file_manager_ctx_t *ctx, const char *dest_path)
@@ -5079,15 +5130,28 @@ static void paste_finalize_success(file_manager_ctx_t *ctx)
     update_second_header(ctx);
 }
 
+static esp_err_t paste_click_prepare_copy(file_manager_ctx_t *ctx, const char *dest_path)
+{
+    uint64_t total = 0;
+    esp_err_t size_err = compute_total_size(ctx->clipboard.src_path, &total);
+    if (size_err != ESP_OK) {
+        return size_err;
+    }
+    strlcpy(ctx->paste_target_path, dest_path, sizeof(ctx->paste_target_path));
+    ctx->flags.paste_target_valid = true;
+    show_copy_confirm(ctx, total);
+    return ESP_OK;
+}
+
 static void on_paste_click(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || !ctx->clipboard.has_item) {
+    if (!paste_click_has_clipboard(ctx)) {
         return;
     }
 
     char dest_path[FS_NAV_MAX_PATH];
-    esp_err_t err = fs_nav_compose_path(&ctx->nav, ctx->clipboard.name, dest_path, sizeof(dest_path));
+    esp_err_t err = paste_click_compose_dest_path(ctx, dest_path, sizeof(dest_path));
 
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to compose paste path: %s", esp_err_to_name(err));
@@ -5095,7 +5159,7 @@ static void on_paste_click(lv_event_t *e)
         return;
     }
 
-    if (strcmp(dest_path, ctx->clipboard.src_path) == 0) {
+    if (paste_click_is_same_path(ctx, dest_path)) {
         show_message("Already in this folder.");
         return;
     }
@@ -5106,15 +5170,10 @@ static void on_paste_click(lv_event_t *e)
     }
 
     if (!ctx->clipboard.cut) {
-        uint64_t total = 0;
-        esp_err_t size_err = compute_total_size(ctx->clipboard.src_path, &total);
+        esp_err_t size_err = paste_click_prepare_copy(ctx, dest_path);
         if (size_err != ESP_OK) {
             sd_card_schedule_retry();
-            return;
         }
-        strlcpy(ctx->paste_target_path, dest_path, sizeof(ctx->paste_target_path));
-        ctx->flags.paste_target_valid = true;
-        show_copy_confirm(ctx, total);
         return;
     }
 
@@ -5122,9 +5181,11 @@ static void on_paste_click(lv_event_t *e)
         show_paste_conflict(ctx, dest_path);
         return;
     }
+
     show_loading(ctx);
     err = perform_paste(ctx, dest_path, false);
     hide_loading(ctx);
+    
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Paste failed: (%s)", esp_err_to_name(err));
         sd_card_schedule_retry();
