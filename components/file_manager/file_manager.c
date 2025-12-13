@@ -873,6 +873,111 @@ static void list_scroll_handle_bottom(file_manager_ctx_t *ctx);
 static void list_scroll_handle_top(file_manager_ctx_t *ctx);
 
 /**
+ * @brief Guard for slider event handling (ctx and suppress flag).
+ *
+ * @param ctx Browser context.
+ * @return true if processing is allowed, false otherwise.
+ */
+static bool slider_can_handle_event(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Return true if all items fit in one window.
+ *
+ * @param total Total items.
+ * @param window_size Window size.
+ * @return true if no paging needed.
+ */
+static bool slider_total_fits_window(size_t total, size_t window_size);
+
+/**
+ * @brief Compute maximum step index.
+ *
+ * @param max_start Maximum start index.
+ * @param step Step size.
+ * @return Max step index.
+ */
+static size_t slider_max_step_index(size_t max_start, size_t step);
+
+/**
+ * @brief Clamp slider value to valid step range.
+ *
+ * @param max_step_index Max step index.
+ * @param slider_val Raw slider value.
+ * @return Clamped step value.
+ */
+static size_t slider_clamp_value(size_t max_step_index, int32_t slider_val);
+
+/**
+ * @brief Handle pressed event: start tracking drag.
+ *
+ * @param ctx Browser context.
+ * @param clamped_step Current step.
+ * @param code Event code.
+ * @return true if handled.
+ */
+static bool slider_handle_pressed(file_manager_ctx_t *ctx, size_t clamped_step, lv_event_code_t code);
+
+/**
+ * @brief Handle value changed event during drag.
+ *
+ * @param ctx Browser context.
+ * @param clamped_step Current step.
+ * @param code Event code.
+ * @return true if handled.
+ */
+static bool slider_handle_value_changed(file_manager_ctx_t *ctx, size_t clamped_step, lv_event_code_t code);
+
+/**
+ * @brief Resolve target step on release.
+ *
+ * @param ctx Browser context.
+ * @param clamped_step Clamped current step.
+ * @param max_step_index Max step index.
+ * @return Target step.
+ */
+static size_t slider_target_step(file_manager_ctx_t *ctx, size_t clamped_step, size_t max_step_index);
+
+/**
+ * @brief Compute current step from window start.
+ *
+ * @param ctx Browser context.
+ * @param step Step size.
+ * @param max_start Max start index.
+ * @param max_step_index Max step index.
+ * @return Current step.
+ */
+static size_t slider_current_step(const file_manager_ctx_t *ctx, size_t step, size_t max_start, size_t max_step_index);
+
+/**
+ * @brief Check if target step matches current, clearing drag state.
+ *
+ * @param ctx Browser context.
+ * @param target_step Target step.
+ * @param current_step Current step.
+ * @return true if no-op.
+ */
+static bool slider_is_noop(file_manager_ctx_t *ctx, size_t target_step, size_t current_step);
+
+/**
+ * @brief Compute new window start from step.
+ *
+ * @param target_step Target step.
+ * @param max_step_index Max step index.
+ * @param step Step size.
+ * @param max_start Max start index.
+ * @return New start index.
+ */
+static size_t slider_compute_new_start(size_t target_step, size_t max_step_index, size_t step, size_t max_start);
+
+/**
+ * @brief Finalize paging after slider release.
+ *
+ * @param ctx Browser context.
+ * @param new_start New start index.
+ */
+static void slider_finalize_paging(file_manager_ctx_t *ctx, size_t new_start);
+
+/**
  * @brief Sync the slider range/value to the current list window.
  *
  * Recomputes slider bounds from total items and step size, clamps the knob to
@@ -917,15 +1022,6 @@ static void slider_disable_for_single_window(file_manager_ctx_t *ctx, lv_obj_t *
  * @return Maximum start index.
  */
 static size_t slider_max_start(size_t total, size_t window_size);
-
-/**
- * @brief Compute the maximum step index based on start and step.
- *
- * @param max_start Maximum start index.
- * @param step Step size.
- * @return Maximum step index.
- */
-static size_t slider_max_step_index(size_t max_start, size_t step);
 
 /**
  * @brief Compute the current slider step for the active window.
@@ -2296,11 +2392,6 @@ static size_t slider_max_start(size_t total, size_t window_size)
     return (total > window_size) ? (total - window_size) : 0;
 }
 
-static size_t slider_max_step_index(size_t max_start, size_t step)
-{
-    return step ? ((max_start + step - 1) / step) : 0;
-}
-
 static size_t slider_compute_current_step(const file_manager_ctx_t *ctx, size_t max_start, size_t max_step_index, size_t step, int32_t max_val)
 {
     size_t current_step = 0;
@@ -3571,10 +3662,101 @@ static void list_scroll_handle_top(file_manager_ctx_t *ctx)
     build_item_list(ctx, new_start, anchor_global, true, false);
 }
 
+static bool slider_can_handle_event(const file_manager_ctx_t *ctx)
+{
+    return (ctx && !ctx->flags.slider_suppress_change);
+}
+
+static bool slider_total_fits_window(size_t total, size_t window_size)
+{
+    return (total <= window_size);
+}
+
+static size_t slider_max_step_index(size_t max_start, size_t step)
+{
+    return step ? ((max_start + step - 1) / step) : 0;
+}
+
+static size_t slider_clamp_value(size_t max_step_index, int32_t slider_val)
+{
+    if (slider_val < 0) {
+        slider_val = 0;
+    }
+    size_t clamped_step = (size_t)slider_val;
+    if (clamped_step > max_step_index) {
+        clamped_step = max_step_index;
+    }
+    return clamped_step;
+}
+
+static bool slider_handle_pressed(file_manager_ctx_t *ctx, size_t clamped_step, lv_event_code_t code)
+{
+    if (code != LV_EVENT_PRESSED) {
+        return false;
+    }
+    ctx->flags.slider_drag_active = true;
+    ctx->slider_pending_step = clamped_step;
+    return true;
+}
+
+static bool slider_handle_value_changed(file_manager_ctx_t *ctx, size_t clamped_step, lv_event_code_t code)
+{
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return false;
+    }
+    ctx->slider_pending_step = clamped_step;
+    return true;
+}
+
+static size_t slider_target_step(file_manager_ctx_t *ctx, size_t clamped_step, size_t max_step_index)
+{
+    size_t target_step = (ctx->slider_pending_step == SIZE_MAX) ? clamped_step : ctx->slider_pending_step;
+    if (target_step > max_step_index) {
+        target_step = max_step_index;
+    }
+    return target_step;
+}
+
+static size_t slider_current_step(const file_manager_ctx_t *ctx, size_t step, size_t max_start, size_t max_step_index)
+{
+    size_t current_step = step ? (ctx->list_window_start / step) : 0;
+    if (ctx->list_window_start >= max_start) {
+        current_step = max_step_index;
+    }
+    return current_step;
+}
+
+static bool slider_is_noop(file_manager_ctx_t *ctx, size_t target_step, size_t current_step)
+{
+    if (target_step != current_step) {
+        return false;
+    }
+    ctx->slider_pending_step = SIZE_MAX;
+    ctx->flags.slider_drag_active = false;
+    return true;
+}
+
+static size_t slider_compute_new_start(size_t target_step, size_t max_step_index, size_t step, size_t max_start)
+{
+    size_t new_start = (target_step >= max_step_index) ? max_start : (target_step * step);
+    if (new_start > max_start) {
+        new_start = max_start;
+    }
+    return new_start;
+}
+
+static void slider_finalize_paging(file_manager_ctx_t *ctx, size_t new_start)
+{
+    ctx->slider_pending_step = SIZE_MAX;
+    ctx->flags.slider_drag_active = false;
+    ctx->flags.list_has_paged = true;
+    build_item_list(ctx, new_start, SIZE_MAX, true, true);
+}
+
 static void on_slider_value_changed(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
-    if (!ctx || ctx->flags.slider_suppress_change) {
+    if (!slider_can_handle_event(ctx)) {
         return;
     }
 
@@ -3584,61 +3766,35 @@ static void on_slider_value_changed(lv_event_t *e)
     size_t step = 1;
     get_window_params(ctx, &window_size, &step);
     size_t total = fs_nav_total_items(&ctx->nav);
-    if (total <= window_size) {
+    if (slider_total_fits_window(total, window_size)) {
         return; /* Nothing to scroll */
     }
 
     size_t max_start = total - window_size;
-    size_t max_step_index = step ? ((max_start + step - 1) / step) : 0;
+    size_t max_step_index = slider_max_step_index(max_start, step);
 
     int32_t slider_val = lv_slider_get_value(lv_event_get_target(e));
-    if (slider_val < 0) {
-        slider_val = 0;
-    }
+    size_t clamped_step = slider_clamp_value(max_step_index, slider_val);
 
-    size_t clamped_step = (size_t)slider_val;
-    if (clamped_step > max_step_index) {
-        clamped_step = max_step_index;
-    }
-
-    /* Track the step during drag; apply only on release. */
-    if (code == LV_EVENT_PRESSED) {
-        ctx->flags.slider_drag_active = true;
-        ctx->slider_pending_step = clamped_step;
+    if (slider_handle_pressed(ctx, clamped_step, code)) {
         return;
     }
 
-    if (code == LV_EVENT_VALUE_CHANGED) {
-        ctx->slider_pending_step = clamped_step;
+    if (slider_handle_value_changed(ctx, clamped_step, code)) {
         return;
     }
 
     if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
-        size_t target_step = ctx->slider_pending_step == SIZE_MAX ? clamped_step : ctx->slider_pending_step;
-        if (target_step > max_step_index) {
-            target_step = max_step_index;
-        }
+        size_t target_step = slider_target_step(ctx, clamped_step, max_step_index);
 
-        /* If we returned to the current step, do nothing. */
-        size_t current_step = step ? (ctx->list_window_start / step) : 0;
-        if (ctx->list_window_start >= max_start) {
-            current_step = max_step_index;
-        }
-        if (target_step == current_step) {
-            ctx->slider_pending_step = SIZE_MAX;
-            ctx->flags.slider_drag_active = false;
+        size_t current_step = slider_current_step(ctx, step, max_start, max_step_index);
+        if (slider_is_noop(ctx, target_step, current_step)) {
             return;
         }
 
-        size_t new_start = (target_step >= max_step_index) ? max_start : (target_step * step);
-        if (new_start > max_start) {
-            new_start = max_start;
-        }
+        size_t new_start = slider_compute_new_start(target_step, max_step_index, step, max_start);
 
-        ctx->slider_pending_step = SIZE_MAX;
-        ctx->flags.slider_drag_active = false;
-        ctx->flags.list_has_paged = true;
-        build_item_list(ctx, new_start, SIZE_MAX, true, true);
+        slider_finalize_paging(ctx, new_start);
     }
 }
 
