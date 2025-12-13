@@ -537,7 +537,88 @@ static void update_parent_button(file_manager_ctx_t *ctx);
  */
  static void populate_list(file_manager_ctx_t *ctx);
 
- /**
+/**
+ * @brief Stop and clear any existing entry scroll timer.
+ *
+ * @param ctx Browser context.
+ */
+static void populate_list_clear_scroll_timer(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Remove all children from the list widget.
+ *
+ * @param ctx Browser context.
+ */
+static void populate_list_clear_list(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Retrieve navigator items and their count.
+ *
+ * @param ctx Browser context.
+ * @param[out] count Number of items returned.
+ * @return Pointer to items array or NULL.
+ */
+static const fs_nav_item_t *populate_list_get_items(file_manager_ctx_t *ctx, size_t *count);
+
+/**
+ * @brief Handle empty folder case by showing placeholder text.
+ *
+ * @param ctx Browser context.
+ * @param items Item array pointer.
+ * @param count Item count.
+ * @return true if handled (empty), false otherwise.
+ */
+static bool populate_list_handle_empty(file_manager_ctx_t *ctx, const fs_nav_item_t *items, size_t count);
+
+/**
+ * @brief Get current window start offset.
+ *
+ * @param ctx Browser context.
+ * @return Window start index.
+ */
+static size_t populate_list_window_start(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Format list entry text for a file item.
+ *
+ * @param item Item descriptor.
+ * @param display_index 1-based display index.
+ * @param[out] out Output buffer.
+ * @param out_len Output buffer length.
+ */
+static void populate_list_format_file_text(const fs_nav_item_t *item, size_t display_index, char *out, size_t out_len);
+
+/**
+ * @brief Format list entry text for a directory item (with child count).
+ *
+ * @param ctx Browser context.
+ * @param item Item descriptor.
+ * @param display_index 1-based display index.
+ * @param[out] out Output buffer.
+ * @param out_len Output buffer length.
+ */
+static void populate_list_format_dir_text(file_manager_ctx_t *ctx, const fs_nav_item_t *item, size_t display_index, char *out, size_t out_len);
+
+/**
+ * @brief Get the icon symbol for an item.
+ *
+ * @param item Item descriptor.
+ * @return Icon string.
+ */
+static const char *populate_list_icon_for_item(const fs_nav_item_t *item);
+
+/**
+ * @brief Create and configure a list button for an item.
+ *
+ * @param ctx Browser context.
+ * @param item Item descriptor.
+ * @param rel_index Relative index inside window.
+ * @param icon Icon symbol.
+ * @param text Button label text.
+ */
+static void populate_list_create_button(file_manager_ctx_t *ctx, const fs_nav_item_t *item, size_t rel_index, const char *icon, const char *text);
+
+/**
  * @brief Count the number of items inside a directory.
  *
  * This function checks whether the given item represents a directory,
@@ -2397,28 +2478,93 @@ static void restart_entry_scroll(file_manager_ctx_t *ctx)
     }
 }
 
-static void populate_list(file_manager_ctx_t *ctx)
+static void populate_list_clear_scroll_timer(file_manager_ctx_t *ctx)
 {
     if (ctx->graphics.list_scroll_timer) {
         lv_timer_del(ctx->graphics.list_scroll_timer);
         ctx->graphics.list_scroll_timer = NULL;
     }
+}
 
+static void populate_list_clear_list(file_manager_ctx_t *ctx)
+{
     lv_obj_clean(ctx->graphics.list);
+}
+
+static const fs_nav_item_t *populate_list_get_items(file_manager_ctx_t *ctx, size_t *count)
+{
+    return fs_nav_items(&ctx->nav, count);
+}
+
+static bool populate_list_handle_empty(file_manager_ctx_t *ctx, const fs_nav_item_t *items, size_t count)
+{
+    if (items && count > 0) {
+        return false;
+    }
+    lv_obj_t *lbl = lv_label_create(ctx->graphics.list);
+    styles_set_text_color(lbl, 0);
+    lv_label_set_text(lbl, "Empty folder");
+    lv_obj_center(lbl);
+    lv_obj_set_style_text_opa(lbl, LV_OPA_60, 0);
+    return true;
+}
+
+static size_t populate_list_window_start(file_manager_ctx_t *ctx)
+{
+    return fs_nav_window_start(&ctx->nav);
+}
+
+static void populate_list_format_file_text(const fs_nav_item_t *item, size_t display_index, char *out, size_t out_len)
+{
+    char meta[32];
+    format_size(item->size_bytes, meta, sizeof(meta));
+    snprintf(out, out_len, "%s\nItem: %zu | Size: %s", item->name, display_index, meta);
+}
+
+static void populate_list_format_dir_text(file_manager_ctx_t *ctx, const fs_nav_item_t *item, size_t display_index, char *out, size_t out_len)
+{
+    size_t child_count = 0;
+    char meta[32];
+    const char *count_label = "Unknown";
+    if (count_dir_items(ctx, item, &child_count)) {
+        snprintf(meta, sizeof(meta), "%u", (unsigned int)child_count);
+        count_label = meta;
+    }
+    snprintf(out, out_len, "%s\nItem: %zu | Sub-Items: %s", item->name, display_index, count_label);
+}
+
+static const char *populate_list_icon_for_item(const fs_nav_item_t *item)
+{
+    return item->is_dir ? LV_SYMBOL_DIRECTORY : (is_file_image(item->name) ? LV_SYMBOL_IMAGE : LV_SYMBOL_FILE);
+}
+
+static void populate_list_create_button(file_manager_ctx_t *ctx, const fs_nav_item_t *item, size_t rel_index, const char *icon, const char *text)
+{
+    lv_obj_t *btn = lv_list_add_btn(ctx->graphics.list, icon, text);
+    lv_obj_set_style_pad_all(btn, 3, LV_PART_MAIN);
+    lv_obj_set_style_radius(btn, 6, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
+    styles_set_list_button(btn);
+    lv_obj_set_style_border_width(btn, 1, LV_PART_MAIN);
+    lv_obj_set_user_data(btn, (void *)(uintptr_t)rel_index);
+    lv_obj_add_event_cb(btn, on_item_click, LV_EVENT_CLICKED, ctx);
+    lv_obj_add_event_cb(btn, on_item_long_press, LV_EVENT_LONG_PRESSED, ctx);
+}
+
+static void populate_list(file_manager_ctx_t *ctx)
+{
+    populate_list_clear_scroll_timer(ctx);
+
+    populate_list_clear_list(ctx);
 
     size_t count = 0;
-    const fs_nav_item_t *items = fs_nav_items(&ctx->nav, &count);
-    if (!items || count == 0) {
-        lv_obj_t *lbl = lv_label_create(ctx->graphics.list);
-        styles_set_text_color(lbl, 0);
-        lv_label_set_text(lbl, "Empty folder");
-        lv_obj_center(lbl);
-        lv_obj_set_style_text_opa(lbl, LV_OPA_60, 0);
+    const fs_nav_item_t *items = populate_list_get_items(ctx, &count);
+    if (populate_list_handle_empty(ctx, items, count)) {
         return;
     }
 
     /* Window start gives the absolute offset of the first visible item. */
-    size_t window_start = fs_nav_window_start(&ctx->nav);
+    size_t window_start = populate_list_window_start(ctx);
 
     for (size_t i = 0; i < count; ++i) {
         fs_nav_ensure_meta(&ctx->nav, i);
@@ -2427,33 +2573,14 @@ static void populate_list(file_manager_ctx_t *ctx)
 
         char text[FS_NAV_MAX_NAME + 64];
         if (!item->is_dir) {
-            char meta[32];
-            format_size(item->size_bytes, meta, sizeof(meta));
-            snprintf(text, sizeof(text), "%s\nItem: %zu | Size: %s", item->name, display_index, meta);
+            populate_list_format_file_text(item, display_index, text, sizeof(text));
         } else {
-            size_t child_count = 0;
-            char meta[32];
-            const char *count_label = "Unknown";
-            if (count_dir_items(ctx, item, &child_count)) {
-                snprintf(meta, sizeof(meta), "%u", (unsigned int)child_count);
-                count_label = meta;
-            }
-            snprintf(text, sizeof(text), "%s\nItem: %zu | Sub-Items: %s", item->name, display_index, count_label);
+            populate_list_format_dir_text(ctx, item, display_index, text, sizeof(text));
         }
 
-        const char *icon = item->is_dir
-                               ? LV_SYMBOL_DIRECTORY
-                               : (is_file_image(item->name) ? LV_SYMBOL_IMAGE : LV_SYMBOL_FILE);
+        const char *icon = populate_list_icon_for_item(item);
 
-        lv_obj_t *btn = lv_list_add_btn(ctx->graphics.list, icon, text);
-        lv_obj_set_style_pad_all(btn, 3, LV_PART_MAIN);
-        lv_obj_set_style_radius(btn, 6, LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, LV_PART_MAIN);
-        styles_set_list_button(btn);
-        lv_obj_set_style_border_width(btn, 1, LV_PART_MAIN);
-        lv_obj_set_user_data(btn, (void *)(uintptr_t)i);
-        lv_obj_add_event_cb(btn, on_item_click, LV_EVENT_CLICKED, ctx);
-        lv_obj_add_event_cb(btn, on_item_long_press, LV_EVENT_LONG_PRESSED, ctx);
+        populate_list_create_button(ctx, item, i, icon, text);
     }
 
     restart_entry_scroll(ctx);
