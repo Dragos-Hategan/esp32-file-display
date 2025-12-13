@@ -1619,6 +1619,49 @@ static esp_err_t paste_click_prepare_copy(file_manager_ctx_t *ctx, const char *d
 static void paste_finalize_success(file_manager_ctx_t *ctx);
 
 /**
+ * @brief Handle paste conflict dialog selection (replace/keep both/cancel).
+ *
+ * @param e LVGL event with user data = file_manager_ctx_t*.
+ */
+static void on_paste_conflict(lv_event_t *e);
+
+/**
+ * @brief Build directory portion from a full conflict path.
+ *
+ * @param conflict_path Full path with conflict.
+ * @param[out] directory Output buffer.
+ * @return true on success.
+ */
+static bool paste_conflict_extract_dir(const char *conflict_path, char *directory);
+
+/**
+ * @brief Resolve destination path for "keep both" rename flow.
+ *
+ * @param directory Target directory.
+ * @param conflict_name Original conflict name.
+ * @param[out] dest_path Output path buffer.
+ * @return ESP_OK on success or error from generate_copy_name/overflow.
+ */
+static esp_err_t paste_conflict_resolve_keep_both(const char *directory, const char *conflict_name, char *dest_path);
+/**
+ * @brief Handle paste-conflict "Replace" action.
+ *
+ * @param ctx Browser context.
+ * @param conflict_path Destination path to overwrite.
+ * @return ESP_OK on success or error code.
+ */
+static esp_err_t replace_item(file_manager_ctx_t *ctx, const char *conflict_path);
+/**
+ * @brief Handle paste-conflict "Keep both" action.
+ *
+ * @param ctx Browser context.
+ * @param conflict_path Existing destination path.
+ * @param conflict_name Existing name.
+ * @return ESP_OK on success or error code.
+ */
+static esp_err_t keep_both_items(file_manager_ctx_t *ctx, const char *conflict_path, const char *conflict_name);
+
+/**
  * @brief Recursive copy (file or directory).
  *
  * @param src  Absolute source path.
@@ -5201,6 +5244,26 @@ static void on_paste_click(lv_event_t *e)
     }
 }
 
+static esp_err_t replace_item(file_manager_ctx_t *ctx, const char *conflict_path)
+{
+    return perform_paste(ctx, conflict_path, true);
+}
+
+static esp_err_t keep_both_items(file_manager_ctx_t *ctx, const char *conflict_path, const char *conflict_name)
+{
+    char directory[FS_NAV_MAX_PATH];
+    if (!paste_conflict_extract_dir(conflict_path, directory)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    char dest_path[FS_NAV_MAX_PATH];
+    esp_err_t resolved = paste_conflict_resolve_keep_both(directory, conflict_name, dest_path);
+    if (resolved != ESP_OK) {
+        return resolved;
+    }
+    return perform_paste(ctx, dest_path, false);
+}
+
 static void on_paste_conflict(lv_event_t *e)
 {
     file_manager_ctx_t *ctx = lv_event_get_user_data(e);
@@ -5211,55 +5274,19 @@ static void on_paste_conflict(lv_event_t *e)
     char conflict_name[FS_NAV_MAX_NAME];
     strlcpy(conflict_path, ctx->paste_conflict_path, sizeof(conflict_path));
     strlcpy(conflict_name, ctx->paste_conflict_name, sizeof(conflict_name));
-    int action = (int)(uintptr_t)lv_obj_get_user_data(lv_event_get_target(e));
+    int at_conflict_choice = (int)(uintptr_t)lv_obj_get_user_data(lv_event_get_target(e));
     close_paste_conflict(ctx);
 
     if (!ctx->clipboard.has_item || conflict_path[0] == '\0') {
         return;
     }
 
-    esp_err_t err = ESP_OK;
     show_loading(ctx);
-    if (action == 1) {
-        err = perform_paste(ctx, conflict_path, true);
-    } else if (action == 2) {
-        const char *last = strrchr(conflict_path, '/');
-        if (!last) {
-            hide_loading(ctx);
-            show_message("Invalid destination path.");
-            return;
-        }
-        char directory[FS_NAV_MAX_PATH];
-        if (last == conflict_path) {
-            /* Conflict path at root, treat directory as "/" */
-            strlcpy(directory, "/", sizeof(directory));
-        } else {
-            size_t dir_len = (size_t)(last - conflict_path);
-            if (dir_len >= sizeof(directory)) {
-                hide_loading(ctx);
-                show_message("Path too long.");
-                return;
-            }
-            memcpy(directory, conflict_path, dir_len);
-            directory[dir_len] = '\0';
-        }
-
-        char new_name[FS_NAV_MAX_NAME];
-        err = generate_copy_name(directory, conflict_name, new_name, sizeof(new_name));
-        if (err != ESP_OK) {
-            hide_loading(ctx);
-            show_message("Could not generate a new name.");
-            return;
-        }
-
-        char dest_path[FS_NAV_MAX_PATH];
-        int needed = snprintf(dest_path, sizeof(dest_path), "%s/%s", directory, new_name);
-        if (needed < 0 || needed >= (int)sizeof(dest_path)) {
-            hide_loading(ctx);
-            show_message("Path too long.");
-            return;
-        }
-        err = perform_paste(ctx, dest_path, false);
+    esp_err_t err = ESP_OK;
+    if (at_conflict_choice == 1) { 
+        err = replace_item(ctx, conflict_path);
+    } else if (at_conflict_choice == 2) {
+        err = keep_both_items(ctx, conflict_path, conflict_name);
     } else {
         hide_loading(ctx);
         return;
@@ -5279,6 +5306,40 @@ static void on_paste_conflict(lv_event_t *e)
         ESP_LOGE(TAG, "Failed to refresh after paste: %s", esp_err_to_name(err));
         sd_card_schedule_retry();
     }
+}
+
+static bool paste_conflict_extract_dir(const char *conflict_path, char *directory)
+{
+    const char *last = strrchr(conflict_path, '/');
+    if (!last) {
+        return false;
+    }
+    if (last == conflict_path) {
+        strlcpy(directory, "/", FS_NAV_MAX_PATH);
+        return true;
+    }
+    size_t dir_len = (size_t)(last - conflict_path);
+    if (dir_len >= FS_NAV_MAX_PATH) {
+        return false;
+    }
+    memcpy(directory, conflict_path, dir_len);
+    directory[dir_len] = '\0';
+    return true;
+}
+
+static esp_err_t paste_conflict_resolve_keep_both(const char *directory, const char *conflict_name, char *dest_path)
+{
+    char new_name[FS_NAV_MAX_NAME];
+    esp_err_t err = generate_copy_name(directory, conflict_name, new_name, sizeof(new_name));
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    int needed = snprintf(dest_path, FS_NAV_MAX_PATH, "%s/%s", directory, new_name);
+    if (needed < 0 || needed >= (int)FS_NAV_MAX_PATH) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+    return ESP_OK;
 }
 
 static void on_cancel_paste_click(lv_event_t *e)
