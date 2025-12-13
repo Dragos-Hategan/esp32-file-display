@@ -15,7 +15,7 @@
 enum {
     MAIN_TASK_STACK_WORDS       = 8 * 1024,
     MAIN_TASK_PRIORITY          = 1,
-#if CONFIG_APP_DUAL_CORE    
+#if CONFIG_APP_ENABLE_DUAL_CORE    
     MAIN_TASK_CORE              = 1,
 #else
     MAIN_TASK_CORE              = 0,
@@ -27,10 +27,6 @@ enum {
 
 static const char *TAG = "app_main";
 static const char *TAG_HEAP = "--- HEAP INFO --- ";
-
-static const char *COLOR_RESET = "\033[0m";
-static const char *COLOR_CYAN = "\033[1;36m";
-
 static const TickType_t HEAP_STATS_INTERVAL_TICKS = pdMS_TO_TICKS(100);
 
 /** 
@@ -103,6 +99,9 @@ static void main_task(void *arg)
 
 static void heap_stats_task(void *arg)
 {
+    const char *COLOR_RESET = "\033[0m";
+    const char *COLOR_CYAN = "\033[1;36m";
+
     size_t last_free_heap = 0;
     size_t min_free_heap = SIZE_MAX;
     const TickType_t delay_ticks = (HEAP_STATS_INTERVAL_TICKS == 0) ? 1 : HEAP_STATS_INTERVAL_TICKS;

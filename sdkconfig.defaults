@@ -82,7 +82,7 @@ CONFIG_BSP_LCD_DRAW_BUF_DOUBLE=y
 # ---------- GENERAL CONFIG ----------
 
 # === Clock & Cores ===
-CONFIG_APP_DUAL_CORE=n
+CONFIG_APP_ENABLE_DUAL_CORE=n
 
 # === Heap Stats Task ===
 CONFIG_APP_ENABLE_HEAP_STATS=y
