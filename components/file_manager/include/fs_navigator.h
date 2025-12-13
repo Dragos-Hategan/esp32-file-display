@@ -13,37 +13,62 @@ extern "C" {
 #define FS_NAV_MAX_PATH 256
 #define FS_NAV_MAX_NAME 96
 
+/**
+ * @brief Sort criteria used by the navigator.
+ */
 typedef enum {
-    FS_NAV_SORT_NAME = 0,
-    FS_NAV_SORT_DATE = 1,
-    FS_NAV_SORT_SIZE = 2,
+    FS_NAV_SORT_NAME = 0, /**< Case-insensitive name. */
+    FS_NAV_SORT_DATE = 1, /**< Last modification time. */
+    FS_NAV_SORT_SIZE = 2, /**< File size (directories grouped ahead of files). */
     FS_NAV_SORT_COUNT
 } fs_nav_sort_mode_t;
 
+/**
+ * @brief Item metadata owned by the navigator.
+ *
+ * The @c name buffer is heap-allocated and freed internally on refresh/deinit;
+ * callers must not free or mutate it. @c needs_stat is set when metadata is
+ * pending a stat call (e.g., during lazy loading).
+ */
 typedef struct {
-    char *name;
-    bool is_dir;
-    bool needs_stat;
-    size_t size_bytes;
-    time_t modified;
+    char *name;                 /**< Owned by navigator; freed on refresh/deinit. */
+    bool is_dir;                /**< True for directories. */
+    bool needs_stat;            /**< True if size/time still need stat(). */
+    size_t size_bytes;          /**< File size in bytes (0 for directories). */
+    time_t modified;            /**< Last modification time. */
 } fs_nav_item_t;
 
+/**
+ * @brief Navigator state (treated as opaque by users of this API).
+ *
+ * Fields are internal and may change; external modules should interact only
+ * through the provided functions.
+ */
 typedef struct fs_nav {
     char root[FS_NAV_MAX_PATH];
     char current[FS_NAV_MAX_PATH];
     char relative[FS_NAV_MAX_PATH];
     fs_nav_item_t *items;
-    size_t item_count;      /* number of items currently loaded in buffer */
-    size_t capacity;         /* allocated capacity of buffer */
-    size_t max_items;      /* threshold for enabling sort (0 = no threshold) */
-    size_t total_items;    /* full count in current directory */
-    size_t window_start;     /* current window offset */
-    size_t window_size;      /* desired window size */
+    size_t item_count;                      /* number of items currently loaded in buffer */
+    size_t capacity;                        /* allocated capacity of buffer */
+    size_t max_items;                       /* threshold for enabling sort (0 = no threshold) */
+    size_t total_items;                     /* full count in current directory */
+    size_t window_start;                    /* current window offset */
+    size_t window_size;                     /* desired window size */
     fs_nav_sort_mode_t sort_mode;
     bool ascending;
     bool sort_enabled;
 } fs_nav_t;
 
+/**
+ * @brief Navigator configuration.
+ *
+ * root_path must be an absolute directory path (trailing slashes are trimmed).
+ * max_items controls when sorting keeps all items in memory:
+ *   - 0 enables sorting for any directory size (potentially large allocations).
+ *   - >0 enables sorting only when item count <= max_items; above that, sorting
+ *     is disabled and only windows are loaded.
+ */
 typedef struct {
     const char *root_path;
     size_t max_items;
@@ -99,6 +124,7 @@ esp_err_t fs_nav_refresh(fs_nav_t *nav);
  * @param[out] count Optional; set to number of valid items in the window.
  * @return Pointer to internal array (NULL if unavailable).
  * @warning The pointer becomes invalid after @c fs_nav_refresh, @c fs_nav_set_window or sort changes.
+ * @note Item names are owned by the navigator and freed on refresh/deinit; do not free/mutate them.
  */
 const fs_nav_item_t *fs_nav_items(const fs_nav_t *nav, size_t *count);
 
