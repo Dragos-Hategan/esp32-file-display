@@ -1531,6 +1531,58 @@ static void hide_loading(file_manager_ctx_t *ctx);
 static esp_err_t perform_paste(file_manager_ctx_t *ctx, const char *dest_path, bool allow_overwrite);
 
 /**
+ * @brief Validate basic paste preconditions.
+ *
+ * @param ctx Browser context.
+ * @param dest_path Destination path.
+ * @return ESP_OK if valid, ESP_ERR_INVALID_STATE otherwise.
+ */
+static esp_err_t paste_validate_state(const file_manager_ctx_t *ctx, const char *dest_path);
+
+/**
+ * @brief Check for invalid subpath paste (dir into its subtree).
+ *
+ * @param ctx Browser context.
+ * @param dest_path Destination path.
+ * @return ESP_OK if allowed, ESP_ERR_INVALID_ARG otherwise.
+ */
+static esp_err_t paste_validate_subpath(const file_manager_ctx_t *ctx, const char *dest_path);
+
+/**
+ * @brief Handle overwrite checks and deletion when allowed.
+ *
+ * @param dest_path Destination path.
+ * @param allow_overwrite True to delete existing dest.
+ * @return ESP_OK on success, ESP_ERR_INVALID_STATE if exists and not allowed, or error from delete.
+ */
+static esp_err_t paste_handle_overwrite(const char *dest_path, bool allow_overwrite);
+
+/**
+ * @brief Perform cut (move) logic with rename fallback to copy+delete.
+ *
+ * @param ctx Browser context.
+ * @param dest_path Destination path.
+ * @return ESP_OK on success or error code.
+ */
+static esp_err_t paste_handle_cut(file_manager_ctx_t *ctx, const char *dest_path);
+
+/**
+ * @brief Perform copy logic.
+ *
+ * @param ctx Browser context.
+ * @param dest_path Destination path.
+ * @return ESP_OK on success or error code.
+ */
+static esp_err_t paste_handle_copy(file_manager_ctx_t *ctx, const char *dest_path);
+
+/**
+ * @brief Clear clipboard and update UI on success.
+ *
+ * @param ctx Browser context.
+ */
+static void paste_finalize_success(file_manager_ctx_t *ctx);
+
+/**
  * @brief Recursive copy (file or directory).
  *
  * @param src  Absolute source path.
@@ -4932,14 +4984,49 @@ static void show_paste_conflict(file_manager_ctx_t *ctx, const char *dest_path)
 
 static esp_err_t perform_paste(file_manager_ctx_t *ctx, const char *dest_path, bool allow_overwrite)
 {
+    esp_err_t valid = paste_validate_state(ctx, dest_path);
+    if (valid != ESP_OK) {
+        return valid;
+    }
+
+    esp_err_t subpath = paste_validate_subpath(ctx, dest_path);
+    if (subpath != ESP_OK) {
+        return subpath;
+    }
+
+    esp_err_t overwrite = paste_handle_overwrite(dest_path, allow_overwrite);
+    if (overwrite != ESP_OK) {
+        return overwrite;
+    }
+
+    esp_err_t err = ESP_OK;
+    if (ctx->clipboard.cut) {
+        err = paste_handle_cut(ctx, dest_path);
+        return err;
+    }
+
+    err = paste_handle_copy(ctx, dest_path);
+    return err;
+}
+
+static esp_err_t paste_validate_state(const file_manager_ctx_t *ctx, const char *dest_path)
+{
     if (!ctx || !ctx->clipboard.has_item || !dest_path) {
         return ESP_ERR_INVALID_STATE;
     }
+    return ESP_OK;
+}
 
+static esp_err_t paste_validate_subpath(const file_manager_ctx_t *ctx, const char *dest_path)
+{
     if (ctx->clipboard.is_dir && is_subpath(ctx->clipboard.src_path, dest_path)) {
         return ESP_ERR_INVALID_ARG;
     }
+    return ESP_OK;
+}
 
+static esp_err_t paste_handle_overwrite(const char *dest_path, bool allow_overwrite)
+{
     if (!allow_overwrite && path_exists(dest_path)) {
         return ESP_ERR_INVALID_STATE;
     }
@@ -4951,36 +5038,45 @@ static esp_err_t perform_paste(file_manager_ctx_t *ctx, const char *dest_path, b
             return del;
         }
     }
+    return ESP_OK;
+}
 
+static esp_err_t paste_handle_cut(file_manager_ctx_t *ctx, const char *dest_path)
+{
     esp_err_t err = ESP_OK;
-    if (ctx->clipboard.cut) {
-        if (rename(ctx->clipboard.src_path, dest_path) != 0) {
-            if (errno != EXDEV) {
-                ESP_LOGW(TAG, "rename(%s -> %s) failed (errno=%d), falling back to copy+delete", ctx->clipboard.src_path, dest_path, errno);
-            }
-            err = copy_item(ctx->clipboard.src_path, dest_path);
-            if (err == ESP_OK) {
-                err = delete_path(ctx->clipboard.src_path);
-                if (err != ESP_OK) {
-                    ESP_LOGE(TAG, "Failed to remove source after cut: %s", esp_err_to_name(err));
-                }
-            }
+    if (rename(ctx->clipboard.src_path, dest_path) != 0) {
+        if (errno != EXDEV) {
+            ESP_LOGW(TAG, "rename(%s -> %s) failed (errno=%d), falling back to copy+delete", ctx->clipboard.src_path, dest_path, errno);
         }
+        err = copy_item(ctx->clipboard.src_path, dest_path);
         if (err == ESP_OK) {
-            clear_clipboard(ctx);
-            update_second_header(ctx);
+            err = delete_path(ctx->clipboard.src_path);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to remove source after cut: %s", esp_err_to_name(err));
+            }
         }
-        return err;
     }
-
-    err = copy_item(ctx->clipboard.src_path, dest_path);
     if (err == ESP_OK) {
-        clear_clipboard(ctx);
-        update_second_header(ctx);
-    }else{
+        paste_finalize_success(ctx);
+    }
+    return err;
+}
+
+static esp_err_t paste_handle_copy(file_manager_ctx_t *ctx, const char *dest_path)
+{
+    esp_err_t err = copy_item(ctx->clipboard.src_path, dest_path);
+    if (err == ESP_OK) {
+        paste_finalize_success(ctx);
+    } else {
         ESP_LOGE(TAG, "Failed to copy item: (%s)", esp_err_to_name(err));
     }
     return err;
+}
+
+static void paste_finalize_success(file_manager_ctx_t *ctx)
+{
+    clear_clipboard(ctx);
+    update_second_header(ctx);
 }
 
 static void on_paste_click(lv_event_t *e)
