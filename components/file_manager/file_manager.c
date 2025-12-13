@@ -1367,6 +1367,58 @@ static void on_folder_textarea_clicked(lv_event_t *e);
  static esp_err_t delete_path(const char *path);
 
 /**
+ * @brief Validate input path for deletion.
+ *
+ * @param path Path string.
+ * @return true if invalid, false otherwise.
+ */
+static bool delete_path_invalid_arg(const char *path);
+
+/**
+ * @brief stat() wrapper for delete_path with ENOENT mapped to ESP_ERR_NOT_FOUND.
+ *
+ * @param path Path to stat.
+ * @param[out] st Filled stat structure on success.
+ * @return ESP_OK on success, ESP_ERR_NOT_FOUND if missing, ESP_FAIL otherwise.
+ */
+static esp_err_t delete_path_stat(const char *path, struct stat *st);
+
+/**
+ * @brief Check stat result for directory type.
+ *
+ * @param st Stat structure.
+ * @return true if directory.
+ */
+static bool delete_path_is_dir(const struct stat *st);
+
+/**
+ * @brief Compose child path under a parent directory.
+ *
+ * @param parent Parent path.
+ * @param name Child name.
+ * @param[out] out Output buffer.
+ * @param out_len Buffer length.
+ * @return ESP_OK on success, ESP_ERR_INVALID_SIZE on overflow.
+ */
+static esp_err_t delete_path_compose_child(const char *parent, const char *name, char *out, size_t out_len);
+
+/**
+ * @brief Recursively delete a directory and its contents.
+ *
+ * @param path Directory path.
+ * @return ESP_OK on success or error code.
+ */
+static esp_err_t delete_path_delete_dir(const char *path);
+
+/**
+ * @brief Delete a single file.
+ *
+ * @param path File path.
+ * @return ESP_OK on success or ESP_FAIL on error.
+ */
+static esp_err_t delete_path_delete_file(const char *path);
+
+/**
  * @brief Recursively accumulate byte size for a file or directory tree.
  *
  * @param path  Absolute path to a file or directory.
@@ -4371,57 +4423,98 @@ static void trim_whitespace(char *name)
     }
 }
 
-static esp_err_t delete_path(const char *path)
+static bool delete_path_invalid_arg(const char *path)
 {
-    if (!path || path[0] == '\0') {
-        return ESP_ERR_INVALID_ARG;
-    }
+    return (!path || path[0] == '\0');
+}
 
-    struct stat st = {0};
-    if (stat(path, &st) != 0) {
+static esp_err_t delete_path_stat(const char *path, struct stat *st)
+{
+    if (stat(path, st) != 0) {
         if (errno == ENOENT) {
-            return ESP_OK;
+            return ESP_ERR_NOT_FOUND;
         }
         ESP_LOGE(TAG, "stat(%s) failed (errno=%d)", path, errno);
         return ESP_FAIL;
     }
+    return ESP_OK;
+}
 
-    if (S_ISDIR(st.st_mode)) {
-        DIR *dir = opendir(path);
-        if (!dir) {
-            ESP_LOGE(TAG, "opendir(%s) failed (errno=%d)", path, errno);
-            return ESP_FAIL;
-        }
-        struct dirent *dent = NULL;
-        while ((dent = readdir(dir)) != NULL) {
-            if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
-                continue;
-            }
-            char child[FS_NAV_MAX_PATH];
-            int needed = snprintf(child, sizeof(child), "%s/%s", path, dent->d_name);
-            if (needed < 0 || needed >= (int)sizeof(child)) {
-                closedir(dir);
-                return ESP_ERR_INVALID_SIZE;
-            }
-            esp_err_t err = delete_path(child);
-            if (err != ESP_OK) {
-                closedir(dir);
-                return err;
-            }
-        }
-        closedir(dir);
-        if (rmdir(path) != 0) {
-            ESP_LOGE(TAG, "rmdir(%s) failed (errno=%d)", path, errno);
-            return ESP_FAIL;
-        }
-        return ESP_OK;
+static bool delete_path_is_dir(const struct stat *st)
+{
+    return S_ISDIR(st->st_mode);
+}
+
+static esp_err_t delete_path_compose_child(const char *parent, const char *name, char *out, size_t out_len)
+{
+    int needed = snprintf(out, out_len, "%s/%s", parent, name);
+    if (needed < 0 || needed >= (int)out_len) {
+        return ESP_ERR_INVALID_SIZE;
     }
+    return ESP_OK;
+}
 
+static esp_err_t delete_path_delete_file(const char *path)
+{
     if (remove(path) != 0) {
         ESP_LOGE(TAG, "remove(%s) failed (errno=%d)", path, errno);
         return ESP_FAIL;
     }
     return ESP_OK;
+}
+
+static esp_err_t delete_path_delete_dir(const char *path)
+{
+    DIR *dir = opendir(path);
+    if (!dir) {
+        ESP_LOGE(TAG, "opendir(%s) failed (errno=%d)", path, errno);
+        return ESP_FAIL;
+    }
+    struct dirent *dent = NULL;
+    while ((dent = readdir(dir)) != NULL) {
+        if (strcmp(dent->d_name, ".") == 0 || strcmp(dent->d_name, "..") == 0) {
+            continue;
+        }
+        char child[FS_NAV_MAX_PATH];
+        esp_err_t compose = delete_path_compose_child(path, dent->d_name, child, sizeof(child));
+        if (compose != ESP_OK) {
+            closedir(dir);
+            return compose;
+        }
+        esp_err_t err = delete_path(child);
+        if (err != ESP_OK) {
+            closedir(dir);
+            return err;
+        }
+    }
+    closedir(dir);
+    if (rmdir(path) != 0) {
+        ESP_LOGE(TAG, "rmdir(%s) failed (errno=%d)", path, errno);
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
+static esp_err_t delete_path(const char *path)
+{
+    if (delete_path_invalid_arg(path)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    struct stat st = {0};
+    esp_err_t st_err = delete_path_stat(path, &st);
+    if (st_err == ESP_ERR_NOT_FOUND) {
+        return ESP_OK;
+    }
+    if (st_err != ESP_OK) {
+        return st_err;
+    }
+
+    if (delete_path_is_dir(&st)) {
+        return delete_path_delete_dir(path);
+    }
+
+    return delete_path_delete_file(path);
 }
 
 static esp_err_t compute_total_size(const char *path, uint64_t *bytes)
