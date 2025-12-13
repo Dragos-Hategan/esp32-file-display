@@ -852,6 +852,27 @@ static bool item_click_handle_txt(file_manager_ctx_t *ctx, const fs_nav_item_t *
 static bool item_click_handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_t *item);
 
 /**
+ * @brief Evaluate scroll position and update paging state at top/bottom edges.
+ *
+ * @param ctx Browser context.
+ */
+static void list_scroll_update_edges(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Attempt to page down when near bottom edge.
+ *
+ * @param ctx Browser context.
+ */
+static void list_scroll_handle_bottom(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Attempt to page up when near top edge.
+ *
+ * @param ctx Browser context.
+ */
+static void list_scroll_handle_top(file_manager_ctx_t *ctx);
+
+/**
  * @brief Sync the slider range/value to the current list window.
  *
  * Recomputes slider bounds from total items and step size, clamps the knob to
@@ -3476,8 +3497,33 @@ static void on_list_scrolled(lv_event_t *e)
         return;
     }
 
+    list_scroll_update_edges(ctx);
+}
+
+static void list_scroll_update_edges(file_manager_ctx_t *ctx)
+{
     bool at_top = lv_obj_get_scroll_top(ctx->graphics.list) <= 0;
     bool at_bottom = lv_obj_get_scroll_bottom(ctx->graphics.list) <= 0;
+
+    if (at_bottom) {
+        list_scroll_handle_bottom(ctx);
+    } else {
+        ctx->flags.list_at_bottom_edge = false;
+    }
+
+    if (at_top) {
+        list_scroll_handle_top(ctx);
+    } else {
+        ctx->flags.list_at_top_edge = false;
+    }
+}
+
+static void list_scroll_handle_bottom(file_manager_ctx_t *ctx)
+{
+    if (ctx->flags.list_at_bottom_edge) {
+        return;
+    }
+    ctx->flags.list_at_bottom_edge = true;
 
     size_t total = fs_nav_total_items(&ctx->nav);
 
@@ -3485,36 +3531,44 @@ static void on_list_scrolled(lv_event_t *e)
     size_t step = 1;
     get_window_params(ctx, &window_size, &step);
 
-    if (at_bottom && !ctx->flags.list_at_bottom_edge) {
-        ctx->flags.list_at_bottom_edge = true;
-        size_t current_count = 0;
-        fs_nav_items(&ctx->nav, &current_count);
-        size_t available_end = ctx->list_window_start + current_count;
-        if (total > window_size && available_end < total) {
-            size_t max_start = (total > window_size) ? (total - window_size) : 0;
-            size_t new_start = ctx->list_window_start + step;
-            if (new_start > max_start) new_start = max_start;
-            size_t anchor_global = new_start + (step ? (step - 1) : 0); /* last overlapping item */
-            if (anchor_global >= total) anchor_global = total ? (total - 1) : 0;
-            ctx->flags.list_has_paged = true;
-            build_item_list(ctx, new_start, anchor_global, true, false);
-        }
-    } else if (!at_bottom) {
-        ctx->flags.list_at_bottom_edge = false;
+    size_t current_count = 0;
+    fs_nav_items(&ctx->nav, &current_count);
+    size_t available_end = ctx->list_window_start + current_count;
+    if (total <= window_size || available_end >= total) {
+        return;
     }
 
-    if (at_top && !ctx->flags.list_at_top_edge) {
-        ctx->flags.list_at_top_edge = true;
-        if (total > window_size && ctx->list_window_start > 0) {
-            size_t new_start = (ctx->list_window_start > step) ? (ctx->list_window_start - step) : 0;
-            size_t anchor_global = new_start + step; /* first overlapping item from previous window */
-            if (anchor_global >= total) anchor_global = total ? (total - 1) : 0;
-            ctx->flags.list_has_paged = true;
-            build_item_list(ctx, new_start, anchor_global, true, false);
-        }
-    } else if (!at_top) {
-        ctx->flags.list_at_top_edge = false;
+    size_t max_start = (total > window_size) ? (total - window_size) : 0;
+    size_t new_start = ctx->list_window_start + step;
+    if (new_start > max_start) new_start = max_start;
+    size_t anchor_global = new_start + (step ? (step - 1) : 0); /* last overlapping item */
+    if (anchor_global >= total) anchor_global = total ? (total - 1) : 0;
+    ctx->flags.list_has_paged = true;
+    build_item_list(ctx, new_start, anchor_global, true, false);
+}
+
+static void list_scroll_handle_top(file_manager_ctx_t *ctx)
+{
+    if (ctx->flags.list_at_top_edge) {
+        return;
     }
+    ctx->flags.list_at_top_edge = true;
+
+    size_t total = fs_nav_total_items(&ctx->nav);
+
+    size_t window_size = 1;
+    size_t step = 1;
+    get_window_params(ctx, &window_size, &step);
+
+    if (total <= window_size || ctx->list_window_start == 0) {
+        return;
+    }
+
+    size_t new_start = (ctx->list_window_start > step) ? (ctx->list_window_start - step) : 0;
+    size_t anchor_global = new_start + step; /* first overlapping item from previous window */
+    if (anchor_global >= total) anchor_global = total ? (total - 1) : 0;
+    ctx->flags.list_has_paged = true;
+    build_item_list(ctx, new_start, anchor_global, true, false);
 }
 
 static void on_slider_value_changed(lv_event_t *e)
