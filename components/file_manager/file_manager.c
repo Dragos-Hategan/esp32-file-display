@@ -804,6 +804,54 @@ static void on_list_scrolled(lv_event_t *e);
 static void on_slider_value_changed(lv_event_t *e);
 
 /**
+ * @brief Clear suppressed click flag if set.
+ *
+ * @param ctx Browser context.
+ * @return true if click was suppressed and handled, false otherwise.
+ */
+static bool item_click_handle_suppress(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Fetch the clicked item and index from the event.
+ *
+ * @param ctx Browser context.
+ * @param e   LVGL event.
+ * @param[out] out_item Returned item pointer.
+ * @param[out] out_index Returned item index.
+ * @return true on success, false on invalid state.
+ */
+static bool item_click_get_item(file_manager_ctx_t *ctx, lv_event_t *e, const fs_nav_item_t **out_item, size_t *out_index);
+
+/**
+ * @brief Handle directory click (enter and refresh) if applicable.
+ *
+ * @param ctx Browser context.
+ * @param item Clicked item.
+ * @param index Item index.
+ * @return true if handled as directory, false otherwise.
+ */
+static bool item_click_handle_dir(file_manager_ctx_t *ctx, const fs_nav_item_t *item, size_t index);
+
+/**
+ * @brief Handle TXT click by opening text viewer.
+ *
+ * @param ctx Browser context.
+ * @param item Clicked item.
+ * @param index Item index.
+ * @return true if handled as TXT, false otherwise.
+ */
+static bool item_click_handle_txt(file_manager_ctx_t *ctx, const fs_nav_item_t *item, size_t index);
+
+/**
+ * @brief Handle JPEG click.
+ *
+ * @param ctx Browser context.
+ * @param item Clicked item.
+ * @return true if handled as JPEG, false otherwise.
+ */
+static bool item_click_handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_t *item);
+
+/**
  * @brief Sync the slider range/value to the current list window.
  *
  * Recomputes slider bounds from total items and step size, clamps the knob to
@@ -3314,66 +3362,111 @@ static void on_item_click(lv_event_t *e)
         return;
     }
 
-    if (ctx->flags.suppress_click) {
-        ctx->flags.suppress_click = false;
+    if (item_click_handle_suppress(ctx)) {
         return;
     }
 
+    const fs_nav_item_t *item = NULL;
+    size_t index = 0;
+    if (!item_click_get_item(ctx, e, &item, &index)) {
+        return;
+    }
+
+    if (item_click_handle_dir(ctx, item, index)) {
+        return;
+    }
+
+    if (item_click_handle_txt(ctx, item, index)) {
+        return;
+    }
+
+    if (item_click_handle_jpeg(ctx, item)) {
+        return;
+    }
+
+    show_unsupported_prompt();
+}
+
+static bool item_click_handle_suppress(file_manager_ctx_t *ctx)
+{
+    if (!ctx->flags.suppress_click) {
+        return false;
+    }
+    ctx->flags.suppress_click = false;
+    return true;
+}
+
+static bool item_click_get_item(file_manager_ctx_t *ctx, lv_event_t *e, const fs_nav_item_t **out_item, size_t *out_index)
+{
     lv_obj_t *btn = lv_event_get_target(e);
     size_t index = (size_t)(uintptr_t)lv_obj_get_user_data(btn);
 
     size_t count = 0;
     const fs_nav_item_t *items = fs_nav_items(&ctx->nav, &count);
     if (!items || index >= count) {
-        return;
+        return false;
     }
 
-    const fs_nav_item_t *item = &items[index];
     fs_nav_ensure_meta(&ctx->nav, index);
-    item = &items[index];
-    if (item->is_dir) {
+    *out_item = &items[index];
+    *out_index = index;
+    return true;
+}
+
+static bool item_click_handle_dir(file_manager_ctx_t *ctx, const fs_nav_item_t *item, size_t index)
+{
+    if (!item->is_dir) {
+        return false;
+    }
+
+    show_loading(ctx);
+    esp_err_t err = fs_nav_enter(&ctx->nav, index);
+    hide_loading(ctx);
+    if (err == ESP_OK) {
+        sync_view(ctx);
+    } else {
+        const char *item_name = (item && item->name) ? item->name : "<item>";
+        ESP_LOGE(TAG, "Failed to enter \"%s\": %s", item_name, esp_err_to_name(err));
+        sd_card_schedule_retry();
+        schedule_wait_for_reconnection();
+    }
+    return true;
+}
+
+static bool item_click_handle_txt(file_manager_ctx_t *ctx, const fs_nav_item_t *item, size_t index)
+{
+    if (!fs_text_is_txt(item->name)) {
+        return false;
+    }
+
+    ctx->reload_anchor_index = ctx->list_window_start + index;
+    char path[FS_NAV_MAX_PATH];
+    if (fs_nav_compose_path(&ctx->nav, item->name, path, sizeof(path)) == ESP_OK) {
+        text_viewer_open_opts_t opts = {
+            .path = path,
+            .return_screen = ctx->graphics.screen,
+            .editable = false,
+        };
         show_loading(ctx);
-        esp_err_t err = fs_nav_enter(&ctx->nav, index);
+        esp_err_t err = text_viewer_open(&opts);
         hide_loading(ctx);
-        if (err == ESP_OK) {
-            sync_view(ctx);
-        } else {
-            const char *item_name = (item && item->name) ? item->name : "<item>";
-            ESP_LOGE(TAG, "Failed to enter \"%s\": %s", item_name, esp_err_to_name(err));
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to view \"%s\": %s", item->name, esp_err_to_name(err));
             sd_card_schedule_retry();
-            schedule_wait_for_reconnection();
         }
-        return;
+    } else {
+        ESP_LOGE(TAG, "Path too long for \"%s\"", item->name);
     }
+    return true;
+}
 
-    if (fs_text_is_txt(item->name)) {
-        ctx->reload_anchor_index = ctx->list_window_start + index;
-        char path[FS_NAV_MAX_PATH];
-        if (fs_nav_compose_path(&ctx->nav, item->name, path, sizeof(path)) == ESP_OK) {
-            text_viewer_open_opts_t opts = {
-                .path = path,
-                .return_screen = ctx->graphics.screen,
-                .editable = false,
-            };
-            show_loading(ctx);
-            esp_err_t err = text_viewer_open(&opts);
-            hide_loading(ctx);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to view \"%s\": %s", item->name, esp_err_to_name(err));
-                sd_card_schedule_retry();
-            }
-        } else {
-            ESP_LOGE(TAG, "Path too long for \"%s\"", item->name);
-        }
-        return;
+static bool item_click_handle_jpeg(file_manager_ctx_t *ctx, const fs_nav_item_t *item)
+{
+    if (!is_file_jpeg(item->name)) {
+        return false;
     }
-
-    if (is_file_jpeg(item->name)) {
-        handle_jpeg(ctx, item);
-        return;
-    }
-
-    show_unsupported_prompt();
+    handle_jpeg(ctx, item);
+    return true;
 }
 
 static void on_list_scrolled(lv_event_t *e)
