@@ -373,6 +373,39 @@ static void clock_timer_cb(void *arg);
 static void clock_update_async(void *arg);
 
 /**
+ * @brief Check if datetime label exists before updating clock.
+ *
+ * @param ctx Browser context.
+ * @return true if label exists, false otherwise.
+ */
+static bool has_datetime_label(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Handle clock UI when no user-set time is available.
+ *
+ * Shows the button and hides the label.
+ *
+ * @param ctx Browser context.
+ */
+static void clock_update_handle_not_set(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Format current time/date into buffer.
+ *
+ * @param buf Output buffer.
+ * @param buf_len Buffer length.
+ */
+static void clock_update_format(char *buf, size_t buf_len);
+
+/**
+ * @brief Apply formatted time to label and toggle visibility.
+ *
+ * @param ctx Browser context.
+ * @param buf Formatted time string.
+ */
+static void clock_update_apply(file_manager_ctx_t *ctx, const char *buf);
+
+/**
  * @brief Restarts the delayed scrolling animation for the path label.
  *
  * This function cancels any existing scroll-start timer, forces the path label into
@@ -3177,32 +3210,52 @@ static void clock_timer_cb(void *arg)
 static void clock_update_async(void *arg)
 {
     file_manager_ctx_t *ctx = &s_file_manager;
-    if (!ctx->graphics.datetime_label) {
+    if (!has_datetime_label(ctx)) {
         return;
     }
 
     if (!ctx->flags.clock_user_set) {
-        if (ctx->graphics.datetime_btn) {
-            lv_obj_clear_flag(ctx->graphics.datetime_btn, LV_OBJ_FLAG_HIDDEN);
-        }
-        if (ctx->graphics.datetime_label) {
-            lv_obj_add_flag(ctx->graphics.datetime_label, LV_OBJ_FLAG_HIDDEN);
-        }
+        clock_update_handle_not_set(ctx);
         return;
     }
 
+    char buf[32];
+    clock_update_format(buf, sizeof(buf));
+
+    clock_update_apply(ctx, buf);
+}
+
+static bool has_datetime_label(const file_manager_ctx_t *ctx)
+{
+    return (ctx && ctx->graphics.datetime_label);
+}
+
+static void clock_update_handle_not_set(file_manager_ctx_t *ctx)
+{
+    if (ctx->graphics.datetime_btn) {
+        lv_obj_clear_flag(ctx->graphics.datetime_btn, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (ctx->graphics.datetime_label) {
+        lv_obj_add_flag(ctx->graphics.datetime_label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void clock_update_format(char *buf, size_t buf_len)
+{
     time_t now = time(NULL);
     struct tm tm_info;
     localtime_r(&now, &tm_info);
 
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%02d:%02d - %02d/%02d/%02d",
+    snprintf(buf, buf_len, "%02d:%02d - %02d/%02d/%02d",
              tm_info.tm_hour,
              tm_info.tm_min,
              tm_info.tm_mon + 1,
              tm_info.tm_mday,
              (tm_info.tm_year + 1900) % 100);
+}
 
+static void clock_update_apply(file_manager_ctx_t *ctx, const char *buf)
+{
     lv_label_set_text(ctx->graphics.datetime_label, buf);
 
     /* Show the label and hide the button */
