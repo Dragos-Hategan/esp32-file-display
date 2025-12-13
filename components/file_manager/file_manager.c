@@ -551,6 +551,79 @@ static void on_slider_value_changed(lv_event_t *e);
 static void update_slider(file_manager_ctx_t *ctx);
 
 /**
+ * @brief Validate that slider-related objects exist.
+ *
+ * @param ctx Browser context.
+ * @return true if ctx and list slider are valid, false otherwise.
+ */
+static bool slider_is_valid(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Get the list row container for padding adjustments.
+ *
+ * @param ctx Browser context.
+ * @return Parent object of the list or NULL.
+ */
+static lv_obj_t *slider_get_list_row(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Disable slider when all items fit in one window.
+ *
+ * Preserves suppress flag, resets value, disables drag state and applies padding.
+ *
+ * @param ctx Browser context.
+ * @param list_row Parent row containing the list (nullable).
+ */
+static void slider_disable_for_single_window(file_manager_ctx_t *ctx, lv_obj_t *list_row);
+
+/**
+ * @brief Compute the maximum starting index for the slider.
+ *
+ * @param total Total items.
+ * @param window_size Items per window.
+ * @return Maximum start index.
+ */
+static size_t slider_max_start(size_t total, size_t window_size);
+
+/**
+ * @brief Compute the maximum step index based on start and step.
+ *
+ * @param max_start Maximum start index.
+ * @param step Step size.
+ * @return Maximum step index.
+ */
+static size_t slider_max_step_index(size_t max_start, size_t step);
+
+/**
+ * @brief Compute the current slider step for the active window.
+ *
+ * @param ctx Browser context.
+ * @param max_start Maximum start index.
+ * @param max_step_index Maximum step index.
+ * @param step Step size.
+ * @param max_val Clamping value.
+ * @return Current step index.
+ */
+static size_t slider_compute_current_step(const file_manager_ctx_t *ctx, size_t max_start, size_t max_step_index, size_t step, int32_t max_val);
+
+/**
+ * @brief Apply slider range/value while suppressing change callbacks.
+ *
+ * @param ctx Browser context.
+ * @param max_val Maximum slider value.
+ * @param current_step Current step to set.
+ */
+static void slider_apply_range_and_value(file_manager_ctx_t *ctx, int32_t max_val, size_t current_step);
+
+/**
+ * @brief Enable slider and adjust padding when multiple windows exist.
+ *
+ * @param ctx Browser context.
+ * @param list_row Parent row containing the list (nullable).
+ */
+static void enable_slider(file_manager_ctx_t *ctx, lv_obj_t *list_row);
+
+/**
  * @brief Resolve window size and step with safe defaults.
  *
  * Uses context/config to produce non-zero values for both the window size and the step.
@@ -1775,39 +1848,43 @@ static void build_item_list(file_manager_ctx_t *ctx, size_t start_index, size_t 
     item_window_restore_scroll_flag(ctx, prev_suppress);
 }
 
-static void update_slider(file_manager_ctx_t *ctx)
+static bool slider_is_valid(const file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->graphics.list_slider) {
-        return;
+    return (ctx && ctx->graphics.list_slider);
+}
+
+static lv_obj_t *slider_get_list_row(const file_manager_ctx_t *ctx)
+{
+    return (ctx && ctx->graphics.list) ? lv_obj_get_parent(ctx->graphics.list) : NULL;
+}
+
+static void slider_disable_for_single_window(file_manager_ctx_t *ctx, lv_obj_t *list_row)
+{
+    bool prev_suppress = ctx->flags.slider_suppress_change;
+    ctx->flags.slider_suppress_change = true;
+    lv_slider_set_range(ctx->graphics.list_slider, 0, 0);
+    lv_slider_set_value(ctx->graphics.list_slider, 0, LV_ANIM_OFF);
+    ctx->flags.slider_suppress_change = prev_suppress;
+    ctx->slider_pending_step = 0;
+    ctx->flags.slider_drag_active = false;
+    lv_obj_add_state(ctx->graphics.list_slider, LV_STATE_DISABLED);
+    if (list_row) {
+        lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
     }
+}
 
-    size_t window_size = 1;
-    size_t step = 1;
-    get_window_params(ctx, &window_size, &step);
-    size_t total = fs_nav_total_items(&ctx->nav);
+static size_t slider_max_start(size_t total, size_t window_size)
+{
+    return (total > window_size) ? (total - window_size) : 0;
+}
 
-    lv_obj_t *list_row = ctx->graphics.list ? lv_obj_get_parent(ctx->graphics.list) : NULL;
+static size_t slider_max_step_index(size_t max_start, size_t step)
+{
+    return step ? ((max_start + step - 1) / step) : 0;
+}
 
-    /* If everything fits in one window, lock the slider at start. */
-    if (total <= window_size) {
-        bool prev_suppress = ctx->flags.slider_suppress_change;
-        ctx->flags.slider_suppress_change = true;
-        lv_slider_set_range(ctx->graphics.list_slider, 0, 0);
-        lv_slider_set_value(ctx->graphics.list_slider, 0, LV_ANIM_OFF);
-        ctx->flags.slider_suppress_change = prev_suppress;
-        ctx->slider_pending_step = 0;
-        ctx->flags.slider_drag_active = false;
-        lv_obj_add_state(ctx->graphics.list_slider, LV_STATE_DISABLED);
-        if (list_row) {
-            lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
-        }
-        return;
-    }
-
-    size_t max_start = total - window_size;
-    size_t max_step_index = step ? ((max_start + step - 1) / step) : 0;
-    int32_t max_val = (int32_t)max_step_index;
-
+static size_t slider_compute_current_step(const file_manager_ctx_t *ctx, size_t max_start, size_t max_step_index, size_t step, int32_t max_val)
+{
     size_t current_step = 0;
     if (ctx->list_window_start >= max_start) {
         current_step = max_step_index; /* force knob to bottom when at last window */
@@ -1817,18 +1894,55 @@ static void update_slider(file_manager_ctx_t *ctx)
             current_step = (size_t)max_val;
         }
     }
+    return current_step;
+}
 
+static void slider_apply_range_and_value(file_manager_ctx_t *ctx, int32_t max_val, size_t current_step)
+{
     bool prev_suppress = ctx->flags.slider_suppress_change;
     ctx->flags.slider_suppress_change = true;
     lv_slider_set_range(ctx->graphics.list_slider, max_val, 0); /* min at top, max at bottom */
     lv_slider_set_value(ctx->graphics.list_slider, (int32_t)current_step, LV_ANIM_OFF);
     ctx->flags.slider_suppress_change = prev_suppress;
     ctx->slider_pending_step = current_step;
+}
 
+static void enable_slider(file_manager_ctx_t *ctx, lv_obj_t *list_row)
+{
     lv_obj_remove_state(ctx->graphics.list_slider, LV_STATE_DISABLED);
     if (list_row) {
         lv_obj_set_style_pad_right(list_row, FILE_BROWSER_SLIDER_GAP_DEFAULT, 0);
     }
+}
+
+static void update_slider(file_manager_ctx_t *ctx)
+{
+    if (!slider_is_valid(ctx)) {
+        return;
+    }
+
+    size_t window_size = 1;
+    size_t step = 1;
+    get_window_params(ctx, &window_size, &step);
+    size_t total = fs_nav_total_items(&ctx->nav);
+
+    lv_obj_t *list_row = slider_get_list_row(ctx);
+
+    /* If everything fits in one window, lock the slider at start. */
+    if (total <= window_size) {
+        slider_disable_for_single_window(ctx, list_row);
+        return;
+    }
+
+    size_t max_start = slider_max_start(total, window_size);
+    size_t max_step_index = slider_max_step_index(max_start, step);
+    int32_t max_val = (int32_t)max_step_index;
+
+    size_t current_step = slider_compute_current_step(ctx, max_start, max_step_index, step, max_val);
+
+    slider_apply_range_and_value(ctx, max_val, current_step);
+
+    enable_slider(ctx, list_row);
 }
 
 static void schedule_wait_for_reconnection(void)
