@@ -335,7 +335,62 @@ static void entry_scroll_timer_cb(lv_timer_t *timer);
  * @param center_anchor True to center the anchor item, false to align it near top.
  * @param scroll_to_top Fallback scroll when no anchor: true = top, false = bottom.
  */
-static void apply_window(file_manager_ctx_t *ctx, size_t start_index, size_t anchor_index, bool center_anchor, bool scroll_to_top);
+static void build_item_list(file_manager_ctx_t *ctx, size_t start_index, size_t anchor_index, bool center_anchor, bool scroll_to_top);
+
+/**
+ * @brief Check if build_item_list has a valid context and list to operate on.
+ *
+ * @param ctx Browser context.
+ * @return true if ctx and ctx->graphics.list are valid, false otherwise.
+ */
+static bool is_item_list_valid(const file_manager_ctx_t *ctx);
+
+/**
+ * @brief Set the navigator window and reset edge flags.
+ *
+ * Logs and schedules retries on failure.
+ *
+ * @param ctx Browser context.
+ * @param start_index Starting index for the window.
+ * @return ESP_OK on success or error from fs_nav_set_window.
+ */
+static esp_err_t is_item_set_nav(file_manager_ctx_t *ctx, size_t start_index);
+
+/**
+ * @brief Refresh list contents and related UI while suppressing scroll events.
+ *
+ * Sets list_suppress_scroll, shows loading, repopulates list, updates layout and slider.
+ *
+ * @param ctx Browser context.
+ */
+static void refresh_item_list(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Find the anchor LVGL object corresponding to an item index.
+ *
+ * @param ctx Browser context.
+ * @param anchor_index Global item index to anchor (SIZE_MAX to skip).
+ * @return LVGL object for the anchor or NULL if not found/in range.
+ */
+static lv_obj_t *item_list_find_anchor(file_manager_ctx_t *ctx, size_t anchor_index);
+
+/**
+ * @brief Perform scroll positioning based on anchor and paging state.
+ *
+ * @param ctx Browser context.
+ * @param anchor_obj Anchor object (nullable).
+ * @param center_anchor True to center the anchor item.
+ * @param scroll_to_top Fallback scroll when no anchor: true = top, false = bottom.
+ */
+static void item_list_scroll_to_anchor(file_manager_ctx_t *ctx, lv_obj_t *anchor_obj, bool center_anchor, bool scroll_to_top);
+
+/**
+ * @brief Restore list scroll suppression flag to its previous value.
+ *
+ * @param ctx Browser context.
+ * @param prev_suppress Previous flag value to restore.
+ */
+static void item_window_restore_scroll_flag(file_manager_ctx_t *ctx, bool prev_suppress);
 
 /**
  * @brief Helper to set a sensible reload anchor when none is provided.
@@ -1616,48 +1671,61 @@ static void get_window_params(file_manager_ctx_t *ctx, size_t *window_size, size
     *step = st;
 }
 
-static void apply_window(file_manager_ctx_t *ctx, size_t start_index, size_t anchor_index, bool center_anchor, bool scroll_to_top)
+static bool is_item_list_valid(const file_manager_ctx_t *ctx)
 {
-    if (!ctx || !ctx->graphics.list) {
-        return;
-    }
+    return (ctx && ctx->graphics.list);
+}
 
+static esp_err_t is_item_set_nav(file_manager_ctx_t *ctx, size_t start_index)
+{
     esp_err_t werr = fs_nav_set_window(&ctx->nav, start_index, ctx->list_window_size);
     if (werr != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set window: %s", esp_err_to_name(werr));
         sd_card_schedule_retry();
-        return;
+        return werr;
     }
 
     ctx->list_window_start = fs_nav_window_start(&ctx->nav);
     ctx->flags.list_at_top_edge = false;
     ctx->flags.list_at_bottom_edge = false;
+    return ESP_OK;
+}
 
-    bool prev_suppress = ctx->flags.list_suppress_scroll;
+static void refresh_item_list(file_manager_ctx_t *ctx)
+{
     ctx->flags.list_suppress_scroll = true;
     show_loading(ctx);
     populate_list(ctx);
     hide_loading(ctx);
     lv_obj_update_layout(ctx->graphics.list);
     update_slider(ctx);
+}
 
-    lv_obj_t *anchor_obj = NULL;
-    if (anchor_index != SIZE_MAX) {
-        size_t count = 0;
-        fs_nav_items(&ctx->nav, &count);
-        if (anchor_index >= ctx->list_window_start && anchor_index < ctx->list_window_start + count) {
-            size_t rel = anchor_index - ctx->list_window_start;
-            uint32_t child_cnt = lv_obj_get_child_count(ctx->graphics.list);
-            for (uint32_t i = 0; i < child_cnt; i++) {
-                lv_obj_t *child = lv_obj_get_child(ctx->graphics.list, i);
-                if ((size_t)(uintptr_t)lv_obj_get_user_data(child) == rel) {
-                    anchor_obj = child;
-                    break;
-                }
-            }
-        }
+static lv_obj_t *item_list_find_anchor(file_manager_ctx_t *ctx, size_t anchor_index)
+{
+    if (anchor_index == SIZE_MAX) {
+        return NULL;
     }
 
+    size_t count = 0;
+    fs_nav_items(&ctx->nav, &count);
+    if (anchor_index < ctx->list_window_start || anchor_index >= ctx->list_window_start + count) {
+        return NULL;
+    }
+
+    size_t rel = anchor_index - ctx->list_window_start;
+    uint32_t child_cnt = lv_obj_get_child_count(ctx->graphics.list);
+    for (uint32_t i = 0; i < child_cnt; i++) {
+        lv_obj_t *child = lv_obj_get_child(ctx->graphics.list, i);
+        if ((size_t)(uintptr_t)lv_obj_get_user_data(child) == rel) {
+            return child;
+        }
+    }
+    return NULL;
+}
+
+static void item_list_scroll_to_anchor(file_manager_ctx_t *ctx, lv_obj_t *anchor_obj, bool center_anchor, bool scroll_to_top)
+{
     if (anchor_obj) {
         if (center_anchor) {
             lv_obj_scroll_to_view(anchor_obj, LV_ANIM_OFF);
@@ -1668,7 +1736,10 @@ static void apply_window(file_manager_ctx_t *ctx, size_t start_index, size_t anc
         } else {
             lv_obj_scroll_to_view(anchor_obj, LV_ANIM_OFF);
         }
-    } else if (ctx->flags.list_has_paged) {
+        return;
+    }
+
+    if (ctx->flags.list_has_paged) {
         /* Center only after the first paging has occurred. */
         lv_obj_scroll_to_y(ctx->graphics.list, lv_obj_get_scroll_bottom(ctx->graphics.list) / 2, LV_ANIM_OFF);
     } else if (scroll_to_top) {
@@ -1676,8 +1747,32 @@ static void apply_window(file_manager_ctx_t *ctx, size_t start_index, size_t anc
     } else {
         lv_obj_scroll_to_y(ctx->graphics.list, lv_obj_get_scroll_bottom(ctx->graphics.list), LV_ANIM_OFF);
     }
+}
 
+static void item_window_restore_scroll_flag(file_manager_ctx_t *ctx, bool prev_suppress)
+{
     ctx->flags.list_suppress_scroll = prev_suppress;
+}
+
+static void build_item_list(file_manager_ctx_t *ctx, size_t start_index, size_t anchor_index, bool center_anchor, bool scroll_to_top)
+{
+    if (!is_item_list_valid(ctx)) {
+        return;
+    }
+
+    esp_err_t werr = is_item_set_nav(ctx, start_index);
+    if (werr != ESP_OK) {
+        return;
+    }
+
+    bool prev_suppress = ctx->flags.list_suppress_scroll;
+    refresh_item_list(ctx);
+
+    lv_obj_t *anchor_obj = item_list_find_anchor(ctx, anchor_index);
+
+    item_list_scroll_to_anchor(ctx, anchor_obj, center_anchor, scroll_to_top);
+
+    item_window_restore_scroll_flag(ctx, prev_suppress);
 }
 
 static void update_slider(file_manager_ctx_t *ctx)
@@ -1820,7 +1915,7 @@ static void sync_view(file_manager_ctx_t *ctx)
     update_path_label(ctx);
     update_sort_badges(ctx);
     update_second_header(ctx);
-    apply_window(ctx, ctx->list_window_start, anchor, true, true);
+    build_item_list(ctx, ctx->list_window_start, anchor, true, true);
 }
 
 static bool check_second_header(file_manager_ctx_t *ctx)
@@ -2676,7 +2771,7 @@ static void on_list_scrolled(lv_event_t *e)
             size_t anchor_global = new_start + (step ? (step - 1) : 0); /* last overlapping item */
             if (anchor_global >= total) anchor_global = total ? (total - 1) : 0;
             ctx->flags.list_has_paged = true;
-            apply_window(ctx, new_start, anchor_global, true, false);
+            build_item_list(ctx, new_start, anchor_global, true, false);
         }
     } else if (!at_bottom) {
         ctx->flags.list_at_bottom_edge = false;
@@ -2689,7 +2784,7 @@ static void on_list_scrolled(lv_event_t *e)
             size_t anchor_global = new_start + step; /* first overlapping item from previous window */
             if (anchor_global >= total) anchor_global = total ? (total - 1) : 0;
             ctx->flags.list_has_paged = true;
-            apply_window(ctx, new_start, anchor_global, true, false);
+            build_item_list(ctx, new_start, anchor_global, true, false);
         }
     } else if (!at_top) {
         ctx->flags.list_at_top_edge = false;
@@ -2763,7 +2858,7 @@ static void on_slider_value_changed(lv_event_t *e)
         ctx->slider_pending_step = SIZE_MAX;
         ctx->flags.slider_drag_active = false;
         ctx->flags.list_has_paged = true;
-        apply_window(ctx, new_start, SIZE_MAX, true, true);
+        build_item_list(ctx, new_start, SIZE_MAX, true, true);
     }
 }
 
@@ -2868,7 +2963,7 @@ static void apply_sort(file_manager_ctx_t *ctx, fs_nav_sort_mode_t mode, bool as
     if (fs_nav_set_sort(&ctx->nav, mode, ascending) == ESP_OK) {
         update_sort_badges(ctx);
         reset_window(ctx);
-        apply_window(ctx, ctx->list_window_start, SIZE_MAX, true, true);
+        build_item_list(ctx, ctx->list_window_start, SIZE_MAX, true, true);
     }
 }
 
