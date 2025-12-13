@@ -1209,45 +1209,90 @@ static void on_rename_textarea_clicked(lv_event_t *e);
 
 /**************************************************************************************************/
 
+/************************************ File Manager Start Helpers ***********************************/
+
+/**
+ * @brief Build a default file manager config using compile-time constants.
+ *
+ * @return Config with root path from CONFIG_SDSPI_MOUNT_POINT and default max items.
+ */
+static file_manager_config_t build_default_file_manager_config(void);
+
+/**
+ * @brief Validate presence of a root path in the config.
+ *
+ * Logs an error if missing.
+ *
+ * @param cfg Config to validate.
+ * @param tag Logging tag to use.
+ * @return ESP_OK if valid, ESP_ERR_INVALID_ARG otherwise.
+ */
+static esp_err_t validate_root_path(const file_manager_config_t *cfg, const char *tag);
+
+/**
+ * @brief Reset and prepare the file manager context.
+ *
+ * Clears state, resets window, and hooks time callbacks.
+ *
+ * @param ctx Context to initialize.
+ */
+static void initialize_file_manager_context(file_manager_ctx_t *ctx);
+
+/**
+ * @brief Build navigator config from the browser config.
+ *
+ * @param browser_cfg Source browser config.
+ * @return Navigator config with resolved max_items.
+ */
+static fs_nav_config_t build_nav_config(const file_manager_config_t *browser_cfg);
+
+/**
+ * @brief Initialize the file navigator and handle failure side effects.
+ *
+ * Schedules SD retry helpers on failure.
+ *
+ * @param ctx File manager context.
+ * @param nav_cfg Navigator configuration.
+ * @param tag Logging tag to use.
+ * @return ESP_OK on success or error from fs_nav_init.
+ */
+static esp_err_t init_file_navigator(file_manager_ctx_t *ctx, const fs_nav_config_t *nav_cfg, const char *tag);
+
+/**
+ * @brief Acquire the display lock or clean up navigator on failure.
+ *
+ * @param ctx File manager context.
+ * @param tag Logging tag to use.
+ * @return ESP_OK if lock acquired, ESP_ERR_TIMEOUT otherwise.
+ */
+static esp_err_t lock_display_or_cleanup(file_manager_ctx_t *ctx, const char *tag);
+
+/**************************************************************************************************/
+
 esp_err_t file_manager_start(void)
 {
     const char* TAG_FILE_BROWSER_START = "file_manager_start";
 
-    file_manager_config_t browser_cfg = {
-        .root_path = CONFIG_SDSPI_MOUNT_POINT,
-        .max_items = FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT,
-    };
+    file_manager_config_t browser_cfg = build_default_file_manager_config();
 
-    if (!browser_cfg.root_path) {
-        ESP_LOGE(TAG_FILE_BROWSER_START, "Failed to find a root path: (%s)", esp_err_to_name(ESP_ERR_INVALID_ARG));
-        return ESP_ERR_INVALID_ARG;
+    esp_err_t config_err = validate_root_path(&browser_cfg, TAG_FILE_BROWSER_START);
+    if (config_err != ESP_OK) {
+        return config_err;
     }
 
     file_manager_ctx_t *ctx = &s_browser;
-    memset(ctx, 0, sizeof(*ctx));
-    clear_action_state(ctx);
-    reset_window(ctx);
-    settings_register_time_callbacks(file_manager_on_time_set, file_manager_reset_clock_display);
+    initialize_file_manager_context(ctx);
 
-    fs_nav_config_t nav_cfg = {
-        .root_path = browser_cfg.root_path,
-        .max_items = browser_cfg.max_items ? browser_cfg.max_items : FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT,
-    };
+    fs_nav_config_t nav_cfg = build_nav_config(&browser_cfg);
 
-    esp_err_t nav_err = fs_nav_init(&ctx->nav, &nav_cfg);
+    esp_err_t nav_err = init_file_navigator(ctx, &nav_cfg, TAG_FILE_BROWSER_START);
     if (nav_err != ESP_OK) {
-        ESP_LOGE(TAG_FILE_BROWSER_START, "Failed to initialize the file system navigator: (%s)", esp_err_to_name(nav_err));
-        sd_card_schedule_retry();
-        schedule_wait_for_reconnection();
         return nav_err;
     }
-    ctx->flags.initialized = true;
 
-    if (!bsp_display_lock(0)) {
-        fs_nav_deinit(&ctx->nav);
-        ctx->flags.initialized = false;
-        ESP_LOGE(TAG_FILE_BROWSER_START, "LVGL display lock cannot be acquired: (%s)", esp_err_to_name(ESP_ERR_TIMEOUT));
-        return ESP_ERR_TIMEOUT;
+    esp_err_t lock_err = lock_display_or_cleanup(ctx, TAG_FILE_BROWSER_START);
+    if (lock_err != ESP_OK) {
+        return lock_err;
     }
 
     build_file_manager_screen(ctx);
@@ -1276,6 +1321,65 @@ void file_manager_on_time_set(void)
     file_manager_ctx_t *ctx = &s_browser;
     ctx->flags.clock_user_set = true;
     clock_update_async(NULL);
+}
+
+static file_manager_config_t build_default_file_manager_config(void)
+{
+    file_manager_config_t cfg = {
+        .root_path = CONFIG_SDSPI_MOUNT_POINT,
+        .max_items = FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT,
+    };
+    return cfg;
+}
+
+static esp_err_t validate_root_path(const file_manager_config_t *cfg, const char *tag)
+{
+    if (!cfg->root_path) {
+        ESP_LOGE(tag, "Failed to find a root path: (%s)", esp_err_to_name(ESP_ERR_INVALID_ARG));
+        return ESP_ERR_INVALID_ARG;
+    }
+    return ESP_OK;
+}
+
+static void initialize_file_manager_context(file_manager_ctx_t *ctx)
+{
+    memset(ctx, 0, sizeof(*ctx));
+    clear_action_state(ctx);
+    reset_window(ctx);
+    settings_register_time_callbacks(file_manager_on_time_set, file_manager_reset_clock_display);
+}
+
+static fs_nav_config_t build_nav_config(const file_manager_config_t *browser_cfg)
+{
+    fs_nav_config_t nav_cfg = {
+        .root_path = browser_cfg->root_path,
+        .max_items = browser_cfg->max_items ? browser_cfg->max_items : FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT,
+    };
+    return nav_cfg;
+}
+
+static esp_err_t init_file_navigator(file_manager_ctx_t *ctx, const fs_nav_config_t *nav_cfg, const char *tag)
+{
+    esp_err_t nav_err = fs_nav_init(&ctx->nav, nav_cfg);
+    if (nav_err != ESP_OK) {
+        ESP_LOGE(tag, "Failed to initialize the file system navigator: (%s)", esp_err_to_name(nav_err));
+        sd_card_schedule_retry();
+        schedule_wait_for_reconnection();
+        return nav_err;
+    }
+    ctx->flags.initialized = true;
+    return ESP_OK;
+}
+
+static esp_err_t lock_display_or_cleanup(file_manager_ctx_t *ctx, const char *tag)
+{
+    if (!bsp_display_lock(0)) {
+        fs_nav_deinit(&ctx->nav);
+        ctx->flags.initialized = false;
+        ESP_LOGE(tag, "LVGL display lock cannot be acquired: (%s)", esp_err_to_name(ESP_ERR_TIMEOUT));
+        return ESP_ERR_TIMEOUT;
+    }
+    return ESP_OK;
 }
 
 static void build_file_manager_screen(file_manager_ctx_t *ctx)

@@ -5,7 +5,6 @@ extern "C" {
 #endif
 
 #include <stddef.h>
-
 #include "esp_err.h"
 #include "sd_card.h"
 
