@@ -1590,6 +1590,66 @@ static bool path_exists(const char *path);
 static esp_err_t generate_copy_name(const char *directory, const char *name, char *out, size_t out_len);
 
 /**
+ * @brief Validate inputs for generate_copy_name.
+ *
+ * @param directory Target directory.
+ * @param name Item name.
+ * @param out Output buffer.
+ * @param out_len Buffer length.
+ * @return true if inputs are invalid.
+ */
+static bool copy_name_invalid_args(const char *directory, const char *name, char *out, size_t out_len);
+
+/**
+ * @brief Split a name into base and extension.
+ *
+ * @param name Input name.
+ * @param[out] base Base buffer.
+ * @param[out] ext Extension buffer.
+ */
+static void copy_name_split(const char *name, char *base, char *ext);
+
+/**
+ * @brief Compute max base length leaving room for suffix and extension.
+ *
+ * @param ext_len Extension length.
+ * @return Max base length (0 if impossible).
+ */
+static size_t copy_name_max_base_len(size_t ext_len);
+
+/**
+ * @brief Clamp base length to the allowed maximum.
+ *
+ * @param base Base string buffer.
+ * @param max_base_len Allowed length.
+ * @return ESP_OK or ESP_ERR_INVALID_SIZE if max_base_len is zero.
+ */
+static esp_err_t copy_name_clamp_base(char *base, size_t max_base_len);
+
+/**
+ * @brief Build candidate copy name for a given index.
+ *
+ * @param base Base name.
+ * @param ext Extension.
+ * @param index Copy index (0 for first copy).
+ * @param[out] candidate Output buffer.
+ * @param cand_len Buffer length.
+ * @return true if written successfully.
+ */
+static bool copy_name_build_candidate(const char *base, const char *ext, int index, char *candidate, size_t cand_len);
+
+/**
+ * @brief Compose full path for candidate name.
+ *
+ * @param directory Target directory.
+ * @param candidate Candidate name.
+ * @param[out] full Output buffer.
+ * @param full_len Buffer length.
+ * @return true if written successfully.
+ */
+static bool copy_name_compose_full(const char *directory, const char *candidate, char *full, size_t full_len);
+
+/**
  * @brief Reset clipboard state to empty.
  *
  * @param ctx Browser context.
@@ -4728,61 +4788,93 @@ static esp_err_t copy_item(const char *src, const char *dest)
     return copy_file(src, dest);
 }
 
-static esp_err_t generate_copy_name(const char *directory, const char *name, char *out, size_t out_len)
+static bool copy_name_invalid_args(const char *directory, const char *name, char *out, size_t out_len)
 {
-    if (!directory || !name || !out || out_len == 0) {
-        return ESP_ERR_INVALID_ARG;
-    }
+    return (!directory || !name || !out || out_len == 0);
+}
 
-    char base[FS_NAV_MAX_NAME];
-    char ext[FS_NAV_MAX_NAME];
+static void copy_name_split(const char *name, char *base, char *ext)
+{
     const char *dot = strrchr(name, '.');
     if (dot && dot != name && dot[1] != '\0') {
         size_t base_len = (size_t)(dot - name);
-        if (base_len >= sizeof(base)) {
-            base_len = sizeof(base) - 1;
+        if (base_len >= FS_NAV_MAX_NAME) {
+            base_len = FS_NAV_MAX_NAME - 1;
         }
         memcpy(base, name, base_len);
         base[base_len] = '\0';
-        strlcpy(ext, dot, sizeof(ext));
+        strlcpy(ext, dot, FS_NAV_MAX_NAME);
     } else {
-        strlcpy(base, name, sizeof(base));
+        strlcpy(base, name, FS_NAV_MAX_NAME);
         ext[0] = '\0';
     }
+}
 
-    char candidate[FS_NAV_MAX_NAME];
-    size_t ext_len = strlen(ext);
-    /* longest suffix we generate is "_copy (100)" (11 chars); keep a small cushion */
-    size_t max_suffix_len = 12;
+static size_t copy_name_max_base_len(size_t ext_len)
+{
+    size_t max_suffix_len = 12; /* longest suffix: "_copy (100)" (11 chars) + cushion */
     size_t max_base_len = FS_NAV_MAX_NAME - 1;
     if (max_base_len > ext_len + max_suffix_len) {
         max_base_len -= (ext_len + max_suffix_len);
     } else {
         max_base_len = 0;
     }
+    return max_base_len;
+}
+
+static esp_err_t copy_name_clamp_base(char *base, size_t max_base_len)
+{
     if (max_base_len == 0) {
         return ESP_ERR_INVALID_SIZE;
     }
     if (strlen(base) > max_base_len) {
         base[max_base_len] = '\0';
     }
+    return ESP_OK;
+}
+
+static bool copy_name_build_candidate(const char *base, const char *ext, int index, char *candidate, size_t cand_len)
+{
+    int written = 0;
+    if (index == 0) {
+        written = snprintf(candidate, cand_len, "%s_copy%s", base, ext);
+    } else {
+        written = snprintf(candidate, cand_len, "%s_copy (%d)%s", base, index + 1, ext);
+    }
+    return (written >= 0 && written < (int)cand_len);
+}
+
+static bool copy_name_compose_full(const char *directory, const char *candidate, char *full, size_t full_len)
+{
+    int needed = snprintf(full, full_len, "%s/%s", directory, candidate);
+    return (needed >= 0 && needed < (int)full_len);
+}
+
+static esp_err_t generate_copy_name(const char *directory, const char *name, char *out, size_t out_len)
+{
+    if (copy_name_invalid_args(directory, name, out, out_len)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char base[FS_NAV_MAX_NAME];
+    char ext[FS_NAV_MAX_NAME];
+    copy_name_split(name, base, ext);
+
+    char candidate[FS_NAV_MAX_NAME];
+    size_t ext_len = strlen(ext);
+    size_t max_base_len = copy_name_max_base_len(ext_len);
+    esp_err_t clamp = copy_name_clamp_base(base, max_base_len);
+    if (clamp != ESP_OK) {
+        return clamp;
+    }
 
     for (int i = 0; i < 100; ++i) {
-        if (i == 0) {
-            int written = snprintf(candidate, sizeof(candidate), "%s_copy%s", base, ext);
-            if (written < 0 || written >= (int)sizeof(candidate)) {
-                continue;
-            }
-        } else {
-            int written = snprintf(candidate, sizeof(candidate), "%s_copy (%d)%s", base, i + 1, ext);
-            if (written < 0 || written >= (int)sizeof(candidate)) {
-                continue;
-            }
+        if (!copy_name_build_candidate(base, ext, i, candidate, sizeof(candidate))) {
+            continue;
         }
 
         char full[FS_NAV_MAX_PATH];
-        int needed = snprintf(full, sizeof(full), "%s/%s", directory, candidate);
-        if (needed < 0 || needed >= (int)sizeof(full)) {
+        if (!copy_name_compose_full(directory, candidate, full, sizeof(full))) {
             continue;
         }
         if (!path_exists(full)) {
