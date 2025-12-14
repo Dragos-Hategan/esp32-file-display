@@ -19,7 +19,6 @@ LVGL-based file manager for ESP32 and ESP32-S3, enabling seamless file navigatio
    - 4-step rotation
    - Touch screen calibration
    - Restart and reset to defaults.
-   - ; the touch IRQ wakes the UI and logs are flushed before sleep so the entry message is visible.
 - `Time and network`: 
    - Wi‑Fi STA with SSID/password stored in NVS
    - SNTP sync via `pool.ntp.org`
