@@ -10,7 +10,7 @@ LVGL-based file manager for ESP32 and ESP32-S3, enabling seamless file navigatio
    - Atomic saves (temp file + rename)
    - Chunked read/write (1 KB per chunk) with slider for large files
    - Save/discard prompts and automatic resume after SD reconnect
-- `JPEG image viewer` for `.jpg/.jpeg`, specific prompts for corrupted/unsupported images, oversized resolution, or low memory. Other image extensions get an icon in the list.
+- `JPEG image viewer` for `.jpg/.jpeg`, specific prompts for corrupted/unsupported images, oversized resolution ( > 2560X1920), or low memory. Other image extensions get an icon in the list.
 - `Settings UI`: 
    - Brightness with fade
    - Screensaver with off and dim timers
