@@ -204,6 +204,7 @@ static int s_fade_target = 0;
 static int s_fade_steps_left = 0;
 static int s_fade_direction = 0;
 static bool s_wake_in_progress = false;
+static bool s_lv_timers_paused = false;
 static TaskHandle_t s_light_sleep_task_handle = NULL;
 static volatile bool s_light_sleep_pending = false;
 static bool s_display_rst_hold = false;
@@ -251,6 +252,16 @@ static bool touch_interrupt_can_wakeup(void);
  * @brief Restore display state and restart screensaver timers after light sleep.
  */
 static void refresh_display_after_light_sleep(void);
+
+/**
+ * @brief Pause LVGL timers while entering light sleep to avoid heavy callbacks.
+ */
+static void pause_lvgl_timers_for_sleep(void);
+
+/**
+ * @brief Resume LVGL timers after waking from light sleep.
+ */
+static void resume_lvgl_timers_after_sleep(void);
 
 /**
  * @brief Task that waits for a notification then enters light sleep until touch wakeup.
@@ -3433,6 +3444,7 @@ static void screensaver_light_sleep_task(void *param)
 
         hold_display_reset_high();
 
+        pause_lvgl_timers_for_sleep();
         ESP_LOGI(TAG, "Entering light sleep until touch interrupt");
 #ifdef CONFIG_ESP_CONSOLE_UART_NUM
         esp_rom_output_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
@@ -3445,6 +3457,7 @@ static void screensaver_light_sleep_task(void *param)
             ESP_LOGI(TAG, "Light sleep ended");
             refresh_display_after_light_sleep();
         }
+        resume_lvgl_timers_after_sleep();
         
         esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_EXT0);
     }
@@ -3457,6 +3470,28 @@ static void refresh_display_after_light_sleep(void)
         settings_fade_to_saved_brightness();
     }
     settings_start_screensaver_timers();
+}
+
+static void pause_lvgl_timers_for_sleep(void)
+{
+    if (s_lv_timers_paused) {
+        return;
+    }
+    bsp_display_lock(0);
+    lv_timer_enable(false);
+    bsp_display_unlock();
+    s_lv_timers_paused = true;
+}
+
+static void resume_lvgl_timers_after_sleep(void)
+{
+    if (!s_lv_timers_paused) {
+        return;
+    }
+    bsp_display_lock(0);
+    lv_timer_enable(true);
+    bsp_display_unlock();
+    s_lv_timers_paused = false;
 }
 
 static void hold_display_reset_high(void)
