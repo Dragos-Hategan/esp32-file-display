@@ -13,12 +13,13 @@ LVGL-based file manager for ESP32 and ESP32-S3, enabling seamless file navigatio
 - `JPEG image viewer` for `.jpg/.jpeg`, specific prompts for corrupted/unsupported images, oversized resolution ( > 2560X1920), or low memory. Other image extensions get an icon in the list.
 - `Settings UI`: 
    - Brightness with fade
-   - Screensaver with off and dim timers
+   - Screensaver with off and dim timers, `Light-sleep power saving` when the screensaver turns the display off
    - Dark/light theme
    - Manual or `SNTP` date and time
    - 4-step rotation
    - Touch screen calibration
    - Restart and reset to defaults.
+   - ; the touch IRQ wakes the UI and logs are flushed before sleep so the entry message is visible.
 - `Time and network`: 
    - Wi‑Fi STA with SSID/password stored in NVS
    - SNTP sync via `pool.ntp.org`
@@ -46,6 +47,8 @@ GPIOs and SPI parameters are configured via:
 - or directly in `idf.py menuconfig`
 
 It is very hard to miss, as it is `the first section inside any sdkconfig`. 
+
+The touch IRQ pin selected through `CONFIG_TOUCH_IRQ_GPIO` also acts as the EXT0 wakeup source for the screensaver light sleep, so keep it on an RTC-capable GPIO (ESP32: GPIO0,2,4,12-15,25-27,32-39).
 
 ### Important SD stability note:
 

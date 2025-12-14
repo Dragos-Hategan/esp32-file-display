@@ -7,14 +7,19 @@
 
 #include <time.h>
 #include <sys/time.h>
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "esp_rom_uart.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "esp_sleep.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
+#include "esp_err.h"
+
+#include "driver/rtc_io.h"
+#include "driver/gpio.h"
 
 #include "Goldman_Regular_35.h"
 #include "bsp/esp-bsp.h"
@@ -75,6 +80,15 @@
 #define SETTINGS_DIM_FADE_MS             500
 #define SETTINGS_OFF_FADE_MS             500
 #define SETTINGS_UP_FADE_MS              250
+
+#if CONFIG_APP_ENABLE_DUAL_CORE
+    #define SETTINGS_LIGHT_SLEEP_TASK_CORE          1
+#else
+    #define SETTINGS_LIGHT_SLEEP_TASK_CORE          0
+#endif                                
+#define SETTINGS_LIGHT_SLEEP_TASK_PRIORITY      (tskIDLE_PRIORITY + 1)
+#define SETTINGS_LIGHT_SLEEP_TASK_STACK_WORDS   (4 * 1024)
+#define TOUCH_IRQ_WAKE_LEVEL                    0
 
 _Static_assert(SETTINGS_CALIBRATION_TASK_STACK > 0, "Calibration task stack must be positive");
 _Static_assert(SETTINGS_CALIBRATION_TASK_PRIO > 0, "Calibration task priority must be positive");
@@ -190,6 +204,9 @@ static int s_fade_target = 0;
 static int s_fade_steps_left = 0;
 static int s_fade_direction = 0;
 static bool s_wake_in_progress = false;
+static TaskHandle_t s_light_sleep_task_handle = NULL;
+static volatile bool s_light_sleep_pending = false;
+static bool s_display_rst_hold = false;
 
 /**
  * @brief Turn the backlight on after a short delay without clearing the screen.
@@ -200,6 +217,52 @@ static void backlight_on_without_wipe_effect(void);
  * @brief Show the startup splash screen and keep it visible briefly.
  */
 static void startup_splash_screen(void);
+ 
+/**
+ * @brief Notify the light-sleep task to enter sleep after fade-to-off completes.
+ */
+static void notify_light_sleep_task(void);
+
+/**
+ * @brief Configure and hold the display reset line high for light sleep.
+ */
+static void hold_display_reset_high(void);
+
+/**
+ * @brief Enable EXT0 wakeup on the touch IRQ GPIO.
+ *
+ * @return true if EXT0 wakeup was configured, false otherwise.
+ */
+static bool enable_touch_ext0_wakeup(void);
+
+/**
+ * @brief Release the held display reset line after waking from light sleep.
+ */
+static void release_display_reset_hold(void);
+
+/**
+ * @brief Check if the configured touch IRQ GPIO supports EXT0 wakeup.
+ *
+ * @return true if the GPIO is RTC-capable and valid for wakeup.
+ */
+static bool touch_interrupt_can_wakeup(void);
+
+/**
+ * @brief Restore display state and restart screensaver timers after light sleep.
+ */
+static void refresh_display_after_light_sleep(void);
+
+/**
+ * @brief Task that waits for a notification then enters light sleep until touch wakeup.
+ *
+ * @param param Unused task parameter.
+ */
+static void screensaver_light_sleep_task(void *param);
+
+/**
+ * @brief Create the screensaver light-sleep task if it is not already running.
+ */
+static void initialize_screensaver_light_sleep_task(void);
 
 /**
  * @brief Connect to Wi-Fi, sync time via SNTP, persist the result, and restart.
@@ -1263,6 +1326,9 @@ void settings_starting_routine(void)
     ESP_ERROR_CHECK(bsp_display_start_result());
     if (power_reset) bsp_display_backlight_off();
     styles_init_colors();
+
+    /* ----- Power Saving ----- */
+    initialize_screensaver_light_sleep_task();
 
     /* ----- Configurations ----- */
     ESP_LOGI(TAG, "Loading configurations");
@@ -3290,7 +3356,151 @@ static void off_timer_cb(void *arg)
 {
     (void)arg;
     ESP_LOGD(TAG, "Off timer fired: fading screen off");
+    s_light_sleep_pending = true;
     fade_brightness(0, SETTINGS_OFF_FADE_MS);
+}
+
+static void initialize_screensaver_light_sleep_task(void)
+{
+    if (s_light_sleep_task_handle) {
+        return;
+    }
+
+    BaseType_t task_ok = xTaskCreatePinnedToCore(screensaver_light_sleep_task,
+                                     "ss_light_sleep",
+                                     SETTINGS_LIGHT_SLEEP_TASK_STACK_WORDS,
+                                     NULL,
+                                     SETTINGS_LIGHT_SLEEP_TASK_PRIORITY,
+                                     &s_light_sleep_task_handle,
+                                     SETTINGS_LIGHT_SLEEP_TASK_CORE
+                                    );
+    if (task_ok != pdPASS) {
+        ESP_LOGW(TAG, "Failed to create screensaver light sleep task");
+        s_light_sleep_task_handle = NULL;
+    }
+}
+
+static bool touch_interrupt_can_wakeup(void)
+{
+#if defined(CONFIG_TOUCH_IRQ_GPIO)
+    return rtc_gpio_is_valid_gpio(CONFIG_TOUCH_IRQ_GPIO);
+#else
+    return false;
+#endif
+}
+
+static bool enable_touch_ext0_wakeup(void)
+{
+#if !defined(CONFIG_TOUCH_IRQ_GPIO) || !defined(TOUCH_IRQ_WAKE_LEVEL)
+    ESP_LOGW(TAG, "Touch IRQ GPIO is not configured; cannot enable EXT0 wakeup");
+    return false;
+#else
+    if (!touch_interrupt_can_wakeup()) {
+        ESP_LOGW(TAG, "Touch IRQ GPIO %d cannot be used for EXT0 wakeup", CONFIG_TOUCH_IRQ_GPIO);
+        return false;
+    }
+
+    esp_err_t err = esp_sleep_enable_ext0_wakeup((gpio_num_t)CONFIG_TOUCH_IRQ_GPIO, TOUCH_IRQ_WAKE_LEVEL);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to enable EXT0 wakeup: %s", esp_err_to_name(err));
+        return false;
+    }
+
+    return true;
+#endif
+}
+
+static void screensaver_light_sleep_task(void *param)
+{
+    (void)param;
+
+    while (1) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        if (settings_get_active_brightness() > 0) {
+            continue;
+        }
+        if (!enable_touch_ext0_wakeup()) {
+            continue;
+        }
+
+        hold_display_reset_high();
+
+        ESP_LOGI(TAG, "Entering light sleep until touch interrupt");
+#ifdef CONFIG_ESP_CONSOLE_UART_NUM
+        esp_rom_output_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
+#endif        
+
+        esp_err_t err = esp_light_sleep_start();
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Light sleep start failed: %s", esp_err_to_name(err));
+        } else {
+            ESP_LOGI(TAG, "Light sleep ended");
+            refresh_display_after_light_sleep();
+        }
+        
+        esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_EXT0);
+    }
+}
+
+static void refresh_display_after_light_sleep(void)
+{
+    release_display_reset_hold();
+    if (settings_get_active_brightness() <= 0) {
+        settings_fade_to_saved_brightness();
+    }
+    settings_start_screensaver_timers();
+}
+
+static void hold_display_reset_high(void)
+{
+#if defined(CONFIG_BSP_DISPLAY_RST_GPIO) && (CONFIG_BSP_DISPLAY_RST_GPIO >= 0)
+    gpio_config_t rst_cfg = {
+        .pin_bit_mask = (1ULL << CONFIG_BSP_DISPLAY_RST_GPIO),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    esp_err_t err = gpio_config(&rst_cfg);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to configure display RST GPIO %d: %s", CONFIG_BSP_DISPLAY_RST_GPIO, esp_err_to_name(err));
+        return;
+    }
+    gpio_set_level(CONFIG_BSP_DISPLAY_RST_GPIO, 1);
+    if (rtc_gpio_is_valid_gpio(CONFIG_BSP_DISPLAY_RST_GPIO)) {
+        esp_err_t hold_err = gpio_hold_en(CONFIG_BSP_DISPLAY_RST_GPIO); // for deep sleep use gpio_deep_sleep_hold_en
+        if (hold_err == ESP_OK) {
+            s_display_rst_hold = true;
+        } else {
+            ESP_LOGW(TAG, "Failed to hold display RST high: %s", esp_err_to_name(hold_err));
+        }
+    } else {
+        ESP_LOGW(TAG, "Display RST GPIO %d is not RTC-capable; cannot hold during sleep", CONFIG_BSP_DISPLAY_RST_GPIO);
+    }
+#endif
+}
+
+static void release_display_reset_hold(void)
+{
+#if defined(CONFIG_BSP_DISPLAY_RST_GPIO) && (CONFIG_BSP_DISPLAY_RST_GPIO >= 0)
+    if (s_display_rst_hold) {
+        gpio_hold_dis(CONFIG_BSP_DISPLAY_RST_GPIO);
+        s_display_rst_hold = false;
+    }
+#endif
+}
+
+static void notify_light_sleep_task(void)
+{
+    if (s_fade_target == 0 && s_light_sleep_pending) {
+        s_light_sleep_pending = false;
+        if (s_light_sleep_task_handle) {
+            ESP_LOGD(TAG, "Requesting light sleep after the screen is off");
+            xTaskNotifyGive(s_light_sleep_task_handle);
+        } else {
+            ESP_LOGW(TAG, "Light sleep task unavailable; skipping sleep request");
+        }
+    }
 }
 
 static bool fade_ensure_timer_ready(void)
@@ -3348,6 +3558,9 @@ static void fade_brightness(int target_pct, uint32_t duration_ms)
     settings_ctx_t *ctx = &s_settings_ctx;
     if (target_pct > 100) target_pct = 100;
     if (target_pct < 0) target_pct = 0;
+    if (target_pct > 0) {
+        s_light_sleep_pending = false;
+    }
     int start = ctx->settings.display.brightness;
     bool rising = target_pct > start;
 
@@ -3376,10 +3589,13 @@ static void fade_step_cb(void *arg)
         if (s_fade_timer) {
             esp_timer_stop(s_fade_timer);
         }
+
         s_settings_ctx.settings.display.brightness = s_fade_target;
         bsp_display_brightness_set(s_fade_target);
         sync_brightness_ui(&s_settings_ctx, s_fade_target);
         ESP_LOGD(TAG, "Fade complete -> %d", s_fade_target);
+
+        notify_light_sleep_task();
         s_wake_in_progress = false;
         return;
     }
@@ -3389,6 +3605,7 @@ static void fade_step_cb(void *arg)
     if (next > 100) next = 100;
     s_settings_ctx.settings.display.brightness = next;
     bsp_display_brightness_set(next);
+
     s_fade_steps_left--;
 }
 
