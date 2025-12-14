@@ -205,6 +205,7 @@ static int s_fade_steps_left = 0;
 static int s_fade_direction = 0;
 static bool s_wake_in_progress = false;
 static bool s_lv_timers_paused = false;
+static volatile bool s_brightness_ui_pending = false;
 static TaskHandle_t s_light_sleep_task_handle = NULL;
 static volatile bool s_light_sleep_pending = false;
 static bool s_display_rst_hold = false;
@@ -1181,7 +1182,7 @@ static void fade_step_cb(void *arg);
 static void sync_brightness_ui(settings_ctx_t *ctx, int val);
 
 /**
- * @brief Async worker to update brightness UI elements.
+ * @brief Async worker to update brightness UI elements (debounced).
  * @param arg Brightness value (cast from uintptr_t).
  */
 static void sync_brightness_ui_async(void *arg);
@@ -3477,10 +3478,13 @@ static void pause_lvgl_timers_for_sleep(void)
     if (s_lv_timers_paused) {
         return;
     }
-    bsp_display_lock(0);
-    lv_timer_enable(false);
-    bsp_display_unlock();
-    s_lv_timers_paused = true;
+    if (bsp_display_lock(50)) {
+        lv_timer_enable(false);
+        bsp_display_unlock();
+        s_lv_timers_paused = true;
+    } else {
+        ESP_LOGW(TAG, "Failed to lock LVGL to pause timers");
+    }
 }
 
 static void resume_lvgl_timers_after_sleep(void)
@@ -3488,10 +3492,13 @@ static void resume_lvgl_timers_after_sleep(void)
     if (!s_lv_timers_paused) {
         return;
     }
-    bsp_display_lock(0);
-    lv_timer_enable(true);
-    bsp_display_unlock();
-    s_lv_timers_paused = false;
+    if (bsp_display_lock(50)) {
+        lv_timer_enable(true);
+        bsp_display_unlock();
+        s_lv_timers_paused = false;
+    } else {
+        ESP_LOGW(TAG, "Failed to lock LVGL to resume timers");
+    }
 }
 
 static void hold_display_reset_high(void)
@@ -3655,6 +3662,11 @@ static void fade_step_cb(void *arg)
 static void sync_brightness_ui(settings_ctx_t *ctx, int val)
 {
     (void)ctx;
+    /* Debounce: only one pending UI update at a time from esp_timer context. */
+    if (s_brightness_ui_pending) {
+        return;
+    }
+    s_brightness_ui_pending = true;
     lv_async_call(sync_brightness_ui_async, (void *)(uintptr_t)val);
 }
 
@@ -3678,6 +3690,8 @@ static void sync_brightness_ui_async(void *arg)
         lv_snprintf(txt, sizeof(txt), "Brightness: %d%%", val);
         lv_label_set_text(ctx->graphics.brightness_label, txt);
     }
+
+    s_brightness_ui_pending = false;
 }
 
 static void scroll_field_into_view(settings_ctx_t *ctx, lv_obj_t *ta)
