@@ -3866,17 +3866,19 @@ static void load_user_data(nvs_handle_t h, const char *key, char *buf, size_t bu
     size_t len = buf_size;
     esp_err_t res = nvs_get_str(h, key, buf, &len);
     if (res == ESP_ERR_NVS_INVALID_LENGTH) {
-        char *tmp = (char *)malloc(len);
-        if (tmp && nvs_get_str(h, key, tmp, &len) == ESP_OK) {
-            strncpy(buf, tmp, buf_size - 1);
-            buf[buf_size - 1] = '\0';
-        }
-        if (tmp) {
-            free(tmp);
-        }
-    } else if (res != ESP_OK) {
+        /* String stored in NVS is larger than our buffer; treating as invalid to avoid large alloc. */
+        ESP_LOGW(TAG, "%s too long in NVS (%u > %u); clearing", key ? key : "key", (unsigned)len, (unsigned)buf_size);
         buf[0] = '\0';
+        return;
     }
+
+    if (res != ESP_OK) {
+        buf[0] = '\0';
+        return;
+    }
+
+    /* Ensure null-termination even if NVS returned exactly buf_size. */
+    buf[buf_size - 1] = '\0';
 }
 
 static void load_sntp_result_from_nvs(void)
