@@ -2181,6 +2181,14 @@ static void load_screensaver_from_nvs(void)
 
     nvs_close(h);
 
+    if (s_settings_ctx.settings.display.off_time <= 0){
+        s_settings_ctx.settings.display.screen_off = false;
+    }
+
+    if(s_settings_ctx.settings.display.dim_time <= 0){
+        s_settings_ctx.settings.display.screen_dim = false;
+    }
+
     /* Clamp dim level against current saved brightness and minimum brightness. */
     if (s_settings_ctx.settings.display.dim_level >= 0) {
         int max_level = s_settings_ctx.settings.display.saved_brightness > 0 ? s_settings_ctx.settings.display.saved_brightness : SETTINGS_DEFAULT_BRIGHTNESS;
