@@ -17,6 +17,7 @@
 #include "esp_wifi.h"
 #include "esp_log.h"
 #include "esp_err.h"
+#include "esp_lvgl_port.h"
 
 #include "driver/rtc_io.h"
 #include "driver/gpio.h"
@@ -3446,6 +3447,9 @@ static void screensaver_light_sleep_task(void *param)
         hold_display_reset_high();
 
         pause_lvgl_timers_for_sleep();
+        screensaver_off_stop();
+        screensaver_dim_stop();
+
         ESP_LOGI(TAG, "Entering light sleep until touch interrupt");
 #ifdef CONFIG_ESP_CONSOLE_UART_NUM
         esp_rom_output_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
@@ -3458,6 +3462,7 @@ static void screensaver_light_sleep_task(void *param)
             ESP_LOGI(TAG, "Light sleep ended");
             refresh_display_after_light_sleep();
         }
+        
         resume_lvgl_timers_after_sleep();
         
         esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_EXT0);
@@ -3478,13 +3483,15 @@ static void pause_lvgl_timers_for_sleep(void)
     if (s_lv_timers_paused) {
         return;
     }
-    if (bsp_display_lock(50)) {
-        lv_timer_enable(false);
-        bsp_display_unlock();
-        s_lv_timers_paused = true;
-    } else {
+    if (!bsp_display_lock(50)) {
         ESP_LOGW(TAG, "Failed to lock LVGL to pause timers");
+        return;
     }
+
+    /* Stop LVGL timer handler and tick source so long sleeps don't queue huge backlogs. */
+    lvgl_port_stop();
+    bsp_display_unlock();
+    s_lv_timers_paused = true;
 }
 
 static void resume_lvgl_timers_after_sleep(void)
@@ -3492,13 +3499,14 @@ static void resume_lvgl_timers_after_sleep(void)
     if (!s_lv_timers_paused) {
         return;
     }
-    if (bsp_display_lock(50)) {
-        lv_timer_enable(true);
-        bsp_display_unlock();
-        s_lv_timers_paused = false;
-    } else {
+    if (!bsp_display_lock(50)) {
         ESP_LOGW(TAG, "Failed to lock LVGL to resume timers");
+        return;
     }
+
+    lvgl_port_resume();
+    bsp_display_unlock();
+    s_lv_timers_paused = false;
 }
 
 static void hold_display_reset_high(void)
