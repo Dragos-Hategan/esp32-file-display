@@ -60,7 +60,19 @@ void settings_register_time_callbacks(void (*on_time_set)(void),
 /**
  * @brief persists current system time to NVS.
  */                                     
-void settings_shutdown_save_time(void);     
+void settings_shutdown_save_time(void);   
+
+/**
+ * @brief Persist the SD card restart flag to NVS.
+ */
+void settings_persist_sd_card_restart(void);
+
+/**
+ * @brief Set the SD card restart flag in RAM (non-persistent).
+ *
+ * @param enable True to request restart after SD events; false to clear.
+ */
+void settings_set_sd_card_restart(bool enable);
 
 /**
  * @brief Check if there is any valid value in NVS for system time.
@@ -150,6 +162,16 @@ char* settings_get_ap_ssid(void);
  * @return Pointer to the null-terminated password stored in settings (do not free or modify).
  */
 char* settings_get_ap_pwd(void);
+
+/**
+ * @brief Stop the screensaver off timer.
+ */
+void screensaver_off_stop(void);
+
+/**
+ * @brief Stop the screensaver dim timer.
+ */
+void screensaver_dim_stop(void);
 
 #ifdef __cplusplus
 }

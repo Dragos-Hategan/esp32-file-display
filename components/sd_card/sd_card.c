@@ -121,6 +121,24 @@ static void retry_ui_destroy(sdspi_retry_ui_t *ui);
 static void retry_ui_create(sdspi_retry_ui_t *ui, uint32_t total_duration_ms);
 
 /**
+ * @brief Handle a failed reinit attempt and update the retry UI/logs.
+ *
+ * @param retry_ui       Retry overlay descriptor (may be NULL).
+ * @param total_wait_ms  Total time spent waiting so far.
+ * @param err            Error code from the last reinit attempt.
+ */
+static void card_reinit_fail(sdspi_retry_ui_t *retry_ui, const uint32_t total_wait_ms, esp_err_t err);
+
+/**
+ * @brief Handle a successful reinit attempt and update the retry UI/logs.
+ *
+ * @param retry_ui       Retry overlay descriptor (may be NULL).
+ * @param total_wait_ms  Total time spent waiting so far.
+ * @param attempt        Attempt number that succeeded (1-based).
+ */
+static void card_reinit_success(sdspi_retry_ui_t *retry_ui, const uint32_t total_wait_ms, int attempt);
+
+/**
  * @brief Acquire SD state mutex to serialize bus/card operations.
  *
  * Creates the mutex on first use. Returns false if the mutex cannot be
@@ -226,6 +244,8 @@ cleanup:
 void sd_card_retry_init(void)
 {
     retry_wait_for_confirmation();
+    screensaver_dim_stop();
+    screensaver_off_stop();
 
     esp_err_t err = ESP_OK;
 
@@ -240,29 +260,12 @@ void sd_card_retry_init(void)
 
         err = sd_card_init();
         if (err == ESP_OK) {
-            retry_ui_set_message(&retry_ui, "SD card recovered");
-            retry_ui_set_progress(&retry_ui, total_wait_ms);
-            ESP_LOGW(TAG, "SD card recovered after %d attempt(s)", attempt);
-            vTaskDelay(pdMS_TO_TICKS(1500));
-            retry_ui_destroy(&retry_ui);
-            xSemaphoreGive(reconnection_success);
+            card_reinit_success(&retry_ui, total_wait_ms, attempt);
             return;
         }
     }
 
-    retry_ui_set_message(&retry_ui, "SD card retry failed, restarting...");
-    retry_ui_set_progress(&retry_ui, total_wait_ms);
-    vTaskDelay(pdMS_TO_TICKS(1500));
-    retry_ui_destroy(&retry_ui);
-
-    ESP_LOGE(TAG, "SD card init failed after %d retries. Last ESP err: %s",
-             SDSPI_MAX_RETRIES,
-             esp_err_to_name(err));
-
-    if (settings_is_time_valid()){
-        settings_shutdown_save_time();
-    }
-    esp_restart();
+    card_reinit_fail(&retry_ui, total_wait_ms, err);
 }
 
 void sd_card_schedule_retry(void)
@@ -292,6 +295,35 @@ void sd_card_schedule_retry(void)
     sd_state_unlock();
 }
 
+static void card_reinit_success(sdspi_retry_ui_t *retry_ui, const uint32_t total_wait_ms, int attempt)
+{
+    retry_ui_set_message(retry_ui, "SD card recovered");
+    retry_ui_set_progress(retry_ui, total_wait_ms);
+    ESP_LOGW(TAG, "SD card recovered after %d attempt(s)", attempt);
+    vTaskDelay(pdMS_TO_TICKS(1500));
+    settings_start_screensaver_timers();
+    retry_ui_destroy(retry_ui);
+    xSemaphoreGive(reconnection_success);
+}
+
+static void card_reinit_fail(sdspi_retry_ui_t *retry_ui, const uint32_t total_wait_ms, esp_err_t err)
+{
+    retry_ui_set_message(retry_ui, "SD card retry failed, restarting...");
+    retry_ui_set_progress(retry_ui, total_wait_ms);
+    vTaskDelay(pdMS_TO_TICKS(1500));
+    retry_ui_destroy(retry_ui);
+
+    ESP_LOGE(TAG, "SD card init failed after %d retries. Last ESP err: %s",
+             SDSPI_MAX_RETRIES,
+             esp_err_to_name(err));
+
+    if (settings_is_time_valid()){
+        settings_shutdown_save_time();
+    }
+    settings_set_sd_card_restart(true);
+    settings_persist_sd_card_restart();
+    esp_restart();
+}
 
 static bool sd_state_lock(TickType_t timeout_ticks)
 {

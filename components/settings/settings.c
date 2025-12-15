@@ -37,6 +37,7 @@
 
 #define SETTINGS_NVS_REFRESH_SNTP_STARTUP_KEY   "refresh_sntp"
 #define SETTINGS_NVS_VALID_TIME_FLAG_KEY        "is_time_valid"
+#define SETTINGS_NVS_SD_CARD_RESTART_KEY        "sd_card_restart"
 #define SETTINGS_NVS_MANUAL_RESTART_KEY         "manual_restart"
 #define SETTINGS_NVS_AUTO_CONNECT_KEY           "auto_connect"
 #define SETTINGS_NVS_CALIB_PROMPT_KEY           "calib_prompt"
@@ -60,6 +61,7 @@
 #define SETTINGS_DEFAULT_RUNNING_CALIBRATION        false
 #define SETTINGS_DEFAULT_CALI_PROMPT_ENABLE         true
 #define SETTINGS_DEFAULT_SCREEN_DIM_LEVEL           -1
+#define SETTINGS_DEFAULT_SD_CARD_RESTART            false
 #define SETTINGS_DEFAULT_MANUAL_RESTART             false
 #define SETTINGS_DEFAULT_SCREEN_DIM_TIME            -1
 #define SETTINGS_DEFAULT_SCREEN_OFF_TIME            -1
@@ -141,6 +143,7 @@ typedef struct{
     char ap_pwd[SETTINGS_AP_PWD_MAX_LEN + 1];
     bool calibration_prompt_enabled;    /**< True to ask for calibration at startup */
     bool running_calibration;
+    bool sd_card_restart;
     bool manual_restart;
     bool dark_theme;
     settings_display_t display;
@@ -732,7 +735,7 @@ static void manual_restart_flow(void);
  *
  * @param power_reset Current reset reason (hard vs software/manual restart).
  */
-static void sntp_startup(bool power_reset);
+static void soft_restart_routine(bool power_reset);
 
 /**
  * @brief Apply the desired timezone to the C library clock.
@@ -1085,20 +1088,10 @@ static void screensaver_dim_start(int seconds);
 static void screensaver_start_timer(esp_timer_handle_t *timer_handle, esp_timer_cb_t cb, const char *name, int seconds);
 
 /**
- * @brief Stop the screensaver dim timer.
- */
-static void screensaver_dim_stop(void);
-
-/**
  * @brief Start the screensaver off timer.
  * @param seconds Delay in seconds before turning screen off.
  */
 static void screensaver_off_start(int seconds);
-
-/**
- * @brief Stop the screensaver off timer.
- */
-static void screensaver_off_stop(void);
 
 /**
  * @brief Toggle handler for screensaver off switch to enable/disable related fields.
@@ -1312,6 +1305,11 @@ static void persist_manual_restart(void);
 static void load_manual_restart_from_nvs(void);
 
 /**
+ * @brief Load the sd card restart flag from NVS.
+ */
+static void load_sd_card_restart_from_nvs(void);
+
+/**
  * @brief Persist the theme preference to NVS.
  */
 static void persist_theme_to_nvs(void);
@@ -1354,7 +1352,7 @@ void settings_starting_routine(void)
         startup_splash_screen();  
         if (s_settings_ctx.settings.time.startup_sntp_auto_connect) get_sntp_time();
     }else{
-        sntp_startup(power_reset);
+        soft_restart_routine(power_reset);
         s_settings_ctx.settings.time.refresh_sntp_startup = false;
         persist_sntp_refresh();
     }
@@ -1525,6 +1523,27 @@ char* settings_get_ap_ssid()
 char* settings_get_ap_pwd(void)
 {
     return s_settings_ctx.settings.ap_pwd;
+}
+
+void screensaver_off_stop(void)
+{
+    if (!s_settings_ctx.changing_brightness){
+        ESP_LOGD(TAG, "Stop screen-off timer");
+    }
+    if (s_ss_off_timer) {
+        esp_timer_stop(s_ss_off_timer);
+    }
+    fade_brightness(s_settings_ctx.settings.display.brightness, 0); /* stop any ongoing fade */
+}
+
+void screensaver_dim_stop(void)
+{
+    if (!s_settings_ctx.changing_brightness){
+        ESP_LOGD(TAG, "Stop dim timer");
+    }
+    if (s_ss_dim_timer) {
+        esp_timer_stop(s_ss_dim_timer);
+    }
 }
 
 static void get_sntp_time(void)
@@ -2006,11 +2025,17 @@ static void manual_restart_flow(void)
     }
 }
 
-static void sntp_startup(bool power_reset)
+static void soft_restart_routine(bool power_reset)
 {
     if (power_reset)
         return;
 
+    if (s_settings_ctx.settings.sd_card_restart){
+        startup_splash_screen();
+        s_settings_ctx.settings.sd_card_restart = false;
+        settings_persist_sd_card_restart();
+        return;
+    }
     if (s_settings_ctx.settings.manual_restart){
         startup_splash_screen();  
         manual_restart_flow();
@@ -2372,6 +2397,7 @@ static void init_default_configs(void)
     s_settings_ctx.settings.running_calibration = SETTINGS_DEFAULT_RUNNING_CALIBRATION;    
     s_settings_ctx.settings.display.screen_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
     s_settings_ctx.settings.display.saved_rotation_step = SETTINGS_DEFAULT_ROTATION_STEP;
+    s_settings_ctx.settings.sd_card_restart = SETTINGS_DEFAULT_SD_CARD_RESTART;
     s_settings_ctx.settings.manual_restart = SETTINGS_DEFAULT_MANUAL_RESTART; 
     s_settings_ctx.settings.time.sntp_last_err = SETTINGS_DEFAULT_SNTP_ERR_CODE;
     s_settings_ctx.settings.display.saved_brightness = SETTINGS_DEFAULT_BRIGHTNESS;
@@ -2393,6 +2419,7 @@ static void load_last_saved_configs()
 {
     load_calibration_prompt_from_nvs();
     load_ap_credentials_from_nvs();
+    load_sd_card_restart_from_nvs();
     load_manual_restart_from_nvs();
     load_sntp_refresh_from_nvs();
     load_auto_connect_from_nvs();
@@ -3345,27 +3372,6 @@ static void screensaver_off_start(int seconds)
     screensaver_start_timer(&s_ss_off_timer, off_timer_cb, "ss_off", seconds);
 }
 
-static void screensaver_dim_stop(void)
-{
-    if (!s_settings_ctx.changing_brightness){
-        ESP_LOGD(TAG, "Stop dim timer");
-    }
-    if (s_ss_dim_timer) {
-        esp_timer_stop(s_ss_dim_timer);
-    }
-}
-
-static void screensaver_off_stop(void)
-{
-    if (!s_settings_ctx.changing_brightness){
-        ESP_LOGD(TAG, "Stop screen-off timer");
-    }
-    if (s_ss_off_timer) {
-        esp_timer_stop(s_ss_off_timer);
-    }
-    fade_brightness(s_settings_ctx.settings.display.brightness, 0); /* stop any ongoing fade */
-}
-
 static void dim_timer_cb(void *arg)
 {
     (void)arg;
@@ -3989,6 +3995,39 @@ static void load_manual_restart_from_nvs(void)
     nvs_close(h);
 }
 
+void settings_set_sd_card_restart(bool enable)
+{
+    s_settings_ctx.settings.sd_card_restart = enable;
+}
+
+void settings_persist_sd_card_restart(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(SETTINGS_NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
+        return;
+    }
+    nvs_set_i8(h, SETTINGS_NVS_SD_CARD_RESTART_KEY, s_settings_ctx.settings.sd_card_restart ? 1 : 0);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void load_sd_card_restart_from_nvs(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(SETTINGS_NVS_NS, NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to open NVS for sd_card restart flag: (%s)", esp_err_to_name(err));
+        return;
+    }
+
+    int8_t raw = -1;
+    if (nvs_get_i8(h, SETTINGS_NVS_SD_CARD_RESTART_KEY, &raw) == ESP_OK) {
+        s_settings_ctx.settings.sd_card_restart = (raw != 0);
+    }
+
+    nvs_close(h);
+}
+
 static void load_time_from_nvs(void)
 {
     esp_reset_reason_t reason = esp_reset_reason();
@@ -4104,6 +4143,8 @@ static void confirm_restart(lv_event_t *e)
     }
     s_settings_ctx.settings.manual_restart = true;
     persist_manual_restart();
+    s_settings_ctx.settings.sd_card_restart = false;
+    settings_persist_sd_card_restart();
     esp_restart();
 }
 
@@ -4166,6 +4207,7 @@ static void confirm_reset(lv_event_t *e)
     persist_screensaver_to_nvs();
     persist_auto_connect_to_nvs();
     persist_ap_credentials_to_nvs();
+    settings_persist_sd_card_restart();
     persist_calibration_prompt_to_nvs();
 
     load_last_saved_configs();
