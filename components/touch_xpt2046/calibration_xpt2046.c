@@ -594,18 +594,24 @@ static esp_err_t sample_raw(int *rx, int *ry)
 
     while (n < 12)
     {
-        uint16_t x, y;
-        uint8_t btn;
+        esp_lcd_touch_point_data_t points[1] = {0};
+        uint8_t point_cnt = 0;
         sample_raw_err = esp_lcd_touch_read_data(touch_handle);
         if (sample_raw_err != ESP_OK){
             ESP_LOGE(TAG, "Failed to read lcd touch data: (%s)", esp_err_to_name(sample_raw_err));
             return sample_raw_err;
         }
 
-        if (esp_lcd_touch_get_coordinates(touch_handle, &x, &y, NULL, &btn, 1))
+        sample_raw_err = esp_lcd_touch_get_data(touch_handle, points, &point_cnt, 1);
+        if (sample_raw_err != ESP_OK){
+            ESP_LOGE(TAG, "Failed to get lcd touch data: (%s)", esp_err_to_name(sample_raw_err));
+            return sample_raw_err;
+        }
+
+        if (point_cnt > 0)
         {
-            sx += x;
-            sy += y;
+            sx += points[0].x;
+            sy += points[0].y;
             n++;
         }
 

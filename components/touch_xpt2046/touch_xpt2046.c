@@ -211,12 +211,18 @@ static void lvgl_touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 
     uint16_t x = 0;
     uint16_t y = 0;
-    uint8_t btn = 0;
     static bool prev_pressed = false;
     bool pressed = false;
 
+    esp_lcd_touch_point_data_t points[1] = {0};
+    uint8_t point_cnt = 0;
+
     if (esp_lcd_touch_read_data(touch_handle) == ESP_OK &&
-        esp_lcd_touch_get_coordinates(touch_handle, &x, &y, NULL, &btn, 1)) {
+        esp_lcd_touch_get_data(touch_handle, points, &point_cnt, 1) == ESP_OK &&
+        point_cnt > 0) {
+
+        x = points[0].x;
+        y = points[0].y;
 
         handle_touch_press(x, y, &pressed, &prev_pressed, data);
     }
