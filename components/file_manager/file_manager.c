@@ -122,6 +122,8 @@ typedef struct{
     bool clock_timer_running;
     bool suppress_click;
     bool pending_go_parent;
+    bool pending_enter_dir;
+    bool pending_open_txt;
     bool paste_target_valid;
     bool list_has_paged;
     bool list_at_top_edge;
@@ -145,6 +147,8 @@ typedef struct {
     size_t reload_anchor_index;    
     size_t list_window_start;
     size_t list_window_size;
+    char pending_dir_name[FS_NAV_MAX_NAME];
+    char pending_txt_name[FS_NAV_MAX_NAME];
     fs_nav_t nav;
 } file_manager_ctx_t;
 
@@ -243,6 +247,22 @@ static bool wait_task_take_reconnection_sem(bool *schedule_retry);
  * @param schedule_retry In/out flag to track retry necessity.
  */
 static void wait_task_handle_initialized(file_manager_ctx_t *ctx, bool *schedule_retry);
+
+/**
+ * @brief Attempt pending directory enter after reconnection.
+ *
+ * @param ctx Browser context.
+ * @param schedule_retry In/out flag to track retry necessity.
+ */
+static void wait_task_handle_pending_dir(file_manager_ctx_t *ctx, bool *schedule_retry);
+
+/**
+ * @brief Attempt pending TXT reopen after reconnection.
+ *
+ * @param ctx Browser context.
+ * @param schedule_retry In/out flag to track retry necessity.
+ */
+static void wait_task_handle_pending_txt(file_manager_ctx_t *ctx, bool *schedule_retry);
 
 /**
  * @brief Attempt pending parent navigation after reconnection.
@@ -2812,6 +2832,136 @@ static void wait_task_handle_pending_parent(file_manager_ctx_t *ctx, bool *sched
     }
 }
 
+static bool locate_item_in_current_dir(file_manager_ctx_t *ctx, const char *name, size_t *out_rel_index, bool *schedule_retry)
+{
+    if (!ctx || !name || name[0] == '\0') {
+        return false;
+    }
+
+    size_t window_size = ctx->list_window_size ? ctx->list_window_size : FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT;
+    if (window_size == 0) {
+        window_size = 1;
+    }
+    size_t total = fs_nav_total_items(&ctx->nav);
+    size_t saved_start = ctx->list_window_start;
+
+    for (size_t start = 0; start < total; start += window_size) {
+        if (start != ctx->list_window_start) {
+            esp_err_t werr = is_item_set_nav(ctx, start);
+            if (werr != ESP_OK) {
+                if (schedule_retry) *schedule_retry = true;
+                break;
+            }
+        }
+
+        size_t count = 0;
+        const fs_nav_item_t *items = fs_nav_items(&ctx->nav, &count);
+        for (size_t i = 0; i < count; i++) {
+            if (strcasecmp(items[i].name, name) == 0) {
+                if (out_rel_index) {
+                    *out_rel_index = i;
+                }
+                return true;
+            }
+        }
+    }
+
+    if (ctx->list_window_start != saved_start) {
+        (void)is_item_set_nav(ctx, saved_start);
+    }
+    return false;
+}
+
+static void wait_task_handle_pending_dir(file_manager_ctx_t *ctx, bool *schedule_retry)
+{
+    if (!ctx->flags.pending_enter_dir || ctx->pending_dir_name[0] == '\0') {
+        return;
+    }
+    if (schedule_retry && *schedule_retry) {
+        return;
+    }
+
+    size_t rel_index = 0;
+    if (!locate_item_in_current_dir(ctx, ctx->pending_dir_name, &rel_index, schedule_retry)) {
+        ESP_LOGW(TAG, "Pending enter \"%s\" not found after reconnection", ctx->pending_dir_name);
+        ctx->pending_dir_name[0] = '\0';
+        ctx->flags.pending_enter_dir = false;
+        return;
+    }
+
+    esp_err_t nav_err = fs_nav_enter(&ctx->nav, rel_index);
+    if (nav_err != ESP_OK) {
+        ESP_LOGE(TAG, "fs_nav_enter(\"%s\") failed after reconnection: %s", ctx->pending_dir_name, esp_err_to_name(nav_err));
+        if (schedule_retry) {
+            *schedule_retry = true;
+        }
+        return;
+    }
+
+    ctx->flags.pending_enter_dir = false;
+    ctx->pending_dir_name[0] = '\0';
+
+    esp_err_t refresh_err = refresh_current_dir();
+    if (refresh_err != ESP_OK && schedule_retry) {
+        *schedule_retry = true;
+    }
+}
+
+static void wait_task_handle_pending_txt(file_manager_ctx_t *ctx, bool *schedule_retry)
+{
+    if (!ctx->flags.pending_open_txt || ctx->pending_txt_name[0] == '\0') {
+        return;
+    }
+    if (schedule_retry && *schedule_retry) {
+        return;
+    }
+
+    size_t rel_index = 0;
+    if (!locate_item_in_current_dir(ctx, ctx->pending_txt_name, &rel_index, schedule_retry)) {
+        ESP_LOGW(TAG, "Pending TXT \"%s\" not found after reconnection", ctx->pending_txt_name);
+        ctx->pending_txt_name[0] = '\0';
+        ctx->flags.pending_open_txt = false;
+        return;
+    }
+
+    ctx->reload_anchor_index = ctx->list_window_start + rel_index;
+
+    char path[FS_NAV_MAX_PATH];
+    if (fs_nav_compose_path(&ctx->nav, ctx->pending_txt_name, path, sizeof(path)) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to compose path for \"%s\" after reconnection", ctx->pending_txt_name);
+        if (schedule_retry) {
+            *schedule_retry = true;
+        }
+        return;
+    }
+
+    if (!bsp_display_lock(0)) {
+        ESP_LOGE(TAG, "LVGL lock failed while reopening \"%s\" after reconnection", ctx->pending_txt_name);
+        if (schedule_retry) {
+            *schedule_retry = true;
+        }
+        return;
+    }
+
+    text_viewer_open_opts_t opts = {
+        .path = path,
+        .return_screen = ctx->graphics.screen,
+        .editable = false,
+    };
+    esp_err_t err = text_viewer_open(&opts);
+    bsp_display_unlock();
+
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to reopen \"%s\" after reconnection: %s", ctx->pending_txt_name, esp_err_to_name(err));
+        if (schedule_retry) {
+            *schedule_retry = true;
+        }
+    } else {
+        ctx->flags.pending_open_txt = false;
+        ctx->pending_txt_name[0] = '\0';
+    }
+}
+
 static void wait_task_refresh_after_reconnect(file_manager_ctx_t *ctx, bool *schedule_retry)
 {
     if (schedule_retry && *schedule_retry) {
@@ -2830,6 +2980,8 @@ static void wait_task_handle_initialized(file_manager_ctx_t *ctx, bool *schedule
 {
     wait_task_handle_pending_parent(ctx, schedule_retry);
     wait_task_refresh_after_reconnect(ctx, schedule_retry);
+    wait_task_handle_pending_dir(ctx, schedule_retry);
+    wait_task_handle_pending_txt(ctx, schedule_retry);
 }
 
 static void wait_task_restart_if_needed(bool *schedule_retry)
@@ -3842,10 +3994,21 @@ static bool item_click_handle_dir(file_manager_ctx_t *ctx, const fs_nav_item_t *
         return false;
     }
 
+    /* Cache target name before attempting enter, so we can retry after SD reconnect. */
+    if (item->name && item->name[0] != '\0') {
+        strlcpy(ctx->pending_dir_name, item->name, sizeof(ctx->pending_dir_name));
+        ctx->flags.pending_enter_dir = true;
+    } else {
+        ctx->pending_dir_name[0] = '\0';
+        ctx->flags.pending_enter_dir = false;
+    }
+
     show_loading(ctx);
     esp_err_t err = fs_nav_enter(&ctx->nav, index);
     hide_loading(ctx);
     if (err == ESP_OK) {
+        ctx->flags.pending_enter_dir = false;
+        ctx->pending_dir_name[0] = '\0';
         sync_view(ctx);
     } else {
         const char *item_name = (item && item->name) ? item->name : "<item>";
@@ -3875,7 +4038,13 @@ static bool item_click_handle_txt(file_manager_ctx_t *ctx, const fs_nav_item_t *
         hide_loading(ctx);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to view \"%s\": %s", item->name, esp_err_to_name(err));
+            strlcpy(ctx->pending_txt_name, item->name, sizeof(ctx->pending_txt_name));
+            ctx->flags.pending_open_txt = true;
             sd_card_schedule_retry();
+            schedule_wait_for_reconnection();
+        } else {
+            ctx->flags.pending_open_txt = false;
+            ctx->pending_txt_name[0] = '\0';
         }
     } else {
         ESP_LOGE(TAG, "Path too long for \"%s\"", item->name);
