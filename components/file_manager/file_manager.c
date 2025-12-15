@@ -265,6 +265,21 @@ static void wait_task_handle_pending_dir(file_manager_ctx_t *ctx, bool *schedule
 static void wait_task_handle_pending_txt(file_manager_ctx_t *ctx, bool *schedule_retry);
 
 /**
+ * @brief Find an item by name in the current directory windows.
+ *
+ * Pages through navigator windows if needed to locate @p name (case-insensitive).
+ * On success writes the relative index within the loaded window to @p out_rel_index.
+ * If paging fails, sets @p schedule_retry so the caller can reschedule a retry.
+ *
+ * @param ctx            File manager context.
+ * @param name           Target item name.
+ * @param out_rel_index  Output: relative index in current window (optional).
+ * @param schedule_retry In/out flag that is set on I/O failure while paging.
+ * @return true if the item was found, false otherwise.
+ */
+static bool locate_item_in_current_dir(file_manager_ctx_t *ctx, const char *name, size_t *out_rel_index, bool *schedule_retry);
+
+/**
  * @brief Attempt pending parent navigation after reconnection.
  *
  * Clears pending_go_parent and tries fs_nav_go_parent, scheduling retry on error.
