@@ -3463,6 +3463,7 @@ static void screensaver_light_sleep_task(void *param)
             refresh_display_after_light_sleep();
         }
         
+        settings_start_screensaver_timers();
         resume_lvgl_timers_after_sleep();
         
         esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_EXT0);
@@ -3475,7 +3476,6 @@ static void refresh_display_after_light_sleep(void)
     if (settings_get_active_brightness() <= 0) {
         settings_fade_to_saved_brightness();
     }
-    settings_start_screensaver_timers();
 }
 
 static void pause_lvgl_timers_for_sleep(void)
