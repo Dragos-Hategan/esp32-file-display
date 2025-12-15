@@ -1860,7 +1860,7 @@ static void build_on_about_dlg(lv_event_t *e)
 
     const char *lines[] = {
         "Brightness: adjusts backlight between " STR(SETTINGS_MINIMUM_BRIGHTNESS) "\% and 100\%.",
-        "Screensaver: opens the screensaver configuration for dimming and turning off the screen. When the screen is off, power saving mode is ON vai light-sleep mode.",
+        "Screensaver: opens the screensaver configuration for dimming and turning off the screen. When the screen is off, power saving mode is ON via light-sleep mode.",
         "Change Theme: toggles between dark and light system theme, saves other unsaved configs and restarts.",
         "Manual Date&Time: opens the date&time picker to manually set values in this format: HH:MM MM/DD/YY.",
         "Wi-Fi & SNTP: configure the SSID and password of the Wi-Fi connection for precise and automatic time, also with a switch for auto-connect at startup.",
