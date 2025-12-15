@@ -3687,12 +3687,13 @@ static void sync_brightness_ui(settings_ctx_t *ctx, int val)
 static void sync_brightness_ui_async(void *arg)
 {
     int val = (int)(uintptr_t)arg;
-    if (val < SETTINGS_MINIMUM_BRIGHTNESS) val = SETTINGS_MINIMUM_BRIGHTNESS;
+    if (val < 0) val = 0;
     if (val > 100) val = 100;
 
     settings_ctx_t *ctx = &s_settings_ctx;
     /* Skip if settings screen is not active/visible or controls were deleted. */
     if (!ctx->active || !ctx->graphics.screen || !lv_obj_is_valid(ctx->graphics.screen) || lv_screen_active() != ctx->graphics.screen) {
+        s_brightness_ui_pending = false;
         return;
     }
 
