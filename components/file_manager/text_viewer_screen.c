@@ -2118,9 +2118,11 @@ static void handle_save(text_viewer_ctx_t *ctx)
         return;
     }
 
-    if (!file_save_success(ctx, text, tmp_path, have_existing, window_start, window_end,
-                           prefix_size, suffix_start, suffix_size)) 
+    bool save_ok = file_save_success(ctx, text, tmp_path, have_existing, window_start, window_end,
+                                     prefix_size, suffix_start, suffix_size);
+    if (!save_ok)
     {
+        schedule_sd_retry(ctx, TEXT_VIEWER_SD_SAVE);
         return;
     }
 
