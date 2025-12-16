@@ -46,6 +46,7 @@ typedef struct{
     lv_obj_t *status_label;                     /**< Label showing transient status messages */
     lv_obj_t *name_dialog;                      /**< Filename prompt dialog */
     lv_obj_t *confirm_mbox;                     /**< Confirmation message box (save/discard) */
+    lv_obj_t *save_conflict_mbox;               /**< Conflict dialog shown when a new name already exists */
     lv_obj_t *chunk_slider;                     /**< Vertical slider for chunk navigation */
     lv_obj_t *name_textarea;                    /**< Text area used inside filename dialog */
     lv_obj_t *return_screen;                    /**< Screen to return to on close */
@@ -79,6 +80,8 @@ typedef struct
     char path[FS_TEXT_MAX_PATH];                /**< Current file path */
     char directory[FS_TEXT_MAX_PATH];           /**< Directory used for new files */
     char pending_name[FS_NAV_MAX_NAME];         /**< Suggested filename for new files */
+    char conflict_path[FS_TEXT_MAX_PATH];       /**< Cached conflicting path for overwrite prompts */
+    char conflict_name[FS_NAV_MAX_NAME];        /**< Cached conflicting name for overwrite prompts */
     size_t slider_pending_step;                 /**< Pending slider step during drag */
     size_t max_file_offset_kb;                  /**< Maximum readable offset (in KB) for the loaded file */
     size_t last_file_offset_kb;                 /**< Offset (in KB) used for the last read chunk */
@@ -899,6 +902,50 @@ static esp_err_t compose_new_path(text_viewer_ctx_t *ctx, const char *name, char
 static bool path_exists(const char *path);
 
 /**
+ * @brief Show the overwrite/cancel dialog when the chosen new filename already exists.
+ *
+ * Caches the conflicting name/path and presents a modal dialog that lets the user
+ * either overwrite the existing file or cancel and keep editing the name dialog.
+ *
+ * @param ctx  Viewer context.
+ * @param path Full destination path that already exists.
+ * @param name Filename (without path) that conflicts.
+ */
+static void show_save_conflict(text_viewer_ctx_t *ctx, const char *path, const char *name);
+
+/**
+ * @brief Close and clear any active save conflict dialog/state.
+ *
+ * Destroys the modal conflict message box (if present) and clears the cached
+ * conflicting path/name so stale data is not reused.
+ *
+ * @param ctx Viewer context.
+ */
+static void close_save_conflict(text_viewer_ctx_t *ctx);
+
+/**
+ * @brief Event handler for the save conflict dialog buttons.
+ *
+ * Handles Overwrite or Cancel: overwrite applies the cached path/name and triggers
+ * save; cancel leaves the name dialog open and refocuses the keyboard for renaming.
+ *
+ * @param e LVGL event carrying the button user data choice.
+ */
+static void on_save_conflict(lv_event_t *e);
+
+/**
+ * @brief Apply a validated new file name/path to the viewer state.
+ *
+ * Stores the chosen name/path, exits "new file" mode, updates the displayed path,
+ * and closes the name dialog prior to saving.
+ *
+ * @param ctx       Viewer context.
+ * @param name      Filename selected by the user.
+ * @param full_path Absolute path composed from directory + name.
+ */
+static void apply_new_file_path(text_viewer_ctx_t *ctx, const char *name, const char *full_path);
+
+/**
  * @brief Show the filename dialog used when saving a new file.
  *
  * @param ctx Viewer context.
@@ -1259,6 +1306,7 @@ static void init_viewer_context(text_viewer_ctx_t *ctx, const text_viewer_open_o
     ctx->graphics.name_dialog = NULL;
     ctx->graphics.name_textarea = NULL;
     ctx->graphics.chunk_mbox = NULL;
+    ctx->graphics.save_conflict_mbox = NULL;
     ctx->graphics.sd_retry_timer = NULL;
     ctx->flags.at_top_edge = false;
     ctx->flags.at_bottom_edge = false;
@@ -1272,6 +1320,8 @@ static void init_viewer_context(text_viewer_ctx_t *ctx, const text_viewer_open_o
     ctx->flags.slider_suppress_change = false;
     ctx->flags.slider_drag_active = false;
     ctx->slider_pending_step = SIZE_MAX;
+    ctx->conflict_path[0] = '\0';
+    ctx->conflict_name[0] = '\0';
 
     if (new_file)
     {
@@ -2748,6 +2798,110 @@ static bool path_exists(const char *path)
     return stat(path, &st) == 0;
 }
 
+static void close_save_conflict(text_viewer_ctx_t *ctx)
+{
+    if (ctx && ctx->graphics.save_conflict_mbox)
+    {
+        lv_msgbox_close(ctx->graphics.save_conflict_mbox);
+        ctx->graphics.save_conflict_mbox = NULL;
+    }
+    if (ctx)
+    {
+        ctx->conflict_path[0] = '\0';
+        ctx->conflict_name[0] = '\0';
+    }
+}
+
+static void show_save_conflict(text_viewer_ctx_t *ctx, const char *path, const char *name)
+{
+    if (!ctx || !path || !name || !ctx->graphics.name_dialog)
+    {
+        return;
+    }
+    close_save_conflict(ctx);
+    strlcpy(ctx->conflict_path, path, sizeof(ctx->conflict_path));
+    strlcpy(ctx->conflict_name, name, sizeof(ctx->conflict_name));
+
+    lv_obj_t *mbox = lv_msgbox_create(ctx->graphics.screen);
+    styles_set_msgbox(mbox);
+    lv_obj_add_flag(mbox, LV_OBJ_FLAG_FLOATING);
+    ctx->graphics.save_conflict_mbox = mbox;
+    lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
+    lv_obj_set_width(mbox, LV_PCT(80));
+    lv_obj_center(mbox);
+
+    lv_obj_t *label = lv_label_create(mbox);
+    lv_label_set_text_fmt(label, "\"%s\" already exists. Overwrite?", ctx->conflict_name);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    styles_set_text_color(label, 0);
+    lv_obj_set_width(label, LV_PCT(100));
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+
+    lv_obj_t *replace_btn = lv_msgbox_add_footer_button(mbox, "Overwrite");
+    lv_obj_set_user_data(replace_btn, (void *)1);
+    styles_set_button(replace_btn);
+    lv_obj_add_event_cb(replace_btn, on_save_conflict, LV_EVENT_CLICKED, ctx);
+
+    lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
+    lv_obj_set_user_data(cancel_btn, (void *)0);
+    styles_set_button(cancel_btn);
+    lv_obj_add_event_cb(cancel_btn, on_save_conflict, LV_EVENT_CLICKED, ctx);
+
+    set_status(ctx, "File already exists");
+}
+
+static void apply_new_file_path(text_viewer_ctx_t *ctx, const char *name, const char *full_path)
+{
+    if (!ctx || !name || !full_path || full_path[0] == '\0')
+    {
+        return;
+    }
+    strlcpy(ctx->path, full_path, sizeof(ctx->path));
+    ctx->directory[0] = '\0';
+    ctx->flags.new_file = false;
+    close_name_dialog(ctx);
+    strlcpy(ctx->pending_name, name, sizeof(ctx->pending_name));
+    set_path_label(ctx, ctx->path);
+}
+
+static void on_save_conflict(lv_event_t *e)
+{
+    text_viewer_ctx_t *ctx = lv_event_get_user_data(e);
+    if (!ctx)
+    {
+        return;
+    }
+    char conflict_path[FS_TEXT_MAX_PATH];
+    char conflict_name[FS_NAV_MAX_NAME];
+    strlcpy(conflict_path, ctx->conflict_path, sizeof(conflict_path));
+    strlcpy(conflict_name, ctx->conflict_name, sizeof(conflict_name));
+    int choice = (int)(uintptr_t)lv_obj_get_user_data(lv_event_get_target(e));
+
+    close_save_conflict(ctx);
+
+    if (conflict_path[0] == '\0' || conflict_name[0] == '\0')
+    {
+        return;
+    }
+
+    if (choice == 1)
+    {
+        apply_new_file_path(ctx, conflict_name, conflict_path);
+        handle_save(ctx);
+    }
+    else
+    {
+        /* Keep dialog open for editing; refocus name field and keyboard. */
+        if (ctx->graphics.name_textarea)
+        {
+            lv_obj_add_state(ctx->graphics.name_textarea, LV_STATE_FOCUSED);
+            lv_textarea_set_cursor_pos(ctx->graphics.name_textarea, LV_TEXTAREA_CURSOR_LAST);
+            show_keyboard(ctx, ctx->graphics.name_textarea);
+        }
+        set_status(ctx, "Choose another name");
+    }
+}
+
 static void show_name_dialog(text_viewer_ctx_t *ctx)
 {
     if (!ctx || !ctx->flags.new_file || !ctx->flags.editable || ctx->graphics.name_dialog)
@@ -2816,6 +2970,7 @@ static void close_name_dialog(text_viewer_ctx_t *ctx)
     {
         return;
     }
+    close_save_conflict(ctx);
     if (ctx->graphics.name_textarea)
     {
         const char *current = lv_textarea_get_text(ctx->graphics.name_textarea);
@@ -2838,6 +2993,7 @@ static bool confirm_name_dialog(text_viewer_ctx_t *ctx)
     {
         return false;
     }
+    close_save_conflict(ctx);
 
     const char *raw = ctx->graphics.name_textarea ? lv_textarea_get_text(ctx->graphics.name_textarea) : "";
     char name_buf[FS_NAV_MAX_NAME];
@@ -2848,23 +3004,20 @@ static bool confirm_name_dialog(text_viewer_ctx_t *ctx)
         set_status(ctx, "Invalid .txt name");
         return false;
     }
-    esp_err_t compose_err = compose_new_path(ctx, name_buf, ctx->path, sizeof(ctx->path));
+    char new_path[FS_TEXT_MAX_PATH];
+    esp_err_t compose_err = compose_new_path(ctx, name_buf, new_path, sizeof(new_path));
     if (compose_err != ESP_OK)
     {
         set_status(ctx, "Path too long");
         return false;
     }
-    if (path_exists(ctx->path))
+    if (path_exists(new_path))
     {
-        set_status(ctx, "File already exists");
+        show_save_conflict(ctx, new_path, name_buf);
         return false;
     }
 
-    strlcpy(ctx->pending_name, name_buf, sizeof(ctx->pending_name));
-    ctx->directory[0] = '\0';
-    ctx->flags.new_file = false;
-    set_path_label(ctx, ctx->path);
-    close_name_dialog(ctx);
+    apply_new_file_path(ctx, name_buf, new_path);
     handle_save(ctx);
     return true;
 }
@@ -2970,6 +3123,7 @@ static void close_ctx(text_viewer_ctx_t *ctx, bool changed)
 {
     close_confirm(ctx);
     close_chunk_prompt(ctx);
+    close_save_conflict(ctx);
     close_name_dialog(ctx);
     if (ctx->graphics.sd_retry_timer)
     {
@@ -2987,6 +3141,8 @@ static void close_ctx(text_viewer_ctx_t *ctx, bool changed)
     ctx->flags.waiting_sd = false;
     ctx->sd_retry_action = TEXT_VIEWER_SD_NONE;
     ctx->flags.content_changed = false;
+    ctx->conflict_path[0] = '\0';
+    ctx->conflict_name[0] = '\0';
     lv_keyboard_set_textarea(ctx->graphics.keyboard, NULL);
     lv_obj_add_flag(ctx->graphics.keyboard, LV_OBJ_FLAG_HIDDEN);
     /* Drop heavy UI tree (text area buffer) so large files release heap after close. */

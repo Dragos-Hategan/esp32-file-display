@@ -5289,8 +5289,10 @@ static void show_paste_conflict(file_manager_ctx_t *ctx, const char *dest_path)
 
     lv_obj_t *mbox = lv_msgbox_create(NULL);
     styles_set_msgbox(mbox);
+    lv_obj_set_style_pad_gap(mbox, 1, 0);
+    lv_obj_set_style_pad_all(mbox, 2, 0);
     ctx->graphics.paste_conflict_mbox = mbox;
-    lv_obj_set_style_max_width(mbox, LV_PCT(80), 0);
+    lv_obj_set_style_max_width(mbox, LV_PCT(82), 0);
     lv_obj_center(mbox);
 
     lv_obj_t *label = lv_label_create(mbox);
@@ -5301,15 +5303,24 @@ static void show_paste_conflict(file_manager_ctx_t *ctx, const char *dest_path)
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *replace_btn = lv_msgbox_add_footer_button(mbox, "Replace");
+    styles_set_button(replace_btn);
     lv_obj_set_user_data(replace_btn, (void *)1);
+    lv_obj_set_style_pad_left(replace_btn, 5, 0);
+    lv_obj_set_style_pad_right(replace_btn, 5, 0);
     lv_obj_add_event_cb(replace_btn, on_paste_conflict, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *rename_btn = lv_msgbox_add_footer_button(mbox, "Keep both");
+    styles_set_button(rename_btn);
     lv_obj_set_user_data(rename_btn, (void *)2);
+    lv_obj_set_style_pad_left(rename_btn, 5, 0);
+    lv_obj_set_style_pad_right(rename_btn, 5, 0);    
     lv_obj_add_event_cb(rename_btn, on_paste_conflict, LV_EVENT_CLICKED, ctx);
 
     lv_obj_t *cancel_btn = lv_msgbox_add_footer_button(mbox, "Cancel");
+    styles_set_button(cancel_btn);
     lv_obj_set_user_data(cancel_btn, (void *)0);
+    lv_obj_set_style_pad_left(cancel_btn, 5, 0);
+    lv_obj_set_style_pad_right(cancel_btn, 5, 0);       
     lv_obj_add_event_cb(cancel_btn, on_paste_conflict, LV_EVENT_CLICKED, ctx);
 }
 
