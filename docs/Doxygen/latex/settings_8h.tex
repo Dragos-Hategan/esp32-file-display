@@ -1,0 +1,377 @@
+\doxysection{components/settings/include/settings.h File Reference}
+\hypertarget{settings_8h}{}\label{settings_8h}\index{components/settings/include/settings.h@{components/settings/include/settings.h}}
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include "{}lvgl.\+h"{}}\newline
+Include dependency graph for settings.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{settings_8h_a49f4c4275bf05db2bccb839dd67236ae}{settings\+\_\+starting\+\_\+routine}} (void)
+\begin{DoxyCompactList}\small\item\em Execute the full startup flow (NVS, display, settings, SNTP, touch). \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{settings_8h_acf24b7a684c9bc230252c011a261ea5e}{settings\+\_\+open\+\_\+settings}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}return\+\_\+screen)
+\begin{DoxyCompactList}\small\item\em Open the Settings UI, creating it on first call and loading it into LVGL. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_a00977dd4f60c5b39183c0097097dc5c2}{settings\+\_\+show\+\_\+date\+\_\+time\+\_\+dialog}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}return\+\_\+screen)
+\begin{DoxyCompactList}\small\item\em Show the Set Date\&Time dialog. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_a04c458ac717c77c1d0d5c3c9e8601b4b}{settings\+\_\+show\+\_\+sntp\+\_\+dialog}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}return\+\_\+screen)
+\begin{DoxyCompactList}\small\item\em Show the SNTP refresh confirmation dialog. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_a33836c1fe73ee9b59e819d5969ce5ea6}{settings\+\_\+register\+\_\+time\+\_\+callbacks}} (void(\texorpdfstring{$\ast$}{*}on\+\_\+time\+\_\+set)(void), void(\texorpdfstring{$\ast$}{*}on\+\_\+time\+\_\+reset)(void))
+\begin{DoxyCompactList}\small\item\em Register callbacks for time set/reset events. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_a07f685dbaa2faf4c472b2a808cd610f6}{settings\+\_\+shutdown\+\_\+save\+\_\+time}} (void)
+\begin{DoxyCompactList}\small\item\em persists current system time to NVS. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_aced8739a6efea581a75d14446797b610}{settings\+\_\+persist\+\_\+sd\+\_\+card\+\_\+restart}} (void)
+\begin{DoxyCompactList}\small\item\em Persist the SD card restart flag to NVS. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_ada5fbc543a9d935068960e2527316c5f}{settings\+\_\+set\+\_\+sd\+\_\+card\+\_\+restart}} (bool enable)
+\begin{DoxyCompactList}\small\item\em Set the SD card restart flag in RAM (non-\/persistent). \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8h_a3d5d2f5208ba6b57ffd5dd854c26846e}{settings\+\_\+is\+\_\+time\+\_\+valid}} (void)
+\begin{DoxyCompactList}\small\item\em Check if there is any valid value in NVS for system time. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_a410b5d8d49c9be09b1cbc614feaaa6f3}{settings\+\_\+fade\+\_\+to\+\_\+saved\+\_\+brightness}} (void)
+\begin{DoxyCompactList}\small\item\em Fade brightness to saved\+\_\+brightness over SETTINGS\+\_\+\+UP\+\_\+\+FADE\+\_\+\+MS. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_afd9b342f168e1f5b88ecca86af3d1883}{settings\+\_\+start\+\_\+screensaver\+\_\+timers}} (void)
+\begin{DoxyCompactList}\small\item\em (Re)start dim/off timers according to current settings state. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8h_a3f32db1ddff47a137a04570dc8f75799}{settings\+\_\+is\+\_\+wake\+\_\+in\+\_\+progress}} (void)
+\begin{DoxyCompactList}\small\item\em Check if a wake fade (brightness ramp-\/up) is in progress. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{settings_8h_abd5a1f83319177839909ea51587f28dd}{settings\+\_\+get\+\_\+active\+\_\+brightness}} (void)
+\begin{DoxyCompactList}\small\item\em Get the current active brightness percentage. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8h_af0d8a8509e4013b3ba70bc3d374cd24a}{settings\+\_\+is\+\_\+brightness\+\_\+changing}} (void)
+\begin{DoxyCompactList}\small\item\em Get whether brightness/backlight is effectively on ( \texorpdfstring{$>$}{>}0 ). \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8h_a8d996817d6c7b5fd186609cf5c0c3f84}{settings\+\_\+get\+\_\+calibration\+\_\+prompt\+\_\+enabled}} (void)
+\begin{DoxyCompactList}\small\item\em Get the stored preference for prompting calibration at startup. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_a9f40f6e1a72c7d0a6d0f0f2ab69b3c5d}{settings\+\_\+set\+\_\+calibration\+\_\+prompt\+\_\+enabled}} (bool enable)
+\begin{DoxyCompactList}\small\item\em Persist the preference for prompting calibration at startup. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8h_a9df3203fb9681b7760072af3b52596b3}{settings\+\_\+get\+\_\+running\+\_\+calibration}} (void)
+\begin{DoxyCompactList}\small\item\em Get the state of the calibration wizard. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_a402e66791b625bb6d6e73d1fb8798f0b}{settings\+\_\+set\+\_\+running\+\_\+calibration}} (bool enable)
+\begin{DoxyCompactList}\small\item\em Set the calibration running guard flag. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8h_a723416ad6ad254c42a3f249277ea442a}{settings\+\_\+is\+\_\+theme\+\_\+dark}} (void)
+\begin{DoxyCompactList}\small\item\em Get the dark theme flag. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_ac62726b3e575083438303597e49cdf38}{settings\+\_\+set\+\_\+dark\+\_\+theme\+\_\+flag}} (bool is\+\_\+dark)
+\begin{DoxyCompactList}\small\item\em Set the dark theme flag. \end{DoxyCompactList}\item 
+char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{settings_8h_aa9fb4f6af10b07922b4d353a118e44c5}{settings\+\_\+get\+\_\+ap\+\_\+ssid}} (void)
+\begin{DoxyCompactList}\small\item\em Get the configured Access Point SSID string. \end{DoxyCompactList}\item 
+char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{settings_8h_ab156515ed83060cfe1b9c1cdc661c905}{settings\+\_\+get\+\_\+ap\+\_\+pwd}} (void)
+\begin{DoxyCompactList}\small\item\em Get the configured Access Point password string. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_ab794260555ed66561e70dc1c76e826de}{screensaver\+\_\+off\+\_\+stop}} (void)
+\begin{DoxyCompactList}\small\item\em Stop the screensaver off timer. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8h_a29e309012a2cefcdbaa39973d014fb13}{screensaver\+\_\+dim\+\_\+stop}} (void)
+\begin{DoxyCompactList}\small\item\em Stop the screensaver dim timer. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{settings_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{settings_8h_a29e309012a2cefcdbaa39973d014fb13}\index{settings.h@{settings.h}!screensaver\_dim\_stop@{screensaver\_dim\_stop}}
+\index{screensaver\_dim\_stop@{screensaver\_dim\_stop}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{screensaver\_dim\_stop()}{screensaver\_dim\_stop()}}
+{\footnotesize\ttfamily \label{settings_8h_a29e309012a2cefcdbaa39973d014fb13} 
+void screensaver\+\_\+dim\+\_\+stop (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Stop the screensaver dim timer. 
+
+\Hypertarget{settings_8h_ab794260555ed66561e70dc1c76e826de}\index{settings.h@{settings.h}!screensaver\_off\_stop@{screensaver\_off\_stop}}
+\index{screensaver\_off\_stop@{screensaver\_off\_stop}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{screensaver\_off\_stop()}{screensaver\_off\_stop()}}
+{\footnotesize\ttfamily \label{settings_8h_ab794260555ed66561e70dc1c76e826de} 
+void screensaver\+\_\+off\+\_\+stop (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Stop the screensaver off timer. 
+
+\Hypertarget{settings_8h_a410b5d8d49c9be09b1cbc614feaaa6f3}\index{settings.h@{settings.h}!settings\_fade\_to\_saved\_brightness@{settings\_fade\_to\_saved\_brightness}}
+\index{settings\_fade\_to\_saved\_brightness@{settings\_fade\_to\_saved\_brightness}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_fade\_to\_saved\_brightness()}{settings\_fade\_to\_saved\_brightness()}}
+{\footnotesize\ttfamily \label{settings_8h_a410b5d8d49c9be09b1cbc614feaaa6f3} 
+void settings\+\_\+fade\+\_\+to\+\_\+saved\+\_\+brightness (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Fade brightness to saved\+\_\+brightness over SETTINGS\+\_\+\+UP\+\_\+\+FADE\+\_\+\+MS. 
+
+\Hypertarget{settings_8h_abd5a1f83319177839909ea51587f28dd}\index{settings.h@{settings.h}!settings\_get\_active\_brightness@{settings\_get\_active\_brightness}}
+\index{settings\_get\_active\_brightness@{settings\_get\_active\_brightness}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_active\_brightness()}{settings\_get\_active\_brightness()}}
+{\footnotesize\ttfamily \label{settings_8h_abd5a1f83319177839909ea51587f28dd} 
+int settings\+\_\+get\+\_\+active\+\_\+brightness (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the current active brightness percentage. 
+
+\begin{DoxyReturn}{Returns}
+Brightness percent (0..100). 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_ab156515ed83060cfe1b9c1cdc661c905}\index{settings.h@{settings.h}!settings\_get\_ap\_pwd@{settings\_get\_ap\_pwd}}
+\index{settings\_get\_ap\_pwd@{settings\_get\_ap\_pwd}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_ap\_pwd()}{settings\_get\_ap\_pwd()}}
+{\footnotesize\ttfamily \label{settings_8h_ab156515ed83060cfe1b9c1cdc661c905} 
+char \texorpdfstring{$\ast$}{*} settings\+\_\+get\+\_\+ap\+\_\+pwd (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the configured Access Point password string. 
+
+\begin{DoxyReturn}{Returns}
+Pointer to the null-\/terminated password stored in settings (do not free or modify). 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_aa9fb4f6af10b07922b4d353a118e44c5}\index{settings.h@{settings.h}!settings\_get\_ap\_ssid@{settings\_get\_ap\_ssid}}
+\index{settings\_get\_ap\_ssid@{settings\_get\_ap\_ssid}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_ap\_ssid()}{settings\_get\_ap\_ssid()}}
+{\footnotesize\ttfamily \label{settings_8h_aa9fb4f6af10b07922b4d353a118e44c5} 
+char \texorpdfstring{$\ast$}{*} settings\+\_\+get\+\_\+ap\+\_\+ssid (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the configured Access Point SSID string. 
+
+\begin{DoxyReturn}{Returns}
+Pointer to the null-\/terminated SSID stored in settings (do not free or modify). 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_a8d996817d6c7b5fd186609cf5c0c3f84}\index{settings.h@{settings.h}!settings\_get\_calibration\_prompt\_enabled@{settings\_get\_calibration\_prompt\_enabled}}
+\index{settings\_get\_calibration\_prompt\_enabled@{settings\_get\_calibration\_prompt\_enabled}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_calibration\_prompt\_enabled()}{settings\_get\_calibration\_prompt\_enabled()}}
+{\footnotesize\ttfamily \label{settings_8h_a8d996817d6c7b5fd186609cf5c0c3f84} 
+bool settings\+\_\+get\+\_\+calibration\+\_\+prompt\+\_\+enabled (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the stored preference for prompting calibration at startup. 
+
+\begin{DoxyReturn}{Returns}
+true if the prompt is enabled, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_a9df3203fb9681b7760072af3b52596b3}\index{settings.h@{settings.h}!settings\_get\_running\_calibration@{settings\_get\_running\_calibration}}
+\index{settings\_get\_running\_calibration@{settings\_get\_running\_calibration}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_running\_calibration()}{settings\_get\_running\_calibration()}}
+{\footnotesize\ttfamily \label{settings_8h_a9df3203fb9681b7760072af3b52596b3} 
+bool settings\+\_\+get\+\_\+running\+\_\+calibration (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the state of the calibration wizard. 
+
+\begin{DoxyReturn}{Returns}
+true if the calibration is being run, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_af0d8a8509e4013b3ba70bc3d374cd24a}\index{settings.h@{settings.h}!settings\_is\_brightness\_changing@{settings\_is\_brightness\_changing}}
+\index{settings\_is\_brightness\_changing@{settings\_is\_brightness\_changing}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_is\_brightness\_changing()}{settings\_is\_brightness\_changing()}}
+{\footnotesize\ttfamily \label{settings_8h_af0d8a8509e4013b3ba70bc3d374cd24a} 
+bool settings\+\_\+is\+\_\+brightness\+\_\+changing (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get whether brightness/backlight is effectively on ( \texorpdfstring{$>$}{>}0 ). 
+
+\begin{DoxyReturn}{Returns}
+true if brightness \texorpdfstring{$>$}{>} 0, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_a723416ad6ad254c42a3f249277ea442a}\index{settings.h@{settings.h}!settings\_is\_theme\_dark@{settings\_is\_theme\_dark}}
+\index{settings\_is\_theme\_dark@{settings\_is\_theme\_dark}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_is\_theme\_dark()}{settings\_is\_theme\_dark()}}
+{\footnotesize\ttfamily \label{settings_8h_a723416ad6ad254c42a3f249277ea442a} 
+bool settings\+\_\+is\+\_\+theme\+\_\+dark (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the dark theme flag. 
+
+\begin{DoxyReturn}{Returns}
+true if the dark theme is on, false otherwise.\texorpdfstring{$\ast$}{*} 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_a3d5d2f5208ba6b57ffd5dd854c26846e}\index{settings.h@{settings.h}!settings\_is\_time\_valid@{settings\_is\_time\_valid}}
+\index{settings\_is\_time\_valid@{settings\_is\_time\_valid}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_is\_time\_valid()}{settings\_is\_time\_valid()}}
+{\footnotesize\ttfamily \label{settings_8h_a3d5d2f5208ba6b57ffd5dd854c26846e} 
+bool settings\+\_\+is\+\_\+time\+\_\+valid (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Check if there is any valid value in NVS for system time. 
+
+\begin{DoxyReturn}{Returns}
+true if time is valid, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_a3f32db1ddff47a137a04570dc8f75799}\index{settings.h@{settings.h}!settings\_is\_wake\_in\_progress@{settings\_is\_wake\_in\_progress}}
+\index{settings\_is\_wake\_in\_progress@{settings\_is\_wake\_in\_progress}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_is\_wake\_in\_progress()}{settings\_is\_wake\_in\_progress()}}
+{\footnotesize\ttfamily \label{settings_8h_a3f32db1ddff47a137a04570dc8f75799} 
+bool settings\+\_\+is\+\_\+wake\+\_\+in\+\_\+progress (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Check if a wake fade (brightness ramp-\/up) is in progress. 
+
+\begin{DoxyReturn}{Returns}
+true if currently fading up from 0 toward saved\+\_\+brightness. 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_acf24b7a684c9bc230252c011a261ea5e}\index{settings.h@{settings.h}!settings\_open\_settings@{settings\_open\_settings}}
+\index{settings\_open\_settings@{settings\_open\_settings}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_open\_settings()}{settings\_open\_settings()}}
+{\footnotesize\ttfamily \label{settings_8h_acf24b7a684c9bc230252c011a261ea5e} 
+esp\+\_\+err\+\_\+t settings\+\_\+open\+\_\+settings (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{return\+\_\+screen}{}\end{DoxyParamCaption})}
+
+
+
+Open the Settings UI, creating it on first call and loading it into LVGL. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em return\+\_\+screen} & Screen to switch back to when closing settings (nullable). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK on success, ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on bad return screen 
+\end{DoxyReturn}
+\Hypertarget{settings_8h_aced8739a6efea581a75d14446797b610}\index{settings.h@{settings.h}!settings\_persist\_sd\_card\_restart@{settings\_persist\_sd\_card\_restart}}
+\index{settings\_persist\_sd\_card\_restart@{settings\_persist\_sd\_card\_restart}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_persist\_sd\_card\_restart()}{settings\_persist\_sd\_card\_restart()}}
+{\footnotesize\ttfamily \label{settings_8h_aced8739a6efea581a75d14446797b610} 
+void settings\+\_\+persist\+\_\+sd\+\_\+card\+\_\+restart (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Persist the SD card restart flag to NVS. 
+
+\Hypertarget{settings_8h_a33836c1fe73ee9b59e819d5969ce5ea6}\index{settings.h@{settings.h}!settings\_register\_time\_callbacks@{settings\_register\_time\_callbacks}}
+\index{settings\_register\_time\_callbacks@{settings\_register\_time\_callbacks}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_register\_time\_callbacks()}{settings\_register\_time\_callbacks()}}
+{\footnotesize\ttfamily \label{settings_8h_a33836c1fe73ee9b59e819d5969ce5ea6} 
+void settings\+\_\+register\+\_\+time\+\_\+callbacks (\begin{DoxyParamCaption}\item[{void(\texorpdfstring{$\ast$}{*}}]{on\+\_\+time\+\_\+set~}{)(void), }\item[{void(\texorpdfstring{$\ast$}{*}}]{on\+\_\+time\+\_\+reset~}{)(void)}\end{DoxyParamCaption})}
+
+
+
+Register callbacks for time set/reset events. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em on\+\_\+time\+\_\+set} & Called after a successful Apply in the date\&time dialog. \\
+\hline
+{\em on\+\_\+time\+\_\+reset} & Called when settings are reset (to clear clock UI).\\
+\hline
+\end{DoxyParams}
+Callbacks run in the LVGL/task context that owns the dialog; avoid heavy work. \Hypertarget{settings_8h_a9f40f6e1a72c7d0a6d0f0f2ab69b3c5d}\index{settings.h@{settings.h}!settings\_set\_calibration\_prompt\_enabled@{settings\_set\_calibration\_prompt\_enabled}}
+\index{settings\_set\_calibration\_prompt\_enabled@{settings\_set\_calibration\_prompt\_enabled}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_set\_calibration\_prompt\_enabled()}{settings\_set\_calibration\_prompt\_enabled()}}
+{\footnotesize\ttfamily \label{settings_8h_a9f40f6e1a72c7d0a6d0f0f2ab69b3c5d} 
+void settings\+\_\+set\+\_\+calibration\+\_\+prompt\+\_\+enabled (\begin{DoxyParamCaption}\item[{bool}]{enable}{}\end{DoxyParamCaption})}
+
+
+
+Persist the preference for prompting calibration at startup. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enable} & true to enable the prompt, false to disable. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8h_ac62726b3e575083438303597e49cdf38}\index{settings.h@{settings.h}!settings\_set\_dark\_theme\_flag@{settings\_set\_dark\_theme\_flag}}
+\index{settings\_set\_dark\_theme\_flag@{settings\_set\_dark\_theme\_flag}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_set\_dark\_theme\_flag()}{settings\_set\_dark\_theme\_flag()}}
+{\footnotesize\ttfamily \label{settings_8h_ac62726b3e575083438303597e49cdf38} 
+void settings\+\_\+set\+\_\+dark\+\_\+theme\+\_\+flag (\begin{DoxyParamCaption}\item[{bool}]{is\+\_\+dark}{}\end{DoxyParamCaption})}
+
+
+
+Set the dark theme flag. 
+
+\Hypertarget{settings_8h_a402e66791b625bb6d6e73d1fb8798f0b}\index{settings.h@{settings.h}!settings\_set\_running\_calibration@{settings\_set\_running\_calibration}}
+\index{settings\_set\_running\_calibration@{settings\_set\_running\_calibration}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_set\_running\_calibration()}{settings\_set\_running\_calibration()}}
+{\footnotesize\ttfamily \label{settings_8h_a402e66791b625bb6d6e73d1fb8798f0b} 
+void settings\+\_\+set\+\_\+running\+\_\+calibration (\begin{DoxyParamCaption}\item[{bool}]{enable}{}\end{DoxyParamCaption})}
+
+
+
+Set the calibration running guard flag. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enable} & true when calibration is in progress, false when idle. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8h_ada5fbc543a9d935068960e2527316c5f}\index{settings.h@{settings.h}!settings\_set\_sd\_card\_restart@{settings\_set\_sd\_card\_restart}}
+\index{settings\_set\_sd\_card\_restart@{settings\_set\_sd\_card\_restart}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_set\_sd\_card\_restart()}{settings\_set\_sd\_card\_restart()}}
+{\footnotesize\ttfamily \label{settings_8h_ada5fbc543a9d935068960e2527316c5f} 
+void settings\+\_\+set\+\_\+sd\+\_\+card\+\_\+restart (\begin{DoxyParamCaption}\item[{bool}]{enable}{}\end{DoxyParamCaption})}
+
+
+
+Set the SD card restart flag in RAM (non-\/persistent). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enable} & True to request restart after SD events; false to clear. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8h_a00977dd4f60c5b39183c0097097dc5c2}\index{settings.h@{settings.h}!settings\_show\_date\_time\_dialog@{settings\_show\_date\_time\_dialog}}
+\index{settings\_show\_date\_time\_dialog@{settings\_show\_date\_time\_dialog}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_show\_date\_time\_dialog()}{settings\_show\_date\_time\_dialog()}}
+{\footnotesize\ttfamily \label{settings_8h_a00977dd4f60c5b39183c0097097dc5c2} 
+void settings\+\_\+show\+\_\+date\+\_\+time\+\_\+dialog (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{return\+\_\+screen}{}\end{DoxyParamCaption})}
+
+
+
+Show the Set Date\&Time dialog. 
+
+Builds the date\&time picker overlay on the top layer. Caller provides the screen to return focus to (used for context). The dialog uses the shared settings context/state.
+
+
+\begin{DoxyParams}{Parameters}
+{\em return\+\_\+screen} & Screen that owns the caller UI (can be NULL). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8h_a04c458ac717c77c1d0d5c3c9e8601b4b}\index{settings.h@{settings.h}!settings\_show\_sntp\_dialog@{settings\_show\_sntp\_dialog}}
+\index{settings\_show\_sntp\_dialog@{settings\_show\_sntp\_dialog}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_show\_sntp\_dialog()}{settings\_show\_sntp\_dialog()}}
+{\footnotesize\ttfamily \label{settings_8h_a04c458ac717c77c1d0d5c3c9e8601b4b} 
+void settings\+\_\+show\+\_\+sntp\+\_\+dialog (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{return\+\_\+screen}{}\end{DoxyParamCaption})}
+
+
+
+Show the SNTP refresh confirmation dialog. 
+
+Stores the caller screen and builds a confirmation message box to refresh time via SNTP.
+
+
+\begin{DoxyParams}{Parameters}
+{\em return\+\_\+screen} & Screen that owns the caller UI (can be NULL). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8h_a07f685dbaa2faf4c472b2a808cd610f6}\index{settings.h@{settings.h}!settings\_shutdown\_save\_time@{settings\_shutdown\_save\_time}}
+\index{settings\_shutdown\_save\_time@{settings\_shutdown\_save\_time}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_shutdown\_save\_time()}{settings\_shutdown\_save\_time()}}
+{\footnotesize\ttfamily \label{settings_8h_a07f685dbaa2faf4c472b2a808cd610f6} 
+void settings\+\_\+shutdown\+\_\+save\+\_\+time (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+persists current system time to NVS. 
+
+\Hypertarget{settings_8h_afd9b342f168e1f5b88ecca86af3d1883}\index{settings.h@{settings.h}!settings\_start\_screensaver\_timers@{settings\_start\_screensaver\_timers}}
+\index{settings\_start\_screensaver\_timers@{settings\_start\_screensaver\_timers}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_start\_screensaver\_timers()}{settings\_start\_screensaver\_timers()}}
+{\footnotesize\ttfamily \label{settings_8h_afd9b342f168e1f5b88ecca86af3d1883} 
+void settings\+\_\+start\+\_\+screensaver\+\_\+timers (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+(Re)start dim/off timers according to current settings state. 
+
+\Hypertarget{settings_8h_a49f4c4275bf05db2bccb839dd67236ae}\index{settings.h@{settings.h}!settings\_starting\_routine@{settings\_starting\_routine}}
+\index{settings\_starting\_routine@{settings\_starting\_routine}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{settings\_starting\_routine()}{settings\_starting\_routine()}}
+{\footnotesize\ttfamily \label{settings_8h_a49f4c4275bf05db2bccb839dd67236ae} 
+void settings\+\_\+starting\+\_\+routine (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Execute the full startup flow (NVS, display, settings, SNTP, touch). 
+
+Initializes NVS, starts the display and styles, loads persisted settings, then either shows the splash screen with SNTP sync on power-\/on resets or resumes the saved SNTP state after other resets. Finally, it brings up the touch driver and optionally runs calibration. 

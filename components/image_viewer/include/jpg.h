@@ -7,6 +7,12 @@ extern "C" {
 #include "esp_err.h"
 #include "lvgl.h"
 
+/**
+ * @brief Options passed to @c jpg_viewer_open.
+ *
+ * Encapsulates the JPEG file path and the LVGL screen to return to once
+ * the viewer is closed.
+ */
 typedef struct {
     const char *path;          /**< Absolute or drive-prefixed path to JPEG file (e.g. "S:/img.jpg"). */
     lv_obj_t *return_screen;   /**< Screen to return to when closing the viewer (may be NULL). */

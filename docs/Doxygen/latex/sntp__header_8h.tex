@@ -1,0 +1,79 @@
+\doxysection{components/sntp\+\_\+wifi/include/sntp\+\_\+header.h File Reference}
+\hypertarget{sntp__header_8h}{}\label{sntp__header_8h}\index{components/sntp\_wifi/include/sntp\_header.h@{components/sntp\_wifi/include/sntp\_header.h}}
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include $<$stdint.\+h$>$}\newline
+Include dependency graph for sntp\+\_\+header.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{sntp__header_8h_ac84552d17d8f267acc71582849951134}{TZ\+\_\+\+EUROPE\+\_\+\+BUCHAREST}}~"{}EET-\/2EEST,M3.\+5.\+0/3,M10.\+5.\+0/4"{}
+\item 
+\#define \mbox{\hyperlink{sntp__header_8h_a7d4cb6f5af73f1a985a7f771b7ccda2c}{SNTP\+\_\+\+DEFAULT\+\_\+\+TIMEZONE}}~\mbox{\hyperlink{sntp__header_8h_ac84552d17d8f267acc71582849951134}{TZ\+\_\+\+EUROPE\+\_\+\+BUCHAREST}}  /\texorpdfstring{$\ast$}{*} Override via Kconfig/env if needed. \texorpdfstring{$\ast$}{*}/
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{sntp__header_8h_adc5305413f9ba9d6e9ad364ed2e2928b}{sntp\+\_\+wait\+\_\+for\+\_\+time\+\_\+blocking}} (uint32\+\_\+t timeout\+\_\+ms)
+\begin{DoxyCompactList}\small\item\em Block until time is synced or a timeout elapses. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{sntp__header_8h_a89467c0c75345ca30a74eab663f30c04}{sntp\+\_\+initialize}} (void)
+\begin{DoxyCompactList}\small\item\em Initialize SNTP, set timezone, and wait for synchronization. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{sntp__header_8h_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{sntp__header_8h_a7d4cb6f5af73f1a985a7f771b7ccda2c}\index{sntp\_header.h@{sntp\_header.h}!SNTP\_DEFAULT\_TIMEZONE@{SNTP\_DEFAULT\_TIMEZONE}}
+\index{SNTP\_DEFAULT\_TIMEZONE@{SNTP\_DEFAULT\_TIMEZONE}!sntp\_header.h@{sntp\_header.h}}
+\doxysubsubsection{\texorpdfstring{SNTP\_DEFAULT\_TIMEZONE}{SNTP\_DEFAULT\_TIMEZONE}}
+{\footnotesize\ttfamily \label{sntp__header_8h_a7d4cb6f5af73f1a985a7f771b7ccda2c} 
+\#define SNTP\+\_\+\+DEFAULT\+\_\+\+TIMEZONE~\mbox{\hyperlink{sntp__header_8h_ac84552d17d8f267acc71582849951134}{TZ\+\_\+\+EUROPE\+\_\+\+BUCHAREST}}  /\texorpdfstring{$\ast$}{*} Override via Kconfig/env if needed. \texorpdfstring{$\ast$}{*}/}
+
+\Hypertarget{sntp__header_8h_ac84552d17d8f267acc71582849951134}\index{sntp\_header.h@{sntp\_header.h}!TZ\_EUROPE\_BUCHAREST@{TZ\_EUROPE\_BUCHAREST}}
+\index{TZ\_EUROPE\_BUCHAREST@{TZ\_EUROPE\_BUCHAREST}!sntp\_header.h@{sntp\_header.h}}
+\doxysubsubsection{\texorpdfstring{TZ\_EUROPE\_BUCHAREST}{TZ\_EUROPE\_BUCHAREST}}
+{\footnotesize\ttfamily \label{sntp__header_8h_ac84552d17d8f267acc71582849951134} 
+\#define TZ\+\_\+\+EUROPE\+\_\+\+BUCHAREST~"{}EET-\/2EEST,M3.\+5.\+0/3,M10.\+5.\+0/4"{}}
+
+
+
+\label{doc-func-members}
+\Hypertarget{sntp__header_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{sntp__header_8h_a89467c0c75345ca30a74eab663f30c04}\index{sntp\_header.h@{sntp\_header.h}!sntp\_initialize@{sntp\_initialize}}
+\index{sntp\_initialize@{sntp\_initialize}!sntp\_header.h@{sntp\_header.h}}
+\doxysubsubsection{\texorpdfstring{sntp\_initialize()}{sntp\_initialize()}}
+{\footnotesize\ttfamily \label{sntp__header_8h_a89467c0c75345ca30a74eab663f30c04} 
+esp\+\_\+err\+\_\+t sntp\+\_\+initialize (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Initialize SNTP, set timezone, and wait for synchronization. 
+
+Starts SNTP, applies the default timezone from {\ttfamily SNTP\+\_\+\+DEFAULT\+\_\+\+TIMEZONE}, and waits up to 10 seconds for time to become valid.
+
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK on success or an esp\+\_\+err\+\_\+t from SNTP init/sync. 
+\end{DoxyReturn}
+\Hypertarget{sntp__header_8h_adc5305413f9ba9d6e9ad364ed2e2928b}\index{sntp\_header.h@{sntp\_header.h}!sntp\_wait\_for\_time\_blocking@{sntp\_wait\_for\_time\_blocking}}
+\index{sntp\_wait\_for\_time\_blocking@{sntp\_wait\_for\_time\_blocking}!sntp\_header.h@{sntp\_header.h}}
+\doxysubsubsection{\texorpdfstring{sntp\_wait\_for\_time\_blocking()}{sntp\_wait\_for\_time\_blocking()}}
+{\footnotesize\ttfamily \label{sntp__header_8h_adc5305413f9ba9d6e9ad364ed2e2928b} 
+esp\+\_\+err\+\_\+t sntp\+\_\+wait\+\_\+for\+\_\+time\+\_\+blocking (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{timeout\+\_\+ms}{}\end{DoxyParamCaption})}
+
+
+
+Block until time is synced or a timeout elapses. 
+
+Polls SNTP sync status in 1s steps up to {\ttfamily timeout\+\_\+ms} and validates the resulting time against a minimum year. Returns ESP\+\_\+\+ERR\+\_\+\+TIMEOUT on failure.
+
+
+\begin{DoxyParams}{Parameters}
+{\em timeout\+\_\+ms} & Maximum wait in milliseconds. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK if time is valid, ESP\+\_\+\+ERR\+\_\+\+TIMEOUT otherwise. 
+\end{DoxyReturn}

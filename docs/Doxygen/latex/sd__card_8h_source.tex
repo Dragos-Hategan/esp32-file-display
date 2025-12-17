@@ -1,0 +1,31 @@
+\doxysection{sd\+\_\+card.\+h}
+\hypertarget{sd__card_8h_source}{}\label{sd__card_8h_source}\index{components/sd\_card/include/sd\_card.h@{components/sd\_card/include/sd\_card.h}}
+\mbox{\hyperlink{sd__card_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}\ \{}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}freertos/FreeRTOS.h"{}}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ "{}freertos/semphr.h"{}}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ "{}freertos/task.h"{}}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ <stdbool.h>}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}esp\_err.h"{}}}
+\DoxyCodeLine{00013\ }
+\DoxyCodeLine{00014\ \textcolor{comment}{/*\ Internal\ reconnect\ semaphore.\ */}}
+\DoxyCodeLine{00015\ \textcolor{keyword}{extern}\ SemaphoreHandle\_t\ \mbox{\hyperlink{sd__card_8h_abe1b20b3c678601d03678dca46d38d48}{reconnection\_success}};}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00028\ esp\_err\_t\ \mbox{\hyperlink{sd__card_8h_ad78a50dfc8be1e28effacc58f9a18aa1}{sd\_card\_init}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00033\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sd__card_8h_a60c3fa6a7307e0c4f7983581bed397c5}{sd\_card\_retry\_init}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00034\ }
+\DoxyCodeLine{00038\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sd__card_8h_adebf78dc07b83bc8966466bd3bc7ca01}{sd\_card\_schedule\_retry}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00041\ \}}
+\DoxyCodeLine{00042\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

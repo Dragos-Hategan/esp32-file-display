@@ -1,0 +1,149 @@
+\doxysection{components/sd\+\_\+card/sd\+\_\+card.c File Reference}
+\hypertarget{sd__card_8c}{}\label{sd__card_8c}\index{components/sd\_card/sd\_card.c@{components/sd\_card/sd\_card.c}}
+{\ttfamily \#include "{}sd\+\_\+card.\+h"{}}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include "{}bsp/esp-\/bsp.\+h"{}}\newline
+{\ttfamily \#include "{}driver/sdspi\+\_\+host.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+vfs\+\_\+fat.\+h"{}}\newline
+{\ttfamily \#include "{}lvgl.\+h"{}}\newline
+{\ttfamily \#include "{}sdmmc\+\_\+cmd.\+h"{}}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+{\ttfamily \#include "{}styles.\+h"{}}\newline
+Include dependency graph for sd\+\_\+card.\+c\+:
+% FIG 0
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structsdspi__retry__prompt__ctx__t}{sdspi\+\_\+retry\+\_\+prompt\+\_\+ctx\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structsdspi__retry__ui__t}{sdspi\+\_\+retry\+\_\+ui\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structdisplay__lock__guard__t}{display\+\_\+lock\+\_\+guard\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{sd__card_8c_a899f0e1b2790f1fda3efbfa2dea4fbea}{SDSPI\+\_\+\+RETRY\+\_\+\+UI\+\_\+\+STEP\+\_\+\+MS}}~50U
+\item 
+\#define \mbox{\hyperlink{sd__card_8c_a73caf3f13a99aba7503fbce27af2a4e8}{SDSPI\+\_\+\+RETRY\+\_\+\+DELAY\+\_\+\+MS}}~500U
+\item 
+\#define \mbox{\hyperlink{sd__card_8c_ae2c39158eb3db42cf206c301368751d3}{SDSPI\+\_\+\+MAX\+\_\+\+RETRIES}}~10U
+\item 
+\#define \mbox{\hyperlink{sd__card_8c_addfeea471b0336ce697468f67fc224fe}{SD\+\_\+\+RETRY\+\_\+\+STACK}}~(6 \texorpdfstring{$\ast$}{*} 1024)
+\item 
+\#define \mbox{\hyperlink{sd__card_8c_a2601501cf4b4ca7d4ece9d0904b78998}{SD\+\_\+\+RETRY\+\_\+\+PRIO}}~(4)
+\item 
+\#define \mbox{\hyperlink{sd__card_8c_a40fbacd3ff72fd13801518611ee219b6}{SD\+\_\+\+STATE\+\_\+\+LOCK\+\_\+\+TIMEOUT\+\_\+\+MS}}~1000U
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{sd__card_8c_ad78a50dfc8be1e28effacc58f9a18aa1}{sd\+\_\+card\+\_\+init}} (void)
+\begin{DoxyCompactList}\small\item\em Initialize (or reinitialize) the SDSPI bus and mount the SD card filesystem. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sd__card_8c_a60c3fa6a7307e0c4f7983581bed397c5}{sd\+\_\+card\+\_\+retry\+\_\+init}} (void)
+\begin{DoxyCompactList}\small\item\em Prompt the user then retry SD card initialization with UI feedback. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sd__card_8c_adebf78dc07b83bc8966466bd3bc7ca01}{sd\+\_\+card\+\_\+schedule\+\_\+retry}} (void)
+\begin{DoxyCompactList}\small\item\em Launch the SD retry worker task if one is not already running. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+Semaphore\+Handle\+\_\+t \mbox{\hyperlink{sd__card_8c_abe1b20b3c678601d03678dca46d38d48}{reconnection\+\_\+success}} = NULL
+\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{sd__card_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{sd__card_8c_a2601501cf4b4ca7d4ece9d0904b78998}\index{sd\_card.c@{sd\_card.c}!SD\_RETRY\_PRIO@{SD\_RETRY\_PRIO}}
+\index{SD\_RETRY\_PRIO@{SD\_RETRY\_PRIO}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{SD\_RETRY\_PRIO}{SD\_RETRY\_PRIO}}
+{\footnotesize\ttfamily \label{sd__card_8c_a2601501cf4b4ca7d4ece9d0904b78998} 
+\#define SD\+\_\+\+RETRY\+\_\+\+PRIO~(4)}
+
+\Hypertarget{sd__card_8c_addfeea471b0336ce697468f67fc224fe}\index{sd\_card.c@{sd\_card.c}!SD\_RETRY\_STACK@{SD\_RETRY\_STACK}}
+\index{SD\_RETRY\_STACK@{SD\_RETRY\_STACK}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{SD\_RETRY\_STACK}{SD\_RETRY\_STACK}}
+{\footnotesize\ttfamily \label{sd__card_8c_addfeea471b0336ce697468f67fc224fe} 
+\#define SD\+\_\+\+RETRY\+\_\+\+STACK~(6 \texorpdfstring{$\ast$}{*} 1024)}
+
+\Hypertarget{sd__card_8c_a40fbacd3ff72fd13801518611ee219b6}\index{sd\_card.c@{sd\_card.c}!SD\_STATE\_LOCK\_TIMEOUT\_MS@{SD\_STATE\_LOCK\_TIMEOUT\_MS}}
+\index{SD\_STATE\_LOCK\_TIMEOUT\_MS@{SD\_STATE\_LOCK\_TIMEOUT\_MS}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{SD\_STATE\_LOCK\_TIMEOUT\_MS}{SD\_STATE\_LOCK\_TIMEOUT\_MS}}
+{\footnotesize\ttfamily \label{sd__card_8c_a40fbacd3ff72fd13801518611ee219b6} 
+\#define SD\+\_\+\+STATE\+\_\+\+LOCK\+\_\+\+TIMEOUT\+\_\+\+MS~1000U}
+
+\Hypertarget{sd__card_8c_ae2c39158eb3db42cf206c301368751d3}\index{sd\_card.c@{sd\_card.c}!SDSPI\_MAX\_RETRIES@{SDSPI\_MAX\_RETRIES}}
+\index{SDSPI\_MAX\_RETRIES@{SDSPI\_MAX\_RETRIES}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{SDSPI\_MAX\_RETRIES}{SDSPI\_MAX\_RETRIES}}
+{\footnotesize\ttfamily \label{sd__card_8c_ae2c39158eb3db42cf206c301368751d3} 
+\#define SDSPI\+\_\+\+MAX\+\_\+\+RETRIES~10U}
+
+\Hypertarget{sd__card_8c_a73caf3f13a99aba7503fbce27af2a4e8}\index{sd\_card.c@{sd\_card.c}!SDSPI\_RETRY\_DELAY\_MS@{SDSPI\_RETRY\_DELAY\_MS}}
+\index{SDSPI\_RETRY\_DELAY\_MS@{SDSPI\_RETRY\_DELAY\_MS}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{SDSPI\_RETRY\_DELAY\_MS}{SDSPI\_RETRY\_DELAY\_MS}}
+{\footnotesize\ttfamily \label{sd__card_8c_a73caf3f13a99aba7503fbce27af2a4e8} 
+\#define SDSPI\+\_\+\+RETRY\+\_\+\+DELAY\+\_\+\+MS~500U}
+
+\Hypertarget{sd__card_8c_a899f0e1b2790f1fda3efbfa2dea4fbea}\index{sd\_card.c@{sd\_card.c}!SDSPI\_RETRY\_UI\_STEP\_MS@{SDSPI\_RETRY\_UI\_STEP\_MS}}
+\index{SDSPI\_RETRY\_UI\_STEP\_MS@{SDSPI\_RETRY\_UI\_STEP\_MS}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{SDSPI\_RETRY\_UI\_STEP\_MS}{SDSPI\_RETRY\_UI\_STEP\_MS}}
+{\footnotesize\ttfamily \label{sd__card_8c_a899f0e1b2790f1fda3efbfa2dea4fbea} 
+\#define SDSPI\+\_\+\+RETRY\+\_\+\+UI\+\_\+\+STEP\+\_\+\+MS~50U}
+
+
+
+\label{doc-func-members}
+\Hypertarget{sd__card_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{sd__card_8c_ad78a50dfc8be1e28effacc58f9a18aa1}\index{sd\_card.c@{sd\_card.c}!sd\_card\_init@{sd\_card\_init}}
+\index{sd\_card\_init@{sd\_card\_init}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{sd\_card\_init()}{sd\_card\_init()}}
+{\footnotesize\ttfamily \label{sd__card_8c_ad78a50dfc8be1e28effacc58f9a18aa1} 
+esp\+\_\+err\+\_\+t sd\+\_\+card\+\_\+init (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Initialize (or reinitialize) the SDSPI bus and mount the SD card filesystem. 
+
+Performs SPI bus setup and mounts FAT at {\ttfamily CONFIG\+\_\+\+SDSPI\+\_\+\+MOUNT\+\_\+\+POINT} via {\ttfamily esp\+\_\+vfs\+\_\+fat\+\_\+sdspi\+\_\+mount}. If a card is already mounted or the bus is active, they are gracefully unmounted/freed before attempting again.
+
+\begin{DoxyReturn}{Returns}
+esp\+\_\+err\+\_\+t
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP-\/\+IDF error code if SPI bus initialization or FAT mount fails 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\Hypertarget{sd__card_8c_a60c3fa6a7307e0c4f7983581bed397c5}\index{sd\_card.c@{sd\_card.c}!sd\_card\_retry\_init@{sd\_card\_retry\_init}}
+\index{sd\_card\_retry\_init@{sd\_card\_retry\_init}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{sd\_card\_retry\_init()}{sd\_card\_retry\_init()}}
+{\footnotesize\ttfamily \label{sd__card_8c_a60c3fa6a7307e0c4f7983581bed397c5} 
+void sd\+\_\+card\+\_\+retry\+\_\+init (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Prompt the user then retry SD card initialization with UI feedback. 
+
+\Hypertarget{sd__card_8c_adebf78dc07b83bc8966466bd3bc7ca01}\index{sd\_card.c@{sd\_card.c}!sd\_card\_schedule\_retry@{sd\_card\_schedule\_retry}}
+\index{sd\_card\_schedule\_retry@{sd\_card\_schedule\_retry}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{sd\_card\_schedule\_retry()}{sd\_card\_schedule\_retry()}}
+{\footnotesize\ttfamily \label{sd__card_8c_adebf78dc07b83bc8966466bd3bc7ca01} 
+void sd\+\_\+card\+\_\+schedule\+\_\+retry (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Launch the SD retry worker task if one is not already running. 
+
+
+
+\label{doc-var-members}
+\Hypertarget{sd__card_8c_doc-var-members}
+\doxysubsection{Variable Documentation}
+\Hypertarget{sd__card_8c_abe1b20b3c678601d03678dca46d38d48}\index{sd\_card.c@{sd\_card.c}!reconnection\_success@{reconnection\_success}}
+\index{reconnection\_success@{reconnection\_success}!sd\_card.c@{sd\_card.c}}
+\doxysubsubsection{\texorpdfstring{reconnection\_success}{reconnection\_success}}
+{\footnotesize\ttfamily \label{sd__card_8c_abe1b20b3c678601d03678dca46d38d48} 
+Semaphore\+Handle\+\_\+t reconnection\+\_\+success = NULL}
+

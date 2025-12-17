@@ -1,0 +1,27 @@
+var settings_8h =
+[
+    [ "screensaver_dim_stop", "settings_8h.html#a29e309012a2cefcdbaa39973d014fb13", null ],
+    [ "screensaver_off_stop", "settings_8h.html#ab794260555ed66561e70dc1c76e826de", null ],
+    [ "settings_fade_to_saved_brightness", "settings_8h.html#a410b5d8d49c9be09b1cbc614feaaa6f3", null ],
+    [ "settings_get_active_brightness", "settings_8h.html#abd5a1f83319177839909ea51587f28dd", null ],
+    [ "settings_get_ap_pwd", "settings_8h.html#ab156515ed83060cfe1b9c1cdc661c905", null ],
+    [ "settings_get_ap_ssid", "settings_8h.html#aa9fb4f6af10b07922b4d353a118e44c5", null ],
+    [ "settings_get_calibration_prompt_enabled", "settings_8h.html#a8d996817d6c7b5fd186609cf5c0c3f84", null ],
+    [ "settings_get_running_calibration", "settings_8h.html#a9df3203fb9681b7760072af3b52596b3", null ],
+    [ "settings_is_brightness_changing", "settings_8h.html#af0d8a8509e4013b3ba70bc3d374cd24a", null ],
+    [ "settings_is_theme_dark", "settings_8h.html#a723416ad6ad254c42a3f249277ea442a", null ],
+    [ "settings_is_time_valid", "settings_8h.html#a3d5d2f5208ba6b57ffd5dd854c26846e", null ],
+    [ "settings_is_wake_in_progress", "settings_8h.html#a3f32db1ddff47a137a04570dc8f75799", null ],
+    [ "settings_open_settings", "settings_8h.html#acf24b7a684c9bc230252c011a261ea5e", null ],
+    [ "settings_persist_sd_card_restart", "settings_8h.html#aced8739a6efea581a75d14446797b610", null ],
+    [ "settings_register_time_callbacks", "settings_8h.html#a33836c1fe73ee9b59e819d5969ce5ea6", null ],
+    [ "settings_set_calibration_prompt_enabled", "settings_8h.html#a9f40f6e1a72c7d0a6d0f0f2ab69b3c5d", null ],
+    [ "settings_set_dark_theme_flag", "settings_8h.html#ac62726b3e575083438303597e49cdf38", null ],
+    [ "settings_set_running_calibration", "settings_8h.html#a402e66791b625bb6d6e73d1fb8798f0b", null ],
+    [ "settings_set_sd_card_restart", "settings_8h.html#ada5fbc543a9d935068960e2527316c5f", null ],
+    [ "settings_show_date_time_dialog", "settings_8h.html#a00977dd4f60c5b39183c0097097dc5c2", null ],
+    [ "settings_show_sntp_dialog", "settings_8h.html#a04c458ac717c77c1d0d5c3c9e8601b4b", null ],
+    [ "settings_shutdown_save_time", "settings_8h.html#a07f685dbaa2faf4c472b2a808cd610f6", null ],
+    [ "settings_start_screensaver_timers", "settings_8h.html#afd9b342f168e1f5b88ecca86af3d1883", null ],
+    [ "settings_starting_routine", "settings_8h.html#a49f4c4275bf05db2bccb839dd67236ae", null ]
+];

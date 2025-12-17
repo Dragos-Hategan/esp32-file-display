@@ -1,0 +1,25 @@
+\doxysection{sntp\+\_\+header.\+h}
+\hypertarget{sntp__header_8h_source}{}\label{sntp__header_8h_source}\index{components/sntp\_wifi/include/sntp\_header.h@{components/sntp\_wifi/include/sntp\_header.h}}
+\mbox{\hyperlink{sntp__header_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}\ \{}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}esp\_err.h"{}}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <stdint.h>}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#define\ TZ\_EUROPE\_BUCHAREST\ "{}EET-\/2EEST,M3.5.0/3,M10.5.0/4"{}}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#define\ SNTP\_DEFAULT\_TIMEZONE\ TZ\_EUROPE\_BUCHAREST\ \ }\textcolor{comment}{/*\ Override\ via\ Kconfig/env\ if\ needed.\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00022\ esp\_err\_t\ \mbox{\hyperlink{sntp__header_8h_adc5305413f9ba9d6e9ad364ed2e2928b}{sntp\_wait\_for\_time\_blocking}}(uint32\_t\ timeout\_ms);}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00032\ esp\_err\_t\ \mbox{\hyperlink{sntp__header_8h_a89467c0c75345ca30a74eab663f30c04}{sntp\_initialize}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00035\ \}}
+\DoxyCodeLine{00036\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

@@ -1,0 +1,231 @@
+\doxysection{components/file\+\_\+manager/file\+\_\+manager.c File Reference}
+\hypertarget{file__manager_8c}{}\label{file__manager_8c}\index{components/file\_manager/file\_manager.c@{components/file\_manager/file\_manager.c}}
+{\ttfamily \#include "{}file\+\_\+manager.\+h"{}}\newline
+{\ttfamily \#include $<$sys/stat.\+h$>$}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$stddef.\+h$>$}\newline
+{\ttfamily \#include $<$stdint.\+h$>$}\newline
+{\ttfamily \#include $<$dirent.\+h$>$}\newline
+{\ttfamily \#include $<$strings.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$unistd.\+h$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$errno.\+h$>$}\newline
+{\ttfamily \#include $<$time.\+h$>$}\newline
+{\ttfamily \#include "{}freertos/\+Free\+RTOS.\+h"{}}\newline
+{\ttfamily \#include "{}freertos/task.\+h"{}}\newline
+{\ttfamily \#include "{}bsp/esp-\/bsp.\+h"{}}\newline
+{\ttfamily \#include "{}sdkconfig.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+timer.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}lvgl.\+h"{}}\newline
+{\ttfamily \#include "{}text\+\_\+viewer\+\_\+screen.\+h"{}}\newline
+{\ttfamily \#include "{}fs\+\_\+navigator.\+h"{}}\newline
+{\ttfamily \#include "{}fs\+\_\+text\+\_\+ops.\+h"{}}\newline
+{\ttfamily \#include "{}Domine\+\_\+16.\+h"{}}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+{\ttfamily \#include "{}sd\+\_\+card.\+h"{}}\newline
+{\ttfamily \#include "{}styles.\+h"{}}\newline
+{\ttfamily \#include "{}jpg.\+h"{}}\newline
+Include dependency graph for file\+\_\+manager.\+c\+:
+% FIG 0
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structfile__manager__config__t}{file\+\_\+manager\+\_\+config\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structfile__manager__action__item__t}{file\+\_\+manager\+\_\+action\+\_\+item\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structfile__manager__clipboard__t}{file\+\_\+manager\+\_\+clipboard\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structfile__manager__graphics__t}{file\+\_\+manager\+\_\+graphics\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structfile__manager__flags__t}{file\+\_\+manager\+\_\+flags\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structfile__manager__ctx__t}{file\+\_\+manager\+\_\+ctx\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_afc3d101f633a076cc1ca84b85b6224b2}{TAG}}~"{}file\+\_\+manager"{}
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_aa53be6be6f98499e38606b412d13d39e}{FILE\+\_\+\+BROWSER\+\_\+\+MAX\+\_\+\+SORTABLE\+\_\+\+ITEMS\+\_\+\+DEFAULT}}~64      /\texorpdfstring{$\ast$}{*} May cause OOM errors if larger \texorpdfstring{$\ast$}{*}/
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_a221abf47357b69f08a725f38f4489bfc}{FILE\+\_\+\+BROWSER\+\_\+\+LIST\+\_\+\+WINDOW\+\_\+\+SIZE\+\_\+\+DEFAULT}}~32      /\texorpdfstring{$\ast$}{*} May cause OOM errors if larger \texorpdfstring{$\ast$}{*}/
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_a74a2a9fe6179172cb48f537193ff9cdb}{FILE\+\_\+\+BROWSER\+\_\+\+LIST\+\_\+\+WINDOW\+\_\+\+STEP\+\_\+\+DEFAULT}}~16
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_a4c87470b6ecfb4db884abda7bc013375}{FILE\+\_\+\+BROWSER\+\_\+\+PATH\+\_\+\+SCROLL\+\_\+\+DELAY\+\_\+\+MS\+\_\+\+DEFAULT}}~2000
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_a95c238075b0e528c3f546593c516014a}{FILE\+\_\+\+BROWSER\+\_\+\+ENTRY\+\_\+\+SCROLL\+\_\+\+DELAY\+\_\+\+MS\+\_\+\+DEFAULT}}~\mbox{\hyperlink{file__manager_8c_a4c87470b6ecfb4db884abda7bc013375}{FILE\+\_\+\+BROWSER\+\_\+\+PATH\+\_\+\+SCROLL\+\_\+\+DELAY\+\_\+\+MS\+\_\+\+DEFAULT}}
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_ad454b781a53217462de54223f8efe4d7}{FILE\+\_\+\+BROWSER\+\_\+\+SLIDER\+\_\+\+GAP\+\_\+\+DEFAULT}}~8
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_a8db108b811d60c1356c2c7950470ad09}{FILE\+\_\+\+BROWSER\+\_\+\+WAIT\+\_\+\+STACK\+\_\+\+SIZE\+\_\+\+B\+\_\+\+DEFAULT}}~(6 \texorpdfstring{$\ast$}{*} 1024)
+\item 
+\#define \mbox{\hyperlink{file__manager_8c_a48ea3c4982202321e4c425c33a913638}{FILE\+\_\+\+BROWSER\+\_\+\+WAIT\+\_\+\+PRIO\+\_\+\+DEFAULT}}~4
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cc}{file\+\_\+manager\+\_\+action\+\_\+type\+\_\+t}} \{ \newline
+\mbox{\hyperlink{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca2c1da7d7414b99dbbdbd43f7e15eb7c3}{FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+EDIT}} = 1
+, \mbox{\hyperlink{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccabfaaaeecfab8766e14c1f23f98cfdbbd}{FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+DELETE}} = 2
+, \mbox{\hyperlink{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca516393989be43cf9278c9872aae0992b}{FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+CANCEL}} = 3
+, \mbox{\hyperlink{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccadb352bc20215cce66db7563e9a9990fb}{FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+RENAME}} = 4
+, \newline
+\mbox{\hyperlink{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccaad1079f594f52a3e506bfe6a8e42b242}{FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+COPY}} = 5
+, \mbox{\hyperlink{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca4e6a0d6c9a72530ecc407bb84e718d85}{FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+CUT}} = 6
+ \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{file__manager_8c_a480b60728475dd1260fa1f9778a9a1d9}{file\+\_\+manager\+\_\+start}} (void)
+\begin{DoxyCompactList}\small\item\em Create the LVGL file-\/browser screen using the default SDSPI root. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{file__manager_8c_a9e880d62d6574e7a1d814d88acdd3698}{file\+\_\+manager\+\_\+reset\+\_\+clock\+\_\+display}} (void)
+\begin{DoxyCompactList}\small\item\em Reset the header clock display to default (show button, hide label). \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{file__manager_8c_a8c5de3af01994511fb3fcffc4040f4e4}{file\+\_\+manager\+\_\+on\+\_\+time\+\_\+set}} (void)
+\begin{DoxyCompactList}\small\item\em Mark the clock as user-\/set and refresh the header label/button state. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{file__manager_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{file__manager_8c_a95c238075b0e528c3f546593c516014a}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_ENTRY\_SCROLL\_DELAY\_MS\_DEFAULT@{FILE\_BROWSER\_ENTRY\_SCROLL\_DELAY\_MS\_DEFAULT}}
+\index{FILE\_BROWSER\_ENTRY\_SCROLL\_DELAY\_MS\_DEFAULT@{FILE\_BROWSER\_ENTRY\_SCROLL\_DELAY\_MS\_DEFAULT}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{FILE\_BROWSER\_ENTRY\_SCROLL\_DELAY\_MS\_DEFAULT}{FILE\_BROWSER\_ENTRY\_SCROLL\_DELAY\_MS\_DEFAULT}}
+{\footnotesize\ttfamily \label{file__manager_8c_a95c238075b0e528c3f546593c516014a} 
+\#define FILE\+\_\+\+BROWSER\+\_\+\+ENTRY\+\_\+\+SCROLL\+\_\+\+DELAY\+\_\+\+MS\+\_\+\+DEFAULT~\mbox{\hyperlink{file__manager_8c_a4c87470b6ecfb4db884abda7bc013375}{FILE\+\_\+\+BROWSER\+\_\+\+PATH\+\_\+\+SCROLL\+\_\+\+DELAY\+\_\+\+MS\+\_\+\+DEFAULT}}}
+
+\Hypertarget{file__manager_8c_a221abf47357b69f08a725f38f4489bfc}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_LIST\_WINDOW\_SIZE\_DEFAULT@{FILE\_BROWSER\_LIST\_WINDOW\_SIZE\_DEFAULT}}
+\index{FILE\_BROWSER\_LIST\_WINDOW\_SIZE\_DEFAULT@{FILE\_BROWSER\_LIST\_WINDOW\_SIZE\_DEFAULT}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{FILE\_BROWSER\_LIST\_WINDOW\_SIZE\_DEFAULT}{FILE\_BROWSER\_LIST\_WINDOW\_SIZE\_DEFAULT}}
+{\footnotesize\ttfamily \label{file__manager_8c_a221abf47357b69f08a725f38f4489bfc} 
+\#define FILE\+\_\+\+BROWSER\+\_\+\+LIST\+\_\+\+WINDOW\+\_\+\+SIZE\+\_\+\+DEFAULT~32      /\texorpdfstring{$\ast$}{*} May cause OOM errors if larger \texorpdfstring{$\ast$}{*}/}
+
+\Hypertarget{file__manager_8c_a74a2a9fe6179172cb48f537193ff9cdb}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_LIST\_WINDOW\_STEP\_DEFAULT@{FILE\_BROWSER\_LIST\_WINDOW\_STEP\_DEFAULT}}
+\index{FILE\_BROWSER\_LIST\_WINDOW\_STEP\_DEFAULT@{FILE\_BROWSER\_LIST\_WINDOW\_STEP\_DEFAULT}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{FILE\_BROWSER\_LIST\_WINDOW\_STEP\_DEFAULT}{FILE\_BROWSER\_LIST\_WINDOW\_STEP\_DEFAULT}}
+{\footnotesize\ttfamily \label{file__manager_8c_a74a2a9fe6179172cb48f537193ff9cdb} 
+\#define FILE\+\_\+\+BROWSER\+\_\+\+LIST\+\_\+\+WINDOW\+\_\+\+STEP\+\_\+\+DEFAULT~16}
+
+\Hypertarget{file__manager_8c_aa53be6be6f98499e38606b412d13d39e}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_MAX\_SORTABLE\_ITEMS\_DEFAULT@{FILE\_BROWSER\_MAX\_SORTABLE\_ITEMS\_DEFAULT}}
+\index{FILE\_BROWSER\_MAX\_SORTABLE\_ITEMS\_DEFAULT@{FILE\_BROWSER\_MAX\_SORTABLE\_ITEMS\_DEFAULT}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{FILE\_BROWSER\_MAX\_SORTABLE\_ITEMS\_DEFAULT}{FILE\_BROWSER\_MAX\_SORTABLE\_ITEMS\_DEFAULT}}
+{\footnotesize\ttfamily \label{file__manager_8c_aa53be6be6f98499e38606b412d13d39e} 
+\#define FILE\+\_\+\+BROWSER\+\_\+\+MAX\+\_\+\+SORTABLE\+\_\+\+ITEMS\+\_\+\+DEFAULT~64      /\texorpdfstring{$\ast$}{*} May cause OOM errors if larger \texorpdfstring{$\ast$}{*}/}
+
+\Hypertarget{file__manager_8c_a4c87470b6ecfb4db884abda7bc013375}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_PATH\_SCROLL\_DELAY\_MS\_DEFAULT@{FILE\_BROWSER\_PATH\_SCROLL\_DELAY\_MS\_DEFAULT}}
+\index{FILE\_BROWSER\_PATH\_SCROLL\_DELAY\_MS\_DEFAULT@{FILE\_BROWSER\_PATH\_SCROLL\_DELAY\_MS\_DEFAULT}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{FILE\_BROWSER\_PATH\_SCROLL\_DELAY\_MS\_DEFAULT}{FILE\_BROWSER\_PATH\_SCROLL\_DELAY\_MS\_DEFAULT}}
+{\footnotesize\ttfamily \label{file__manager_8c_a4c87470b6ecfb4db884abda7bc013375} 
+\#define FILE\+\_\+\+BROWSER\+\_\+\+PATH\+\_\+\+SCROLL\+\_\+\+DELAY\+\_\+\+MS\+\_\+\+DEFAULT~2000}
+
+\Hypertarget{file__manager_8c_ad454b781a53217462de54223f8efe4d7}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_SLIDER\_GAP\_DEFAULT@{FILE\_BROWSER\_SLIDER\_GAP\_DEFAULT}}
+\index{FILE\_BROWSER\_SLIDER\_GAP\_DEFAULT@{FILE\_BROWSER\_SLIDER\_GAP\_DEFAULT}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{FILE\_BROWSER\_SLIDER\_GAP\_DEFAULT}{FILE\_BROWSER\_SLIDER\_GAP\_DEFAULT}}
+{\footnotesize\ttfamily \label{file__manager_8c_ad454b781a53217462de54223f8efe4d7} 
+\#define FILE\+\_\+\+BROWSER\+\_\+\+SLIDER\+\_\+\+GAP\+\_\+\+DEFAULT~8}
+
+\Hypertarget{file__manager_8c_a48ea3c4982202321e4c425c33a913638}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_WAIT\_PRIO\_DEFAULT@{FILE\_BROWSER\_WAIT\_PRIO\_DEFAULT}}
+\index{FILE\_BROWSER\_WAIT\_PRIO\_DEFAULT@{FILE\_BROWSER\_WAIT\_PRIO\_DEFAULT}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{FILE\_BROWSER\_WAIT\_PRIO\_DEFAULT}{FILE\_BROWSER\_WAIT\_PRIO\_DEFAULT}}
+{\footnotesize\ttfamily \label{file__manager_8c_a48ea3c4982202321e4c425c33a913638} 
+\#define FILE\+\_\+\+BROWSER\+\_\+\+WAIT\+\_\+\+PRIO\+\_\+\+DEFAULT~4}
+
+\Hypertarget{file__manager_8c_a8db108b811d60c1356c2c7950470ad09}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_WAIT\_STACK\_SIZE\_B\_DEFAULT@{FILE\_BROWSER\_WAIT\_STACK\_SIZE\_B\_DEFAULT}}
+\index{FILE\_BROWSER\_WAIT\_STACK\_SIZE\_B\_DEFAULT@{FILE\_BROWSER\_WAIT\_STACK\_SIZE\_B\_DEFAULT}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{FILE\_BROWSER\_WAIT\_STACK\_SIZE\_B\_DEFAULT}{FILE\_BROWSER\_WAIT\_STACK\_SIZE\_B\_DEFAULT}}
+{\footnotesize\ttfamily \label{file__manager_8c_a8db108b811d60c1356c2c7950470ad09} 
+\#define FILE\+\_\+\+BROWSER\+\_\+\+WAIT\+\_\+\+STACK\+\_\+\+SIZE\+\_\+\+B\+\_\+\+DEFAULT~(6 \texorpdfstring{$\ast$}{*} 1024)}
+
+\Hypertarget{file__manager_8c_afc3d101f633a076cc1ca84b85b6224b2}\index{file\_manager.c@{file\_manager.c}!TAG@{TAG}}
+\index{TAG@{TAG}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{TAG}{TAG}}
+{\footnotesize\ttfamily \label{file__manager_8c_afc3d101f633a076cc1ca84b85b6224b2} 
+\#define TAG~"{}file\+\_\+manager"{}}
+
+
+
+\label{doc-enum-members}
+\Hypertarget{file__manager_8c_doc-enum-members}
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cc}\index{file\_manager.c@{file\_manager.c}!file\_manager\_action\_type\_t@{file\_manager\_action\_type\_t}}
+\index{file\_manager\_action\_type\_t@{file\_manager\_action\_type\_t}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{file\_manager\_action\_type\_t}{file\_manager\_action\_type\_t}}
+{\footnotesize\ttfamily \label{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cc} 
+enum \mbox{\hyperlink{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cc}{file\+\_\+manager\+\_\+action\+\_\+type\+\_\+t}}}
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FILE\_BROWSER\_ACTION\_EDIT@{FILE\_BROWSER\_ACTION\_EDIT}!file\_manager.c@{file\_manager.c}}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_ACTION\_EDIT@{FILE\_BROWSER\_ACTION\_EDIT}}}\Hypertarget{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca2c1da7d7414b99dbbdbd43f7e15eb7c3}\label{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca2c1da7d7414b99dbbdbd43f7e15eb7c3} 
+FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+EDIT&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FILE\_BROWSER\_ACTION\_DELETE@{FILE\_BROWSER\_ACTION\_DELETE}!file\_manager.c@{file\_manager.c}}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_ACTION\_DELETE@{FILE\_BROWSER\_ACTION\_DELETE}}}\Hypertarget{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccabfaaaeecfab8766e14c1f23f98cfdbbd}\label{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccabfaaaeecfab8766e14c1f23f98cfdbbd} 
+FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+DELETE&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FILE\_BROWSER\_ACTION\_CANCEL@{FILE\_BROWSER\_ACTION\_CANCEL}!file\_manager.c@{file\_manager.c}}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_ACTION\_CANCEL@{FILE\_BROWSER\_ACTION\_CANCEL}}}\Hypertarget{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca516393989be43cf9278c9872aae0992b}\label{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca516393989be43cf9278c9872aae0992b} 
+FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+CANCEL&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FILE\_BROWSER\_ACTION\_RENAME@{FILE\_BROWSER\_ACTION\_RENAME}!file\_manager.c@{file\_manager.c}}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_ACTION\_RENAME@{FILE\_BROWSER\_ACTION\_RENAME}}}\Hypertarget{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccadb352bc20215cce66db7563e9a9990fb}\label{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccadb352bc20215cce66db7563e9a9990fb} 
+FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+RENAME&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FILE\_BROWSER\_ACTION\_COPY@{FILE\_BROWSER\_ACTION\_COPY}!file\_manager.c@{file\_manager.c}}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_ACTION\_COPY@{FILE\_BROWSER\_ACTION\_COPY}}}\Hypertarget{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccaad1079f594f52a3e506bfe6a8e42b242}\label{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88ccaad1079f594f52a3e506bfe6a8e42b242} 
+FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+COPY&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FILE\_BROWSER\_ACTION\_CUT@{FILE\_BROWSER\_ACTION\_CUT}!file\_manager.c@{file\_manager.c}}\index{file\_manager.c@{file\_manager.c}!FILE\_BROWSER\_ACTION\_CUT@{FILE\_BROWSER\_ACTION\_CUT}}}\Hypertarget{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca4e6a0d6c9a72530ecc407bb84e718d85}\label{file__manager_8c_a5c64559ac8ed4a02c9533ba91a3a88cca4e6a0d6c9a72530ecc407bb84e718d85} 
+FILE\+\_\+\+BROWSER\+\_\+\+ACTION\+\_\+\+CUT&\\
+\hline
+
+\end{DoxyEnumFields}
+
+
+\label{doc-func-members}
+\Hypertarget{file__manager_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{file__manager_8c_a8c5de3af01994511fb3fcffc4040f4e4}\index{file\_manager.c@{file\_manager.c}!file\_manager\_on\_time\_set@{file\_manager\_on\_time\_set}}
+\index{file\_manager\_on\_time\_set@{file\_manager\_on\_time\_set}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{file\_manager\_on\_time\_set()}{file\_manager\_on\_time\_set()}}
+{\footnotesize\ttfamily \label{file__manager_8c_a8c5de3af01994511fb3fcffc4040f4e4} 
+void file\+\_\+manager\+\_\+on\+\_\+time\+\_\+set (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Mark the clock as user-\/set and refresh the header label/button state. 
+
+\Hypertarget{file__manager_8c_a9e880d62d6574e7a1d814d88acdd3698}\index{file\_manager.c@{file\_manager.c}!file\_manager\_reset\_clock\_display@{file\_manager\_reset\_clock\_display}}
+\index{file\_manager\_reset\_clock\_display@{file\_manager\_reset\_clock\_display}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{file\_manager\_reset\_clock\_display()}{file\_manager\_reset\_clock\_display()}}
+{\footnotesize\ttfamily \label{file__manager_8c_a9e880d62d6574e7a1d814d88acdd3698} 
+void file\+\_\+manager\+\_\+reset\+\_\+clock\+\_\+display (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Reset the header clock display to default (show button, hide label). 
+
+\Hypertarget{file__manager_8c_a480b60728475dd1260fa1f9778a9a1d9}\index{file\_manager.c@{file\_manager.c}!file\_manager\_start@{file\_manager\_start}}
+\index{file\_manager\_start@{file\_manager\_start}!file\_manager.c@{file\_manager.c}}
+\doxysubsubsection{\texorpdfstring{file\_manager\_start()}{file\_manager\_start()}}
+{\footnotesize\ttfamily \label{file__manager_8c_a480b60728475dd1260fa1f9778a9a1d9} 
+esp\+\_\+err\+\_\+t file\+\_\+manager\+\_\+start (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Create the LVGL file-\/browser screen using the default SDSPI root. 
+
+Initializes the internal navigation context with {\ttfamily CONFIG\+\_\+\+SDSPI\+\_\+\+MOUNT\+\_\+\+POINT}, builds the LVGL widgets, and loads the screen. The SD card must already be mounted via {\ttfamily \doxylink{sd__card_8h_ad78a50dfc8be1e28effacc58f9a18aa1}{sd\+\_\+card\+\_\+init()}}.
+
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG if {\ttfamily CONFIG\+\_\+\+SDSPI\+\_\+\+MOUNT\+\_\+\+POINT} is NULL
+\item Errors propagated from {\ttfamily fs\+\_\+nav\+\_\+init}
+\item ESP\+\_\+\+ERR\+\_\+\+TIMEOUT if the LVGL display lock cannot be acquired 
+\end{DoxyItemize}
+\end{DoxyReturn}

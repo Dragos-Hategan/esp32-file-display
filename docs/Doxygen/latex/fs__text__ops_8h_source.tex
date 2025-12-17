@@ -1,0 +1,35 @@
+\doxysection{fs\+\_\+text\+\_\+ops.\+h}
+\hypertarget{fs__text__ops_8h_source}{}\label{fs__text__ops_8h_source}\index{components/file\_manager/include/fs\_text\_ops.h@{components/file\_manager/include/fs\_text\_ops.h}}
+\mbox{\hyperlink{fs__text__ops_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}\ \{}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <stdbool.h>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <stddef.h>}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}esp\_err.h"{}}}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#define\ FS\_TEXT\_READ\_CHUNK\_SIZE\_B\ \ \ (1\ *\ 1024)}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#define\ FS\_TEXT\_MAX\_PATH\ \ \ \ 512}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00021\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{fs__text__ops_8h_af6ea7baf1ba58a4b22df962241d3829e}{fs\_text\_is\_txt}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *name);}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00039\ esp\_err\_t\ \mbox{\hyperlink{fs__text__ops_8h_a7a720784a019fb96eeb4ec44872f9067}{fs\_text\_create}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *path);}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00072\ esp\_err\_t\ \mbox{\hyperlink{fs__text__ops_8h_a2f7a05987888c47ebd2343738319a420}{fs\_text\_read\_range}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *path,\ \textcolor{keywordtype}{size\_t}\ offset\_kb,\ \textcolor{keywordtype}{char}\ **out\_buf,\ \textcolor{keywordtype}{size\_t}\ *out\_len);}
+\DoxyCodeLine{00073\ }
+\DoxyCodeLine{00088\ esp\_err\_t\ \mbox{\hyperlink{fs__text__ops_8h_ab96942645a374ac8984cf98685dc151a}{fs\_text\_write}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *path,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *data,\ \textcolor{keywordtype}{size\_t}\ len);}
+\DoxyCodeLine{00089\ }
+\DoxyCodeLine{00109\ esp\_err\_t\ \mbox{\hyperlink{fs__text__ops_8h_a917f808d32802343ae438a9266dc760c}{fs\_text\_append}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *path,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *data,\ \textcolor{keywordtype}{size\_t}\ len);}
+\DoxyCodeLine{00110\ }
+\DoxyCodeLine{00126\ esp\_err\_t\ \mbox{\hyperlink{fs__text__ops_8h_ada4c5aedaa8865cb936116c399add5c5}{fs\_text\_delete}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *path);}
+\DoxyCodeLine{00127\ }
+\DoxyCodeLine{00128\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00129\ \}}
+\DoxyCodeLine{00130\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

@@ -1,0 +1,85 @@
+\doxysection{components/file\+\_\+manager/include/text\+\_\+viewer\+\_\+screen.h File Reference}
+\hypertarget{text__viewer__screen_8h}{}\label{text__viewer__screen_8h}\index{components/file\_manager/include/text\_viewer\_screen.h@{components/file\_manager/include/text\_viewer\_screen.h}}
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include "{}lvgl.\+h"{}}\newline
+Include dependency graph for text\+\_\+viewer\+\_\+screen.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structtext__viewer__open__opts__t}{text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Options describing how to open the text viewer. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef void(\texorpdfstring{$\ast$}{*} \mbox{\hyperlink{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab}{text\+\_\+viewer\+\_\+close\+\_\+cb\+\_\+t}}) (bool content\+\_\+changed, void \texorpdfstring{$\ast$}{*}user\+\_\+ctx)
+\begin{DoxyCompactList}\small\item\em Callback invoked when the viewer screen closes. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{text__viewer__screen_8h_a90b8d94bda47f68b35666ca55f994905}{text\+\_\+viewer\+\_\+open}} (const \mbox{\hyperlink{structtext__viewer__open__opts__t}{text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}} \texorpdfstring{$\ast$}{*}opts)
+\begin{DoxyCompactList}\small\item\em Load the viewer screen and display the requested file. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-typedef-members}
+\Hypertarget{text__viewer__screen_8h_doc-typedef-members}
+\doxysubsection{Typedef Documentation}
+\Hypertarget{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab}\index{text\_viewer\_screen.h@{text\_viewer\_screen.h}!text\_viewer\_close\_cb\_t@{text\_viewer\_close\_cb\_t}}
+\index{text\_viewer\_close\_cb\_t@{text\_viewer\_close\_cb\_t}!text\_viewer\_screen.h@{text\_viewer\_screen.h}}
+\doxysubsubsection{\texorpdfstring{text\_viewer\_close\_cb\_t}{text\_viewer\_close\_cb\_t}}
+{\footnotesize\ttfamily \label{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab} 
+typedef void(\texorpdfstring{$\ast$}{*} text\+\_\+viewer\+\_\+close\+\_\+cb\+\_\+t) (bool content\+\_\+changed, void \texorpdfstring{$\ast$}{*}user\+\_\+ctx)}
+
+
+
+Callback invoked when the viewer screen closes. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em content\+\_\+changed} & true if the file was saved during the session. \\
+\hline
+{\em user\+\_\+ctx} & User-\/supplied pointer passed through the open options. \\
+\hline
+\end{DoxyParams}
+
+
+\label{doc-func-members}
+\Hypertarget{text__viewer__screen_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{text__viewer__screen_8h_a90b8d94bda47f68b35666ca55f994905}\index{text\_viewer\_screen.h@{text\_viewer\_screen.h}!text\_viewer\_open@{text\_viewer\_open}}
+\index{text\_viewer\_open@{text\_viewer\_open}!text\_viewer\_screen.h@{text\_viewer\_screen.h}}
+\doxysubsubsection{\texorpdfstring{text\_viewer\_open()}{text\_viewer\_open()}}
+{\footnotesize\ttfamily \label{text__viewer__screen_8h_a90b8d94bda47f68b35666ca55f994905} 
+esp\+\_\+err\+\_\+t text\+\_\+viewer\+\_\+open (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structtext__viewer__open__opts__t}{text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{opts}{}\end{DoxyParamCaption})}
+
+
+
+Load the viewer screen and display the requested file. 
+
+Reads the file at {\ttfamily opts-\/\texorpdfstring{$>$}{>}path}, builds the screen (on first use), sets edit/view mode, populates the text area and status, and loads the screen. Original content is snapshotted to support dirty tracking.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em opts} & Options\+:
+\begin{DoxyItemize}
+\item {\ttfamily path\+:} full path to the text file to view/edit (omit or empty for new files)
+\item {\ttfamily directory\+:} parent directory used when {\ttfamily path} is NULL/empty
+\item {\ttfamily suggested\+\_\+name\+:} default filename populated when creating a new file
+\item {\ttfamily return\+\_\+screen} (required)\+: screen to return to on close
+\item {\ttfamily editable\+:} true to enable edit mode
+\item {\ttfamily on\+\_\+close\+:} optional callback invoked on close
+\item {\ttfamily user\+\_\+ctx\+:} user context for the close callback
+\end{DoxyItemize}\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG if required options are missing
+\item fs\+\_\+text\+\_\+read\+\_\+range error codes if reading fails 
+\end{DoxyItemize}
+\end{DoxyReturn}

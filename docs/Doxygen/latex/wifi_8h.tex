@@ -1,0 +1,48 @@
+\doxysection{components/sntp\+\_\+wifi/include/wifi.h File Reference}
+\hypertarget{wifi_8h}{}\label{wifi_8h}\index{components/sntp\_wifi/include/wifi.h@{components/sntp\_wifi/include/wifi.h}}
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+Include dependency graph for wifi.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{wifi_8h_af07d467cf00f777301d730126206b67a}{wifi\+\_\+init\+\_\+sta}} (void)
+\begin{DoxyCompactList}\small\item\em Initialize Wi-\/\+Fi in STA mode and wait for IP. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{wifi_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{wifi_8h_af07d467cf00f777301d730126206b67a}\index{wifi.h@{wifi.h}!wifi\_init\_sta@{wifi\_init\_sta}}
+\index{wifi\_init\_sta@{wifi\_init\_sta}!wifi.h@{wifi.h}}
+\doxysubsubsection{\texorpdfstring{wifi\_init\_sta()}{wifi\_init\_sta()}}
+{\footnotesize\ttfamily \label{wifi_8h_af07d467cf00f777301d730126206b67a} 
+esp\+\_\+err\+\_\+t wifi\+\_\+init\+\_\+sta (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Initialize Wi-\/\+Fi in STA mode and wait for IP. 
+
+This function\+:
+\begin{DoxyEnumerate}
+\item Initializes NVS storage (required for Wi-\/\+Fi).
+\item Initializes the TCP/\+IP network stack and default event loop.
+\item Creates the default Wi-\/\+Fi STA network interface.
+\item Configures Wi-\/\+Fi parameters (SSID, password, auth mode, PMF).
+\item Registers event handlers for Wi-\/\+Fi and IP events.
+\item Starts the Wi-\/\+Fi driver and connects.
+\item Blocks execution until an IP address is successfully obtained.
+\end{DoxyEnumerate}
+
+\begin{DoxyNote}{Note}
+This function blocks indefinitely until an IP is acquired. Automatic reconnection is handled in the event handler.
+\end{DoxyNote}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item Other esp\+\_\+err\+\_\+t error codes from NVS or Wi-\/\+Fi modules 
+\end{DoxyItemize}
+\end{DoxyReturn}

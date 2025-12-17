@@ -1,0 +1,163 @@
+\doxysection{text\+\_\+viewer\+\_\+ctx\+\_\+t Struct Reference}
+\hypertarget{structtext__viewer__ctx__t}{}\label{structtext__viewer__ctx__t}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+
+
+Runtime state for the singleton text viewer/editor screen.  
+
+
+
+
+Collaboration diagram for text\+\_\+viewer\+\_\+ctx\+\_\+t\+:
+% FIG 0
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+void \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structtext__viewer__ctx__t_a2f347bfed326727e3cbeff5c9ee52bf8}{close\+\_\+ctx}}
+\item 
+char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structtext__viewer__ctx__t_ad4afef41792d677576af9ed7bf188372}{original\+\_\+text}}
+\item 
+char \mbox{\hyperlink{structtext__viewer__ctx__t_ad473f029c365ad2de2844bfc20c98a11}{path}} \mbox{[}\mbox{\hyperlink{fs__text__ops_8h_ae41e6bd0f9e6542da85362ee1d65eb90}{FS\+\_\+\+TEXT\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}
+\item 
+char \mbox{\hyperlink{structtext__viewer__ctx__t_a46777abb13cfef2b02f9b6b2635a0e17}{directory}} \mbox{[}\mbox{\hyperlink{fs__text__ops_8h_ae41e6bd0f9e6542da85362ee1d65eb90}{FS\+\_\+\+TEXT\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}
+\item 
+char \mbox{\hyperlink{structtext__viewer__ctx__t_a92f4e539565ea1db32832b6f140a829a}{pending\+\_\+name}} \mbox{[}\mbox{\hyperlink{fs__navigator_8h_a114e90f5e8fa8852445740f617541df5}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+NAME}}\mbox{]}
+\item 
+char \mbox{\hyperlink{structtext__viewer__ctx__t_ae417058fa80126a103d2446839799c9f}{conflict\+\_\+path}} \mbox{[}\mbox{\hyperlink{fs__text__ops_8h_ae41e6bd0f9e6542da85362ee1d65eb90}{FS\+\_\+\+TEXT\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}
+\item 
+char \mbox{\hyperlink{structtext__viewer__ctx__t_aefd0ccd274679cf1149be24619385679}{conflict\+\_\+name}} \mbox{[}\mbox{\hyperlink{fs__navigator_8h_a114e90f5e8fa8852445740f617541df5}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+NAME}}\mbox{]}
+\item 
+size\+\_\+t \mbox{\hyperlink{structtext__viewer__ctx__t_abffce7ecfff7c55cac35c836d57300ce}{slider\+\_\+pending\+\_\+step}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structtext__viewer__ctx__t_add0d2b2cc275c91dabd83613c8050068}{max\+\_\+file\+\_\+offset\+\_\+kb}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structtext__viewer__ctx__t_a139c951cf8c2a47158caec23386e152a}{last\+\_\+file\+\_\+offset\+\_\+kb}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structtext__viewer__ctx__t_a546f88ccbef2c2b94522894f1fe13b01}{current\+\_\+file\+\_\+offset\+\_\+kb}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structtext__viewer__ctx__t_a1041148a1e00c2983d063442d06cd39f}{pending\+\_\+first\+\_\+offset\+\_\+kb}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structtext__viewer__ctx__t_a79e7d3622f08f16dc7a8501e116e505e}{pending\+\_\+second\+\_\+offset\+\_\+kb}}
+\item 
+\mbox{\hyperlink{structtext__viewer__flags__t}{text\+\_\+viewer\+\_\+flags\+\_\+t}} \mbox{\hyperlink{structtext__viewer__ctx__t_aedd9b9d82654a6072043b41e3dd473f1}{flags}}
+\item 
+\mbox{\hyperlink{structtext__viewer__graphics__t}{text\+\_\+viewer\+\_\+graphics\+\_\+t}} \mbox{\hyperlink{structtext__viewer__ctx__t_a061590e7c2bd2ca453a4e3d8a4a9f3ca}{graphics}}
+\item 
+\mbox{\hyperlink{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab}{text\+\_\+viewer\+\_\+close\+\_\+cb\+\_\+t}} \mbox{\hyperlink{structtext__viewer__ctx__t_aec67fa3fd9b31cab73f7dc9a9db1bd89}{close\+\_\+cb}}
+\item 
+\mbox{\hyperlink{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92d}{text\+\_\+viewer\+\_\+sd\+\_\+action\+\_\+t}} \mbox{\hyperlink{structtext__viewer__ctx__t_a43de11595a2d6f5d6f693a28081b17c1}{sd\+\_\+retry\+\_\+action}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Runtime state for the singleton text viewer/editor screen. 
+
+\label{doc-variable-members}
+\Hypertarget{structtext__viewer__ctx__t_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structtext__viewer__ctx__t_aec67fa3fd9b31cab73f7dc9a9db1bd89}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!close\_cb@{close\_cb}}
+\index{close\_cb@{close\_cb}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{close\_cb}{close\_cb}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_aec67fa3fd9b31cab73f7dc9a9db1bd89} 
+\mbox{\hyperlink{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab}{text\+\_\+viewer\+\_\+close\+\_\+cb\+\_\+t}} text\+\_\+viewer\+\_\+ctx\+\_\+t\+::close\+\_\+cb}
+
+Optional close callback \Hypertarget{structtext__viewer__ctx__t_a2f347bfed326727e3cbeff5c9ee52bf8}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!close\_ctx@{close\_ctx}}
+\index{close\_ctx@{close\_ctx}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{close\_ctx}{close\_ctx}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a2f347bfed326727e3cbeff5c9ee52bf8} 
+void\texorpdfstring{$\ast$}{*} text\+\_\+viewer\+\_\+ctx\+\_\+t\+::close\+\_\+ctx}
+
+User context for close callback \Hypertarget{structtext__viewer__ctx__t_aefd0ccd274679cf1149be24619385679}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!conflict\_name@{conflict\_name}}
+\index{conflict\_name@{conflict\_name}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{conflict\_name}{conflict\_name}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_aefd0ccd274679cf1149be24619385679} 
+char text\+\_\+viewer\+\_\+ctx\+\_\+t\+::conflict\+\_\+name\mbox{[}\mbox{\hyperlink{fs__navigator_8h_a114e90f5e8fa8852445740f617541df5}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+NAME}}\mbox{]}}
+
+Cached conflicting name for overwrite prompts \Hypertarget{structtext__viewer__ctx__t_ae417058fa80126a103d2446839799c9f}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!conflict\_path@{conflict\_path}}
+\index{conflict\_path@{conflict\_path}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{conflict\_path}{conflict\_path}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_ae417058fa80126a103d2446839799c9f} 
+char text\+\_\+viewer\+\_\+ctx\+\_\+t\+::conflict\+\_\+path\mbox{[}\mbox{\hyperlink{fs__text__ops_8h_ae41e6bd0f9e6542da85362ee1d65eb90}{FS\+\_\+\+TEXT\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}}
+
+Cached conflicting path for overwrite prompts \Hypertarget{structtext__viewer__ctx__t_a546f88ccbef2c2b94522894f1fe13b01}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!current\_file\_offset\_kb@{current\_file\_offset\_kb}}
+\index{current\_file\_offset\_kb@{current\_file\_offset\_kb}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{current\_file\_offset\_kb}{current\_file\_offset\_kb}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a546f88ccbef2c2b94522894f1fe13b01} 
+size\+\_\+t text\+\_\+viewer\+\_\+ctx\+\_\+t\+::current\+\_\+file\+\_\+offset\+\_\+kb}
+
+Offset (in KB) used for the current/next chunk \Hypertarget{structtext__viewer__ctx__t_a46777abb13cfef2b02f9b6b2635a0e17}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!directory@{directory}}
+\index{directory@{directory}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{directory}{directory}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a46777abb13cfef2b02f9b6b2635a0e17} 
+char text\+\_\+viewer\+\_\+ctx\+\_\+t\+::directory\mbox{[}\mbox{\hyperlink{fs__text__ops_8h_ae41e6bd0f9e6542da85362ee1d65eb90}{FS\+\_\+\+TEXT\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}}
+
+Directory used for new files \Hypertarget{structtext__viewer__ctx__t_aedd9b9d82654a6072043b41e3dd473f1}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!flags@{flags}}
+\index{flags@{flags}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{flags}{flags}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_aedd9b9d82654a6072043b41e3dd473f1} 
+\mbox{\hyperlink{structtext__viewer__flags__t}{text\+\_\+viewer\+\_\+flags\+\_\+t}} text\+\_\+viewer\+\_\+ctx\+\_\+t\+::flags}
+
+All purpose flags for the text viewer context \Hypertarget{structtext__viewer__ctx__t_a061590e7c2bd2ca453a4e3d8a4a9f3ca}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!graphics@{graphics}}
+\index{graphics@{graphics}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{graphics}{graphics}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a061590e7c2bd2ca453a4e3d8a4a9f3ca} 
+\mbox{\hyperlink{structtext__viewer__graphics__t}{text\+\_\+viewer\+\_\+graphics\+\_\+t}} text\+\_\+viewer\+\_\+ctx\+\_\+t\+::graphics}
+
+LVGL UI objects used for drawing \Hypertarget{structtext__viewer__ctx__t_a139c951cf8c2a47158caec23386e152a}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!last\_file\_offset\_kb@{last\_file\_offset\_kb}}
+\index{last\_file\_offset\_kb@{last\_file\_offset\_kb}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{last\_file\_offset\_kb}{last\_file\_offset\_kb}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a139c951cf8c2a47158caec23386e152a} 
+size\+\_\+t text\+\_\+viewer\+\_\+ctx\+\_\+t\+::last\+\_\+file\+\_\+offset\+\_\+kb}
+
+Offset (in KB) used for the last read chunk \Hypertarget{structtext__viewer__ctx__t_add0d2b2cc275c91dabd83613c8050068}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!max\_file\_offset\_kb@{max\_file\_offset\_kb}}
+\index{max\_file\_offset\_kb@{max\_file\_offset\_kb}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{max\_file\_offset\_kb}{max\_file\_offset\_kb}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_add0d2b2cc275c91dabd83613c8050068} 
+size\+\_\+t text\+\_\+viewer\+\_\+ctx\+\_\+t\+::max\+\_\+file\+\_\+offset\+\_\+kb}
+
+Maximum readable offset (in KB) for the loaded file \Hypertarget{structtext__viewer__ctx__t_ad4afef41792d677576af9ed7bf188372}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!original\_text@{original\_text}}
+\index{original\_text@{original\_text}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{original\_text}{original\_text}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_ad4afef41792d677576af9ed7bf188372} 
+char\texorpdfstring{$\ast$}{*} text\+\_\+viewer\+\_\+ctx\+\_\+t\+::original\+\_\+text}
+
+Snapshot of text at load/save time \Hypertarget{structtext__viewer__ctx__t_ad473f029c365ad2de2844bfc20c98a11}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!path@{path}}
+\index{path@{path}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{path}{path}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_ad473f029c365ad2de2844bfc20c98a11} 
+char text\+\_\+viewer\+\_\+ctx\+\_\+t\+::path\mbox{[}\mbox{\hyperlink{fs__text__ops_8h_ae41e6bd0f9e6542da85362ee1d65eb90}{FS\+\_\+\+TEXT\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}}
+
+Current file path \Hypertarget{structtext__viewer__ctx__t_a1041148a1e00c2983d063442d06cd39f}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!pending\_first\_offset\_kb@{pending\_first\_offset\_kb}}
+\index{pending\_first\_offset\_kb@{pending\_first\_offset\_kb}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{pending\_first\_offset\_kb}{pending\_first\_offset\_kb}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a1041148a1e00c2983d063442d06cd39f} 
+size\+\_\+t text\+\_\+viewer\+\_\+ctx\+\_\+t\+::pending\+\_\+first\+\_\+offset\+\_\+kb}
+
+Pending first chunk offset when prompting \Hypertarget{structtext__viewer__ctx__t_a92f4e539565ea1db32832b6f140a829a}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!pending\_name@{pending\_name}}
+\index{pending\_name@{pending\_name}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{pending\_name}{pending\_name}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a92f4e539565ea1db32832b6f140a829a} 
+char text\+\_\+viewer\+\_\+ctx\+\_\+t\+::pending\+\_\+name\mbox{[}\mbox{\hyperlink{fs__navigator_8h_a114e90f5e8fa8852445740f617541df5}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+NAME}}\mbox{]}}
+
+Suggested filename for new files \Hypertarget{structtext__viewer__ctx__t_a79e7d3622f08f16dc7a8501e116e505e}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!pending\_second\_offset\_kb@{pending\_second\_offset\_kb}}
+\index{pending\_second\_offset\_kb@{pending\_second\_offset\_kb}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{pending\_second\_offset\_kb}{pending\_second\_offset\_kb}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a79e7d3622f08f16dc7a8501e116e505e} 
+size\+\_\+t text\+\_\+viewer\+\_\+ctx\+\_\+t\+::pending\+\_\+second\+\_\+offset\+\_\+kb}
+
+Pending second chunk offset when prompting \Hypertarget{structtext__viewer__ctx__t_a43de11595a2d6f5d6f693a28081b17c1}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!sd\_retry\_action@{sd\_retry\_action}}
+\index{sd\_retry\_action@{sd\_retry\_action}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{sd\_retry\_action}{sd\_retry\_action}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_a43de11595a2d6f5d6f693a28081b17c1} 
+\mbox{\hyperlink{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92d}{text\+\_\+viewer\+\_\+sd\+\_\+action\+\_\+t}} text\+\_\+viewer\+\_\+ctx\+\_\+t\+::sd\+\_\+retry\+\_\+action}
+
+Pending action after SD reconnect \Hypertarget{structtext__viewer__ctx__t_abffce7ecfff7c55cac35c836d57300ce}\index{text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}!slider\_pending\_step@{slider\_pending\_step}}
+\index{slider\_pending\_step@{slider\_pending\_step}!text\_viewer\_ctx\_t@{text\_viewer\_ctx\_t}}
+\doxysubsubsection{\texorpdfstring{slider\_pending\_step}{slider\_pending\_step}}
+{\footnotesize\ttfamily \label{structtext__viewer__ctx__t_abffce7ecfff7c55cac35c836d57300ce} 
+size\+\_\+t text\+\_\+viewer\+\_\+ctx\+\_\+t\+::slider\+\_\+pending\+\_\+step}
+
+Pending slider step during drag 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+components/file\+\_\+manager/\mbox{\hyperlink{text__viewer__screen_8c}{text\+\_\+viewer\+\_\+screen.\+c}}\end{DoxyCompactItemize}

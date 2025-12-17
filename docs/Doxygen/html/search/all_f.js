@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['panel_0',['panel',['../structjpg__stripe__ctx__t.html#a846ca19016e1831fe2065fb8acf975ac',1,'jpg_stripe_ctx_t::panel'],['../structjpg__viewer__ctx__t.html#a4f760c666f1018ef8b19e94202a498ed',1,'jpg_viewer_ctx_t::panel']]],
+  ['parent_5fbtn_1',['parent_btn',['../structfile__manager__graphics__t.html#a69ffc43b61bacb055d1d64a347873c53',1,'file_manager_graphics_t']]],
+  ['paste_5fbtn_2',['paste_btn',['../structfile__manager__graphics__t.html#a9a898446e70f7e4899b81eb744b98a67',1,'file_manager_graphics_t']]],
+  ['paste_5fconflict_5fmbox_3',['paste_conflict_mbox',['../structfile__manager__graphics__t.html#a1347d657eca1f46dcc795c23d8f7dcb2',1,'file_manager_graphics_t']]],
+  ['paste_5fconflict_5fname_4',['paste_conflict_name',['../structfile__manager__ctx__t.html#a72e1ba7f1c68a3ceff40d2c92efdef89',1,'file_manager_ctx_t']]],
+  ['paste_5fconflict_5fpath_5',['paste_conflict_path',['../structfile__manager__ctx__t.html#a681439ccf98e4f2c2da4da585be15976',1,'file_manager_ctx_t']]],
+  ['paste_5flabel_6',['paste_label',['../structfile__manager__graphics__t.html#af9d1fb80d62c93d7629f727e38b012a5',1,'file_manager_graphics_t']]],
+  ['paste_5ftarget_5fpath_7',['paste_target_path',['../structfile__manager__ctx__t.html#a0fbd104f6efe92ecab541b0421d7359b',1,'file_manager_ctx_t']]],
+  ['paste_5ftarget_5fvalid_8',['paste_target_valid',['../structfile__manager__flags__t.html#a676ea25fceb7868795c9e91362533767',1,'file_manager_flags_t']]],
+  ['path_9',['path',['../structtext__viewer__open__opts__t.html#a123dc7257c440237d1038522c441e7b3',1,'text_viewer_open_opts_t::path'],['../structtext__viewer__ctx__t.html#ad473f029c365ad2de2844bfc20c98a11',1,'text_viewer_ctx_t::path'],['../structjpg__viewer__open__opts__t.html#ac66af325238e0c6e03eccba48f4254fc',1,'jpg_viewer_open_opts_t::path'],['../structjpg__viewer__ctx__t.html#a43f866424ae94fd4b593ea9237206e16',1,'jpg_viewer_ctx_t::path']]],
+  ['path_5flabel_10',['path_label',['../structfile__manager__graphics__t.html#aaf3508578b2f602124c78d58aaa764dd',1,'file_manager_graphics_t::path_label'],['../structtext__viewer__graphics__t.html#ab1df3c487d89eb61d6c1112826f9b54f',1,'text_viewer_graphics_t::path_label'],['../structjpg__viewer__ctx__t.html#a73f748951f9e218e038f8a2ae84a1591',1,'jpg_viewer_ctx_t::path_label']]],
+  ['path_5fscroll_5ftimer_11',['path_scroll_timer',['../structfile__manager__graphics__t.html#a38bba9c6b95b0be1a6200354905c5ac3',1,'file_manager_graphics_t::path_scroll_timer'],['../structtext__viewer__graphics__t.html#ad875c0b68b19e52097e28527e17dabe6',1,'text_viewer_graphics_t::path_scroll_timer']]],
+  ['pending_5fchunk_12',['pending_chunk',['../structtext__viewer__flags__t.html#af89653fb21e6706c82d6fdff261d4e56',1,'text_viewer_flags_t']]],
+  ['pending_5fdir_5fname_13',['pending_dir_name',['../structfile__manager__ctx__t.html#a2a6c70c645ec12a61540bab67c37a0b6',1,'file_manager_ctx_t']]],
+  ['pending_5fenter_5fdir_14',['pending_enter_dir',['../structfile__manager__flags__t.html#ad3dacec608f318c35eaffe1aafaefe1b',1,'file_manager_flags_t']]],
+  ['pending_5ffirst_5foffset_5fkb_15',['pending_first_offset_kb',['../structtext__viewer__ctx__t.html#a1041148a1e00c2983d063442d06cd39f',1,'text_viewer_ctx_t']]],
+  ['pending_5fgo_5fparent_16',['pending_go_parent',['../structfile__manager__flags__t.html#a9f258abfc7b4b38a6b66759f2c334c3a',1,'file_manager_flags_t']]],
+  ['pending_5fname_17',['pending_name',['../structtext__viewer__ctx__t.html#a92f4e539565ea1db32832b6f140a829a',1,'text_viewer_ctx_t']]],
+  ['pending_5fopen_5ftxt_18',['pending_open_txt',['../structfile__manager__flags__t.html#a4594de7912bf1b5a55acded524726022',1,'file_manager_flags_t']]],
+  ['pending_5fscroll_5fup_19',['pending_scroll_up',['../structtext__viewer__flags__t.html#a5b8090cfc0083cffc90da5e225d7d2ba',1,'text_viewer_flags_t']]],
+  ['pending_5fsecond_5foffset_5fkb_20',['pending_second_offset_kb',['../structtext__viewer__ctx__t.html#a79e7d3622f08f16dc7a8501e116e505e',1,'text_viewer_ctx_t']]],
+  ['pending_5ftxt_5fname_21',['pending_txt_name',['../structfile__manager__ctx__t.html#a734bfc6eb5372616e39f418411cbc881',1,'file_manager_ctx_t']]],
+  ['preserve_5fwindow_5fon_5freload_22',['preserve_window_on_reload',['../structfile__manager__flags__t.html#a5fff77100679cea96f2c62909de93192',1,'file_manager_flags_t']]],
+  ['previous_5fscreen_23',['previous_screen',['../structjpg__viewer__ctx__t.html#a9ded416f4dec04353d95f326af6aa0cb',1,'jpg_viewer_ctx_t']]]
+];

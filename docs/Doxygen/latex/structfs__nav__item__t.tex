@@ -1,0 +1,69 @@
+\doxysection{fs\+\_\+nav\+\_\+item\+\_\+t Struct Reference}
+\hypertarget{structfs__nav__item__t}{}\label{structfs__nav__item__t}\index{fs\_nav\_item\_t@{fs\_nav\_item\_t}}
+
+
+Item metadata owned by the navigator.  
+
+
+
+
+{\ttfamily \#include $<$fs\+\_\+navigator.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structfs__nav__item__t_a3772eab4581d47aaaadc63ed7cf42cb6}{name}}
+\item 
+bool \mbox{\hyperlink{structfs__nav__item__t_a1c3a5df7b484424be96ca713c031d84c}{is\+\_\+dir}}
+\item 
+bool \mbox{\hyperlink{structfs__nav__item__t_a093363bfe2a7750b36c6868b3c2521df}{needs\+\_\+stat}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structfs__nav__item__t_a922043a16bee7751a45133275dc498eb}{size\+\_\+bytes}}
+\item 
+time\+\_\+t \mbox{\hyperlink{structfs__nav__item__t_a428440f07b7c0ba90761b9be7ad077b9}{modified}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Item metadata owned by the navigator. 
+
+The {\ttfamily name} buffer is heap-\/allocated and freed internally on refresh/deinit; callers must not free or mutate it. {\ttfamily needs\+\_\+stat} is set when metadata is pending a stat call (e.\+g., during lazy loading). 
+
+\label{doc-variable-members}
+\Hypertarget{structfs__nav__item__t_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structfs__nav__item__t_a1c3a5df7b484424be96ca713c031d84c}\index{fs\_nav\_item\_t@{fs\_nav\_item\_t}!is\_dir@{is\_dir}}
+\index{is\_dir@{is\_dir}!fs\_nav\_item\_t@{fs\_nav\_item\_t}}
+\doxysubsubsection{\texorpdfstring{is\_dir}{is\_dir}}
+{\footnotesize\ttfamily \label{structfs__nav__item__t_a1c3a5df7b484424be96ca713c031d84c} 
+bool fs\+\_\+nav\+\_\+item\+\_\+t\+::is\+\_\+dir}
+
+True for directories. \Hypertarget{structfs__nav__item__t_a428440f07b7c0ba90761b9be7ad077b9}\index{fs\_nav\_item\_t@{fs\_nav\_item\_t}!modified@{modified}}
+\index{modified@{modified}!fs\_nav\_item\_t@{fs\_nav\_item\_t}}
+\doxysubsubsection{\texorpdfstring{modified}{modified}}
+{\footnotesize\ttfamily \label{structfs__nav__item__t_a428440f07b7c0ba90761b9be7ad077b9} 
+time\+\_\+t fs\+\_\+nav\+\_\+item\+\_\+t\+::modified}
+
+Last modification time. \Hypertarget{structfs__nav__item__t_a3772eab4581d47aaaadc63ed7cf42cb6}\index{fs\_nav\_item\_t@{fs\_nav\_item\_t}!name@{name}}
+\index{name@{name}!fs\_nav\_item\_t@{fs\_nav\_item\_t}}
+\doxysubsubsection{\texorpdfstring{name}{name}}
+{\footnotesize\ttfamily \label{structfs__nav__item__t_a3772eab4581d47aaaadc63ed7cf42cb6} 
+char\texorpdfstring{$\ast$}{*} fs\+\_\+nav\+\_\+item\+\_\+t\+::name}
+
+Owned by navigator; freed on refresh/deinit. \Hypertarget{structfs__nav__item__t_a093363bfe2a7750b36c6868b3c2521df}\index{fs\_nav\_item\_t@{fs\_nav\_item\_t}!needs\_stat@{needs\_stat}}
+\index{needs\_stat@{needs\_stat}!fs\_nav\_item\_t@{fs\_nav\_item\_t}}
+\doxysubsubsection{\texorpdfstring{needs\_stat}{needs\_stat}}
+{\footnotesize\ttfamily \label{structfs__nav__item__t_a093363bfe2a7750b36c6868b3c2521df} 
+bool fs\+\_\+nav\+\_\+item\+\_\+t\+::needs\+\_\+stat}
+
+True if size/time still need stat(). \Hypertarget{structfs__nav__item__t_a922043a16bee7751a45133275dc498eb}\index{fs\_nav\_item\_t@{fs\_nav\_item\_t}!size\_bytes@{size\_bytes}}
+\index{size\_bytes@{size\_bytes}!fs\_nav\_item\_t@{fs\_nav\_item\_t}}
+\doxysubsubsection{\texorpdfstring{size\_bytes}{size\_bytes}}
+{\footnotesize\ttfamily \label{structfs__nav__item__t_a922043a16bee7751a45133275dc498eb} 
+size\+\_\+t fs\+\_\+nav\+\_\+item\+\_\+t\+::size\+\_\+bytes}
+
+File size in bytes (0 for directories). 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+components/file\+\_\+manager/include/\mbox{\hyperlink{fs__navigator_8h}{fs\+\_\+navigator.\+h}}\end{DoxyCompactItemize}

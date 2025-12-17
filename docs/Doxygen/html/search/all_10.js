@@ -1,0 +1,21 @@
+var searchData=
+[
+  ['reconnection_5fsuccess_0',['reconnection_success',['../sd__card_8h.html#abe1b20b3c678601d03678dca46d38d48',1,'reconnection_success:&#160;sd_card.c'],['../sd__card_8c.html#abe1b20b3c678601d03678dca46d38d48',1,'reconnection_success:&#160;sd_card.c']]],
+  ['refresh_5fsntp_5fstartup_1',['refresh_sntp_startup',['../structsettings__time__t.html#a1f17b426e52b4828ae6a9a637df31f60',1,'settings_time_t']]],
+  ['relative_2',['relative',['../structfs__nav__state__blob__t.html#ad1b107c6a2c2c156e15b011074821a56',1,'fs_nav_state_blob_t::relative'],['../structfs__nav.html#a770c977aafdad9c5705b10a6783cf24e',1,'fs_nav::relative']]],
+  ['reload_5fanchor_5findex_3',['reload_anchor_index',['../structfile__manager__ctx__t.html#acd532d6153fc9a2a9467b2b5dc19979f',1,'file_manager_ctx_t']]],
+  ['rename_5fdialog_4',['rename_dialog',['../structfile__manager__graphics__t.html#a568a971c69c34d40b1ba6dafd19dc548',1,'file_manager_graphics_t']]],
+  ['rename_5fkeyboard_5',['rename_keyboard',['../structfile__manager__graphics__t.html#a96ff91486f82624b0b6a60be2f4e9bdc',1,'file_manager_graphics_t']]],
+  ['rename_5ftextarea_6',['rename_textarea',['../structfile__manager__graphics__t.html#abf855553d80f8cda7818deb4297c8404',1,'file_manager_graphics_t']]],
+  ['reserved_7',['reserved',['../structfs__nav__state__blob__t.html#a5b9cc33e2c687d8974cb6ae76622271e',1,'fs_nav_state_blob_t']]],
+  ['reset_5fconfirm_5fmbox_8',['reset_confirm_mbox',['../structsettings__ctx__graphics__t.html#ae341875283c456c9fbb282965fde62cd',1,'settings_ctx_graphics_t']]],
+  ['response_9',['response',['../structmsg__box__response__t.html#ac094fdba57d2e9f8e36bad5f7e9cc8d9',1,'msg_box_response_t']]],
+  ['restart_5fconfirm_5fmbox_10',['restart_confirm_mbox',['../structsettings__ctx__graphics__t.html#a6a0f7a3efb324503f7de6c55480d4596',1,'settings_ctx_graphics_t']]],
+  ['return_5fon_5ferror_11',['RETURN_ON_ERROR',['../wifi_8c.html#a32dda2164f9eddd656546e58ceffb04d',1,'wifi.c']]],
+  ['return_5fscreen_12',['return_screen',['../structtext__viewer__open__opts__t.html#a97a4dd99e6e255542223aa8303fec646',1,'text_viewer_open_opts_t::return_screen'],['../structtext__viewer__graphics__t.html#ad7888952862af3e76bd16cf5e40ae614',1,'text_viewer_graphics_t::return_screen'],['../structjpg__viewer__open__opts__t.html#a0fe78d9544c6d8c50d060ac138ef36bc',1,'jpg_viewer_open_opts_t::return_screen'],['../structjpg__viewer__ctx__t.html#ad33302220f0b695076128c524d25a942',1,'jpg_viewer_ctx_t::return_screen'],['../structsettings__ctx__graphics__t.html#a750f3444ec151c5dbfe7c371f1a0acbe',1,'settings_ctx_graphics_t::return_screen']]],
+  ['root_13',['root',['../structfs__nav.html#a88fba5c9f35e50369bc67fd7b4716065',1,'fs_nav']]],
+  ['root_5fpath_14',['root_path',['../structfile__manager__config__t.html#af0742187f0575ffa4ec4d5ebcefa242f',1,'file_manager_config_t::root_path'],['../structfs__nav__config__t.html#a0bf87a92fe95df6adc36a6527c8929a1',1,'fs_nav_config_t::root_path']]],
+  ['running_5fcalibration_15',['running_calibration',['../structsettings__t.html#a4d2675165f6962d4e355ca111b953dcc',1,'settings_t']]],
+  ['rx_16',['rx',['../structcal__point__t.html#a555c8aa018c76465bf97851cbc18c60a',1,'cal_point_t']]],
+  ['ry_17',['ry',['../structcal__point__t.html#a3fe44f285a48b4703b148a65da31ddfe',1,'cal_point_t']]]
+];

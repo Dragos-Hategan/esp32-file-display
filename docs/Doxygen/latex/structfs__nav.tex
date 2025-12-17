@@ -1,0 +1,137 @@
+\doxysection{fs\+\_\+nav Struct Reference}
+\hypertarget{structfs__nav}{}\label{structfs__nav}\index{fs\_nav@{fs\_nav}}
+
+
+Navigator state (treated as opaque by users of this API).  
+
+
+
+
+{\ttfamily \#include $<$fs\+\_\+navigator.\+h$>$}
+
+
+
+Collaboration diagram for fs\+\_\+nav\+:
+% FIG 0
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+char \mbox{\hyperlink{structfs__nav_a88fba5c9f35e50369bc67fd7b4716065}{root}} \mbox{[}\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}
+\item 
+char \mbox{\hyperlink{structfs__nav_aeb3fa89096ba92927e61251929219759}{current}} \mbox{[}\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}
+\item 
+char \mbox{\hyperlink{structfs__nav_a770c977aafdad9c5705b10a6783cf24e}{relative}} \mbox{[}\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}
+\item 
+\mbox{\hyperlink{structfs__nav__item__t}{fs\+\_\+nav\+\_\+item\+\_\+t}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structfs__nav_a5bc0629a33cfeddc97dfd4dcc06ae05f}{items}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structfs__nav_a802e12352b6f4afcc32bad6b38e44559}{item\+\_\+count}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structfs__nav_abbed0c904582d5ff62700209dac2da0d}{capacity}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structfs__nav_ad2ed3243ea052ee41e09f239bedbda28}{max\+\_\+items}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structfs__nav_abe14f7dd56504019c67854b6a8a434d2}{total\+\_\+items}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structfs__nav_a6fb13db71d8b11b2a7aa10fc856d9e8a}{window\+\_\+start}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structfs__nav_a396f535ef808698211f7699ff85d3fb9}{window\+\_\+size}}
+\item 
+\mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\+\_\+nav\+\_\+sort\+\_\+mode\+\_\+t}} \mbox{\hyperlink{structfs__nav_a2bad25ae90edbd851fc9605d6ed9f8d2}{sort\+\_\+mode}}
+\item 
+bool \mbox{\hyperlink{structfs__nav_a44c49b1629c15edb688b60e753bd7802}{ascending}}
+\item 
+bool \mbox{\hyperlink{structfs__nav_a205ec33ef475ad4b87cbd6a46f5c5e78}{sort\+\_\+enabled}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Navigator state (treated as opaque by users of this API). 
+
+Fields are internal and may change; external modules should interact only through the provided functions. 
+
+\label{doc-variable-members}
+\Hypertarget{structfs__nav_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structfs__nav_a44c49b1629c15edb688b60e753bd7802}\index{fs\_nav@{fs\_nav}!ascending@{ascending}}
+\index{ascending@{ascending}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{ascending}{ascending}}
+{\footnotesize\ttfamily \label{structfs__nav_a44c49b1629c15edb688b60e753bd7802} 
+bool fs\+\_\+nav\+::ascending}
+
+\Hypertarget{structfs__nav_abbed0c904582d5ff62700209dac2da0d}\index{fs\_nav@{fs\_nav}!capacity@{capacity}}
+\index{capacity@{capacity}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{capacity}{capacity}}
+{\footnotesize\ttfamily \label{structfs__nav_abbed0c904582d5ff62700209dac2da0d} 
+size\+\_\+t fs\+\_\+nav\+::capacity}
+
+\Hypertarget{structfs__nav_aeb3fa89096ba92927e61251929219759}\index{fs\_nav@{fs\_nav}!current@{current}}
+\index{current@{current}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{current}{current}}
+{\footnotesize\ttfamily \label{structfs__nav_aeb3fa89096ba92927e61251929219759} 
+char fs\+\_\+nav\+::current\mbox{[}\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}}
+
+\Hypertarget{structfs__nav_a802e12352b6f4afcc32bad6b38e44559}\index{fs\_nav@{fs\_nav}!item\_count@{item\_count}}
+\index{item\_count@{item\_count}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{item\_count}{item\_count}}
+{\footnotesize\ttfamily \label{structfs__nav_a802e12352b6f4afcc32bad6b38e44559} 
+size\+\_\+t fs\+\_\+nav\+::item\+\_\+count}
+
+\Hypertarget{structfs__nav_a5bc0629a33cfeddc97dfd4dcc06ae05f}\index{fs\_nav@{fs\_nav}!items@{items}}
+\index{items@{items}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{items}{items}}
+{\footnotesize\ttfamily \label{structfs__nav_a5bc0629a33cfeddc97dfd4dcc06ae05f} 
+\mbox{\hyperlink{structfs__nav__item__t}{fs\+\_\+nav\+\_\+item\+\_\+t}}\texorpdfstring{$\ast$}{*} fs\+\_\+nav\+::items}
+
+\Hypertarget{structfs__nav_ad2ed3243ea052ee41e09f239bedbda28}\index{fs\_nav@{fs\_nav}!max\_items@{max\_items}}
+\index{max\_items@{max\_items}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{max\_items}{max\_items}}
+{\footnotesize\ttfamily \label{structfs__nav_ad2ed3243ea052ee41e09f239bedbda28} 
+size\+\_\+t fs\+\_\+nav\+::max\+\_\+items}
+
+\Hypertarget{structfs__nav_a770c977aafdad9c5705b10a6783cf24e}\index{fs\_nav@{fs\_nav}!relative@{relative}}
+\index{relative@{relative}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{relative}{relative}}
+{\footnotesize\ttfamily \label{structfs__nav_a770c977aafdad9c5705b10a6783cf24e} 
+char fs\+\_\+nav\+::relative\mbox{[}\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}}
+
+\Hypertarget{structfs__nav_a88fba5c9f35e50369bc67fd7b4716065}\index{fs\_nav@{fs\_nav}!root@{root}}
+\index{root@{root}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{root}{root}}
+{\footnotesize\ttfamily \label{structfs__nav_a88fba5c9f35e50369bc67fd7b4716065} 
+char fs\+\_\+nav\+::root\mbox{[}\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+PATH}}\mbox{]}}
+
+\Hypertarget{structfs__nav_a205ec33ef475ad4b87cbd6a46f5c5e78}\index{fs\_nav@{fs\_nav}!sort\_enabled@{sort\_enabled}}
+\index{sort\_enabled@{sort\_enabled}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{sort\_enabled}{sort\_enabled}}
+{\footnotesize\ttfamily \label{structfs__nav_a205ec33ef475ad4b87cbd6a46f5c5e78} 
+bool fs\+\_\+nav\+::sort\+\_\+enabled}
+
+\Hypertarget{structfs__nav_a2bad25ae90edbd851fc9605d6ed9f8d2}\index{fs\_nav@{fs\_nav}!sort\_mode@{sort\_mode}}
+\index{sort\_mode@{sort\_mode}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{sort\_mode}{sort\_mode}}
+{\footnotesize\ttfamily \label{structfs__nav_a2bad25ae90edbd851fc9605d6ed9f8d2} 
+\mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\+\_\+nav\+\_\+sort\+\_\+mode\+\_\+t}} fs\+\_\+nav\+::sort\+\_\+mode}
+
+\Hypertarget{structfs__nav_abe14f7dd56504019c67854b6a8a434d2}\index{fs\_nav@{fs\_nav}!total\_items@{total\_items}}
+\index{total\_items@{total\_items}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{total\_items}{total\_items}}
+{\footnotesize\ttfamily \label{structfs__nav_abe14f7dd56504019c67854b6a8a434d2} 
+size\+\_\+t fs\+\_\+nav\+::total\+\_\+items}
+
+\Hypertarget{structfs__nav_a396f535ef808698211f7699ff85d3fb9}\index{fs\_nav@{fs\_nav}!window\_size@{window\_size}}
+\index{window\_size@{window\_size}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{window\_size}{window\_size}}
+{\footnotesize\ttfamily \label{structfs__nav_a396f535ef808698211f7699ff85d3fb9} 
+size\+\_\+t fs\+\_\+nav\+::window\+\_\+size}
+
+\Hypertarget{structfs__nav_a6fb13db71d8b11b2a7aa10fc856d9e8a}\index{fs\_nav@{fs\_nav}!window\_start@{window\_start}}
+\index{window\_start@{window\_start}!fs\_nav@{fs\_nav}}
+\doxysubsubsection{\texorpdfstring{window\_start}{window\_start}}
+{\footnotesize\ttfamily \label{structfs__nav_a6fb13db71d8b11b2a7aa10fc856d9e8a} 
+size\+\_\+t fs\+\_\+nav\+::window\+\_\+start}
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+components/file\+\_\+manager/include/\mbox{\hyperlink{fs__navigator_8h}{fs\+\_\+navigator.\+h}}\end{DoxyCompactItemize}

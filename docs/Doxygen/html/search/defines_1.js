@@ -1,0 +1,19 @@
+var searchData=
+[
+  ['file_5fbrowser_5fentry_5fscroll_5fdelay_5fms_5fdefault_0',['FILE_BROWSER_ENTRY_SCROLL_DELAY_MS_DEFAULT',['../file__manager_8c.html#a95c238075b0e528c3f546593c516014a',1,'file_manager.c']]],
+  ['file_5fbrowser_5flist_5fwindow_5fsize_5fdefault_1',['FILE_BROWSER_LIST_WINDOW_SIZE_DEFAULT',['../file__manager_8c.html#a221abf47357b69f08a725f38f4489bfc',1,'file_manager.c']]],
+  ['file_5fbrowser_5flist_5fwindow_5fstep_5fdefault_2',['FILE_BROWSER_LIST_WINDOW_STEP_DEFAULT',['../file__manager_8c.html#a74a2a9fe6179172cb48f537193ff9cdb',1,'file_manager.c']]],
+  ['file_5fbrowser_5fmax_5fsortable_5fitems_5fdefault_3',['FILE_BROWSER_MAX_SORTABLE_ITEMS_DEFAULT',['../file__manager_8c.html#aa53be6be6f98499e38606b412d13d39e',1,'file_manager.c']]],
+  ['file_5fbrowser_5fpath_5fscroll_5fdelay_5fms_5fdefault_4',['FILE_BROWSER_PATH_SCROLL_DELAY_MS_DEFAULT',['../file__manager_8c.html#a4c87470b6ecfb4db884abda7bc013375',1,'file_manager.c']]],
+  ['file_5fbrowser_5fslider_5fgap_5fdefault_5',['FILE_BROWSER_SLIDER_GAP_DEFAULT',['../file__manager_8c.html#ad454b781a53217462de54223f8efe4d7',1,'file_manager.c']]],
+  ['file_5fbrowser_5fwait_5fprio_5fdefault_6',['FILE_BROWSER_WAIT_PRIO_DEFAULT',['../file__manager_8c.html#a48ea3c4982202321e4c425c33a913638',1,'file_manager.c']]],
+  ['file_5fbrowser_5fwait_5fstack_5fsize_5fb_5fdefault_7',['FILE_BROWSER_WAIT_STACK_SIZE_B_DEFAULT',['../file__manager_8c.html#a8db108b811d60c1356c2c7950470ad09',1,'file_manager.c']]],
+  ['fs_5fnav_5fmax_5fname_8',['FS_NAV_MAX_NAME',['../fs__navigator_8h.html#a114e90f5e8fa8852445740f617541df5',1,'fs_navigator.h']]],
+  ['fs_5fnav_5fmax_5fpath_9',['FS_NAV_MAX_PATH',['../fs__navigator_8h.html#a2b68fd1f18548c24d1bec5a50a5be8a8',1,'fs_navigator.h']]],
+  ['fs_5fnav_5fnvs_5fkey_10',['FS_NAV_NVS_KEY',['../fs__navigator_8c.html#a84bb9a5da201c566bea70a783e7321d7',1,'fs_navigator.c']]],
+  ['fs_5fnav_5fnvs_5fnamespace_11',['FS_NAV_NVS_NAMESPACE',['../fs__navigator_8c.html#a5ba1f822db7544564cf4a382b077dcb6',1,'fs_navigator.c']]],
+  ['fs_5fnav_5fstate_5fmagic_12',['FS_NAV_STATE_MAGIC',['../fs__navigator_8c.html#a99e864d33a2e8b0d14536270e60121b8',1,'fs_navigator.c']]],
+  ['fs_5fnav_5fstate_5fversion_13',['FS_NAV_STATE_VERSION',['../fs__navigator_8c.html#ab6dd2df851fc59c24cdf1f017ba3b216',1,'fs_navigator.c']]],
+  ['fs_5ftext_5fmax_5fpath_14',['FS_TEXT_MAX_PATH',['../fs__text__ops_8h.html#ae41e6bd0f9e6542da85362ee1d65eb90',1,'fs_text_ops.h']]],
+  ['fs_5ftext_5fread_5fchunk_5fsize_5fb_15',['FS_TEXT_READ_CHUNK_SIZE_B',['../fs__text__ops_8h.html#aeaf583faf4a105a9de5e209005db900c',1,'fs_text_ops.h']]]
+];

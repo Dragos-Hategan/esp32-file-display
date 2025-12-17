@@ -1,0 +1,62 @@
+\doxysection{components/file\+\_\+manager/include/file\+\_\+manager.h File Reference}
+\hypertarget{file__manager_8h}{}\label{file__manager_8h}\index{components/file\_manager/include/file\_manager.h@{components/file\_manager/include/file\_manager.h}}
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+Include dependency graph for file\+\_\+manager.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{file__manager_8h_a480b60728475dd1260fa1f9778a9a1d9}{file\+\_\+manager\+\_\+start}} (void)
+\begin{DoxyCompactList}\small\item\em Create the LVGL file-\/browser screen using the default SDSPI root. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{file__manager_8h_a9e880d62d6574e7a1d814d88acdd3698}{file\+\_\+manager\+\_\+reset\+\_\+clock\+\_\+display}} (void)
+\begin{DoxyCompactList}\small\item\em Reset the header clock display to default (show button, hide label). \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{file__manager_8h_a8c5de3af01994511fb3fcffc4040f4e4}{file\+\_\+manager\+\_\+on\+\_\+time\+\_\+set}} (void)
+\begin{DoxyCompactList}\small\item\em Mark the clock as user-\/set and refresh the header label/button state. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{file__manager_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{file__manager_8h_a8c5de3af01994511fb3fcffc4040f4e4}\index{file\_manager.h@{file\_manager.h}!file\_manager\_on\_time\_set@{file\_manager\_on\_time\_set}}
+\index{file\_manager\_on\_time\_set@{file\_manager\_on\_time\_set}!file\_manager.h@{file\_manager.h}}
+\doxysubsubsection{\texorpdfstring{file\_manager\_on\_time\_set()}{file\_manager\_on\_time\_set()}}
+{\footnotesize\ttfamily \label{file__manager_8h_a8c5de3af01994511fb3fcffc4040f4e4} 
+void file\+\_\+manager\+\_\+on\+\_\+time\+\_\+set (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Mark the clock as user-\/set and refresh the header label/button state. 
+
+\Hypertarget{file__manager_8h_a9e880d62d6574e7a1d814d88acdd3698}\index{file\_manager.h@{file\_manager.h}!file\_manager\_reset\_clock\_display@{file\_manager\_reset\_clock\_display}}
+\index{file\_manager\_reset\_clock\_display@{file\_manager\_reset\_clock\_display}!file\_manager.h@{file\_manager.h}}
+\doxysubsubsection{\texorpdfstring{file\_manager\_reset\_clock\_display()}{file\_manager\_reset\_clock\_display()}}
+{\footnotesize\ttfamily \label{file__manager_8h_a9e880d62d6574e7a1d814d88acdd3698} 
+void file\+\_\+manager\+\_\+reset\+\_\+clock\+\_\+display (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Reset the header clock display to default (show button, hide label). 
+
+\Hypertarget{file__manager_8h_a480b60728475dd1260fa1f9778a9a1d9}\index{file\_manager.h@{file\_manager.h}!file\_manager\_start@{file\_manager\_start}}
+\index{file\_manager\_start@{file\_manager\_start}!file\_manager.h@{file\_manager.h}}
+\doxysubsubsection{\texorpdfstring{file\_manager\_start()}{file\_manager\_start()}}
+{\footnotesize\ttfamily \label{file__manager_8h_a480b60728475dd1260fa1f9778a9a1d9} 
+esp\+\_\+err\+\_\+t file\+\_\+manager\+\_\+start (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Create the LVGL file-\/browser screen using the default SDSPI root. 
+
+Initializes the internal navigation context with {\ttfamily CONFIG\+\_\+\+SDSPI\+\_\+\+MOUNT\+\_\+\+POINT}, builds the LVGL widgets, and loads the screen. The SD card must already be mounted via {\ttfamily \doxylink{sd__card_8h_ad78a50dfc8be1e28effacc58f9a18aa1}{sd\+\_\+card\+\_\+init()}}.
+
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG if {\ttfamily CONFIG\+\_\+\+SDSPI\+\_\+\+MOUNT\+\_\+\+POINT} is NULL
+\item Errors propagated from {\ttfamily fs\+\_\+nav\+\_\+init}
+\item ESP\+\_\+\+ERR\+\_\+\+TIMEOUT if the LVGL display lock cannot be acquired 
+\end{DoxyItemize}
+\end{DoxyReturn}

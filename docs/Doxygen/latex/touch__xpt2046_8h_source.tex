@@ -1,0 +1,36 @@
+\doxysection{touch\+\_\+xpt2046.\+h}
+\hypertarget{touch__xpt2046_8h_source}{}\label{touch__xpt2046_8h_source}\index{components/touch\_xpt2046/include/touch\_xpt2046.h@{components/touch\_xpt2046/include/touch\_xpt2046.h}}
+\mbox{\hyperlink{touch__xpt2046_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}\ \{}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <stdbool.h>}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ "{}esp\_lcd\_touch.h"{}}}
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}esp\_err.h"{}}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}lvgl.h"{}}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#define\ TOUCH\_X\_MAX\ \ \ \ \ \ \ \ \ 320}}
+\DoxyCodeLine{00014\ \textcolor{preprocessor}{\#define\ TOUCH\_Y\_MAX\ \ \ \ \ \ \ \ \ 240}}
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#define\ TOUCH\_CAL\_NVS\_NS\ \ \ \ "{}touch\_cal"{}}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#define\ TOUCH\_CAL\_NVS\_KEY\ \ \ "{}affine\_v1"{}}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00041\ esp\_err\_t\ \mbox{\hyperlink{touch__xpt2046_8h_acaf0982fa98a41e4e6db0fb9200054dc}{touch\_init}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00052\ esp\_err\_t\ \mbox{\hyperlink{touch__xpt2046_8h_aa5dcb1d5f91599edc81362fa8a7671c5}{touch\_register\_to\_lvgl}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00059\ lv\_indev\_t\ *\mbox{\hyperlink{touch__xpt2046_8h_a03de146c7b26a0f9a0351550a3d3b1e0}{touch\_get\_indev}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00066\ esp\_lcd\_touch\_handle\_t\ \mbox{\hyperlink{touch__xpt2046_8h_aaaeca84ff6624ca13980f74263d49a20}{touch\_get\_handle}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00074\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{touch__xpt2046_8h_a7e2356bb935d73041f087c1780e27185}{touch\_log\_press}}(uint16\_t\ x,\ uint16\_t\ y);}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00077\ \}}
+\DoxyCodeLine{00078\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

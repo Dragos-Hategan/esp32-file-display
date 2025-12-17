@@ -1,0 +1,49 @@
+\doxysection{fs\+\_\+nav\+\_\+config\+\_\+t Struct Reference}
+\hypertarget{structfs__nav__config__t}{}\label{structfs__nav__config__t}\index{fs\_nav\_config\_t@{fs\_nav\_config\_t}}
+
+
+Navigator configuration.  
+
+
+
+
+{\ttfamily \#include $<$fs\+\_\+navigator.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structfs__nav__config__t_a0bf87a92fe95df6adc36a6527c8929a1}{root\+\_\+path}}
+\item 
+size\+\_\+t \mbox{\hyperlink{structfs__nav__config__t_a441dc2c48a8e37df788bbd646364b6a8}{max\+\_\+items}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Navigator configuration. 
+
+root\+\_\+path must be an absolute directory path (trailing slashes are trimmed). max\+\_\+items controls when sorting keeps all items in memory\+:
+\begin{DoxyItemize}
+\item 0 enables sorting for any directory size (potentially large allocations).
+\item \texorpdfstring{$>$}{>}0 enables sorting only when item count \texorpdfstring{$<$}{<}= max\+\_\+items; above that, sorting is disabled and only windows are loaded. 
+\end{DoxyItemize}
+
+\label{doc-variable-members}
+\Hypertarget{structfs__nav__config__t_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structfs__nav__config__t_a441dc2c48a8e37df788bbd646364b6a8}\index{fs\_nav\_config\_t@{fs\_nav\_config\_t}!max\_items@{max\_items}}
+\index{max\_items@{max\_items}!fs\_nav\_config\_t@{fs\_nav\_config\_t}}
+\doxysubsubsection{\texorpdfstring{max\_items}{max\_items}}
+{\footnotesize\ttfamily \label{structfs__nav__config__t_a441dc2c48a8e37df788bbd646364b6a8} 
+size\+\_\+t fs\+\_\+nav\+\_\+config\+\_\+t\+::max\+\_\+items}
+
+\Hypertarget{structfs__nav__config__t_a0bf87a92fe95df6adc36a6527c8929a1}\index{fs\_nav\_config\_t@{fs\_nav\_config\_t}!root\_path@{root\_path}}
+\index{root\_path@{root\_path}!fs\_nav\_config\_t@{fs\_nav\_config\_t}}
+\doxysubsubsection{\texorpdfstring{root\_path}{root\_path}}
+{\footnotesize\ttfamily \label{structfs__nav__config__t_a0bf87a92fe95df6adc36a6527c8929a1} 
+const char\texorpdfstring{$\ast$}{*} fs\+\_\+nav\+\_\+config\+\_\+t\+::root\+\_\+path}
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+components/file\+\_\+manager/include/\mbox{\hyperlink{fs__navigator_8h}{fs\+\_\+navigator.\+h}}\end{DoxyCompactItemize}

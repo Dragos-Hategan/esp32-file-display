@@ -1,0 +1,86 @@
+\doxysection{components/image\+\_\+viewer/jpg.c File Reference}
+\hypertarget{jpg_8c}{}\label{jpg_8c}\index{components/image\_viewer/jpg.c@{components/image\_viewer/jpg.c}}
+{\ttfamily \#include "{}jpg.\+h"{}}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include "{}lvgl/src/libs/tjpgd/tjpgd.\+h"{}}\newline
+{\ttfamily \#include "{}lvgl/src/misc/lv\+\_\+fs.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+lcd\+\_\+panel\+\_\+ops.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+heap\+\_\+caps.\+h"{}}\newline
+{\ttfamily \#include "{}bsp/esp-\/bsp.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}styles.\+h"{}}\newline
+Include dependency graph for jpg.\+c\+:
+% FIG 0
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structjpg__stripe__ctx__t}{jpg\+\_\+stripe\+\_\+ctx\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structjpg__viewer__ctx__t}{jpg\+\_\+viewer\+\_\+ctx\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{jpg_8c_afc3d101f633a076cc1ca84b85b6224b2}{TAG}}~"{}jpg\+\_\+viewer"{}
+\item 
+\#define \mbox{\hyperlink{jpg_8c_ab7ae78a24865a1bf05f819666eb0bfa4}{IMG\+\_\+\+VIEWER\+\_\+\+MAX\+\_\+\+PATH}}~256
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{jpg_8c_a200bd68b9dfd8f734d1f758c1f17e1eb}{jpg\+\_\+viewer\+\_\+open}} (const \mbox{\hyperlink{structjpg__viewer__open__opts__t}{jpg\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}} \texorpdfstring{$\ast$}{*}opts)
+\begin{DoxyCompactList}\small\item\em Open a simple viewer screen that displays a JPEG file. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{jpg_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{jpg_8c_ab7ae78a24865a1bf05f819666eb0bfa4}\index{jpg.c@{jpg.c}!IMG\_VIEWER\_MAX\_PATH@{IMG\_VIEWER\_MAX\_PATH}}
+\index{IMG\_VIEWER\_MAX\_PATH@{IMG\_VIEWER\_MAX\_PATH}!jpg.c@{jpg.c}}
+\doxysubsubsection{\texorpdfstring{IMG\_VIEWER\_MAX\_PATH}{IMG\_VIEWER\_MAX\_PATH}}
+{\footnotesize\ttfamily \label{jpg_8c_ab7ae78a24865a1bf05f819666eb0bfa4} 
+\#define IMG\+\_\+\+VIEWER\+\_\+\+MAX\+\_\+\+PATH~256}
+
+\Hypertarget{jpg_8c_afc3d101f633a076cc1ca84b85b6224b2}\index{jpg.c@{jpg.c}!TAG@{TAG}}
+\index{TAG@{TAG}!jpg.c@{jpg.c}}
+\doxysubsubsection{\texorpdfstring{TAG}{TAG}}
+{\footnotesize\ttfamily \label{jpg_8c_afc3d101f633a076cc1ca84b85b6224b2} 
+\#define TAG~"{}jpg\+\_\+viewer"{}}
+
+
+
+\label{doc-func-members}
+\Hypertarget{jpg_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{jpg_8c_a200bd68b9dfd8f734d1f758c1f17e1eb}\index{jpg.c@{jpg.c}!jpg\_viewer\_open@{jpg\_viewer\_open}}
+\index{jpg\_viewer\_open@{jpg\_viewer\_open}!jpg.c@{jpg.c}}
+\doxysubsubsection{\texorpdfstring{jpg\_viewer\_open()}{jpg\_viewer\_open()}}
+{\footnotesize\ttfamily \label{jpg_8c_a200bd68b9dfd8f734d1f758c1f17e1eb} 
+esp\+\_\+err\+\_\+t jpg\+\_\+viewer\+\_\+open (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structjpg__viewer__open__opts__t}{jpg\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{opts}{}\end{DoxyParamCaption})}
+
+
+
+Open a simple viewer screen that displays a JPEG file. 
+
+The viewer builds a new LVGL screen with a close button and an image widget whose source is the provided {\ttfamily path}. On close, it returns to {\ttfamily return\+\_\+screen} if provided; otherwise it loads the previously active screen.
+
+Must be called from the LVGL/task context that owns the display lock.
+
+
+\begin{DoxyParams}{Parameters}
+{\em opts} & Options struct (must not be NULL); {\ttfamily path} must be non-\/empty. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on bad input
+\item ESP\+\_\+\+ERR\+\_\+\+NOT\+\_\+\+FOUND if the file is missing
+\item ESP\+\_\+\+ERR\+\_\+\+TIMEOUT if display lock cannot be acquired, or ESP\+\_\+\+FAIL on LVGL source set failure.
+\item ESP\+\_\+\+ERR\+\_\+\+NOT\+\_\+\+SUPPORTED if the jpg file is corrupted or it\textquotesingle{}s specific type is not supported
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+SIZE if the image can\textquotesingle{}t fit in the screen even after the downscale 
+\end{DoxyItemize}
+\end{DoxyReturn}

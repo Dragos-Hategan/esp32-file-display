@@ -1,15 +1,3 @@
-/**
- * @file wifi.c
- * @brief Wi-Fi initialization and connection handling for ESP-IDF.
- *
- * @details
- * This module configures the ESP32 Wi-Fi subsystem in station mode (STA),
- * connects to the configured SSID, and blocks execution until a valid
- * IP address is obtained. It also provides automatic reconnection if
- * the connection is lost.
- */
-
-
 #include "wifi.h"
 
 #include <string.h>

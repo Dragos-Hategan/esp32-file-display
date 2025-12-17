@@ -1,0 +1,96 @@
+\doxysection{fs\+\_\+navigator.\+h}
+\hypertarget{fs__navigator_8h_source}{}\label{fs__navigator_8h_source}\index{components/file\_manager/include/fs\_navigator.h@{components/file\_manager/include/fs\_navigator.h}}
+\mbox{\hyperlink{fs__navigator_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}\ \{}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <stdbool.h>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <stddef.h>}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ <time.h>}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}esp\_err.h"{}}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#define\ FS\_NAV\_MAX\_PATH\ 256}}
+\DoxyCodeLine{00014\ \textcolor{preprocessor}{\#define\ FS\_NAV\_MAX\_NAME\ 96}}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00019\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00020\ \ \ \ \ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedac94352bee2bdb93e75322f9d7b9446af}{FS\_NAV\_SORT\_NAME}}\ =\ 0,\ }
+\DoxyCodeLine{00021\ \ \ \ \ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedafbe645fb513ba68beb7ccb5e19bbc775}{FS\_NAV\_SORT\_DATE}}\ =\ 1,\ }
+\DoxyCodeLine{00022\ \ \ \ \ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ceda554d6269e8c7de72151f7fc7b8b6dd87}{FS\_NAV\_SORT\_SIZE}}\ =\ 2,\ }
+\DoxyCodeLine{00023\ \ \ \ \ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedaceb34dc068c34ac7a72ad5e83e4dcf89}{FS\_NAV\_SORT\_COUNT}}}
+\DoxyCodeLine{00024\ \}\ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\_nav\_sort\_mode\_t}};}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00033\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{char}\ *\mbox{\hyperlink{structfs__nav__item__t_a3772eab4581d47aaaadc63ed7cf42cb6}{name}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{structfs__nav__item__t_a1c3a5df7b484424be96ca713c031d84c}{is\_dir}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00036\ \ \ \ \ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{structfs__nav__item__t_a093363bfe2a7750b36c6868b3c2521df}{needs\_stat}};\ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00037\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{structfs__nav__item__t_a922043a16bee7751a45133275dc498eb}{size\_bytes}};\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00038\ \ \ \ \ time\_t\ \mbox{\hyperlink{structfs__nav__item__t_a428440f07b7c0ba90761b9be7ad077b9}{modified}};\ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00039\ \}\ \mbox{\hyperlink{structfs__nav__item__t}{fs\_nav\_item\_t}};}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00047\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structfs__nav}{fs\_nav}}\ \{}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{keywordtype}{char}\ \mbox{\hyperlink{structfs__nav_a88fba5c9f35e50369bc67fd7b4716065}{root}}[\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\_NAV\_MAX\_PATH}}];}
+\DoxyCodeLine{00049\ \ \ \ \ \textcolor{keywordtype}{char}\ \mbox{\hyperlink{structfs__nav_aeb3fa89096ba92927e61251929219759}{current}}[\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\_NAV\_MAX\_PATH}}];}
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{keywordtype}{char}\ \mbox{\hyperlink{structfs__nav_a770c977aafdad9c5705b10a6783cf24e}{relative}}[\mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\_NAV\_MAX\_PATH}}];}
+\DoxyCodeLine{00051\ \ \ \ \ \mbox{\hyperlink{structfs__nav__item__t}{fs\_nav\_item\_t}}\ *\mbox{\hyperlink{structfs__nav_a5bc0629a33cfeddc97dfd4dcc06ae05f}{items}};}
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{structfs__nav_a802e12352b6f4afcc32bad6b38e44559}{item\_count}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ number\ of\ items\ currently\ loaded\ in\ buffer\ */}}
+\DoxyCodeLine{00053\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{structfs__nav_abbed0c904582d5ff62700209dac2da0d}{capacity}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ allocated\ capacity\ of\ buffer\ */}}
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{structfs__nav_ad2ed3243ea052ee41e09f239bedbda28}{max\_items}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ threshold\ for\ enabling\ sort\ (0\ =\ no\ threshold)\ */}}
+\DoxyCodeLine{00055\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{structfs__nav_abe14f7dd56504019c67854b6a8a434d2}{total\_items}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ full\ count\ in\ current\ directory\ */}}
+\DoxyCodeLine{00056\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{structfs__nav_a6fb13db71d8b11b2a7aa10fc856d9e8a}{window\_start}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ current\ window\ offset\ */}}
+\DoxyCodeLine{00057\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{structfs__nav_a396f535ef808698211f7699ff85d3fb9}{window\_size}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ desired\ window\ size\ */}}
+\DoxyCodeLine{00058\ \ \ \ \ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\_nav\_sort\_mode\_t}}\ \mbox{\hyperlink{structfs__nav_a2bad25ae90edbd851fc9605d6ed9f8d2}{sort\_mode}};}
+\DoxyCodeLine{00059\ \ \ \ \ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{structfs__nav_a44c49b1629c15edb688b60e753bd7802}{ascending}};}
+\DoxyCodeLine{00060\ \ \ \ \ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{structfs__nav_a205ec33ef475ad4b87cbd6a46f5c5e78}{sort\_enabled}};}
+\DoxyCodeLine{00061\ \}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}};}
+\DoxyCodeLine{00062\ }
+\DoxyCodeLine{00072\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00073\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\mbox{\hyperlink{structfs__nav__config__t_a0bf87a92fe95df6adc36a6527c8929a1}{root\_path}};}
+\DoxyCodeLine{00074\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{structfs__nav__config__t_a441dc2c48a8e37df788bbd646364b6a8}{max\_items}};}
+\DoxyCodeLine{00075\ \}\ \mbox{\hyperlink{structfs__nav__config__t}{fs\_nav\_config\_t}};}
+\DoxyCodeLine{00076\ }
+\DoxyCodeLine{00091\ esp\_err\_t\ \mbox{\hyperlink{fs__navigator_8h_af34293f50c9cb51b35deae8fbe2022ef}{fs\_nav\_init}}(\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav,\ \textcolor{keyword}{const}\ \mbox{\hyperlink{structfs__nav__config__t}{fs\_nav\_config\_t}}\ *cfg);}
+\DoxyCodeLine{00092\ }
+\DoxyCodeLine{00098\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{fs__navigator_8h_ae88d0062693e96c497e71b424173cecd}{fs\_nav\_deinit}}(\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00099\ }
+\DoxyCodeLine{00114\ esp\_err\_t\ \mbox{\hyperlink{fs__navigator_8h_a60f810f6bbd5d675e97b75ded781d9f8}{fs\_nav\_refresh}}(\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00115\ }
+\DoxyCodeLine{00129\ \textcolor{keyword}{const}\ \mbox{\hyperlink{structfs__nav__item__t}{fs\_nav\_item\_t}}\ *\mbox{\hyperlink{fs__navigator_8h_abda9e9f29e50ac58b3ae6a9ae7ebaf8b}{fs\_nav\_items}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav,\ \textcolor{keywordtype}{size\_t}\ *count);}
+\DoxyCodeLine{00130\ }
+\DoxyCodeLine{00136\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\mbox{\hyperlink{fs__navigator_8h_ac6e6ce4926e00eb145d22cdc5ecdedf3}{fs\_nav\_current\_path}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00137\ }
+\DoxyCodeLine{00143\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\mbox{\hyperlink{fs__navigator_8h_ae56543fec97f3192ca74a34ddce320d2}{fs\_nav\_relative\_path}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00144\ }
+\DoxyCodeLine{00150\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{fs__navigator_8h_adea0605860486c3d88af83ced47805fb}{fs\_nav\_can\_go\_parent}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00151\ }
+\DoxyCodeLine{00163\ esp\_err\_t\ \mbox{\hyperlink{fs__navigator_8h_a8f82f45654f4076922bca566eff2ee8c}{fs\_nav\_enter}}(\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav,\ \textcolor{keywordtype}{size\_t}\ index);}
+\DoxyCodeLine{00164\ }
+\DoxyCodeLine{00174\ esp\_err\_t\ \mbox{\hyperlink{fs__navigator_8h_a6e9fb24d668273ffd66b26837c99dad8}{fs\_nav\_go\_parent}}(\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00175\ }
+\DoxyCodeLine{00187\ esp\_err\_t\ \mbox{\hyperlink{fs__navigator_8h_ad991ddef08006a8815404aa2d5661944}{fs\_nav\_set\_sort}}(\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav,\ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\_nav\_sort\_mode\_t}}\ mode,\ \textcolor{keywordtype}{bool}\ ascending);}
+\DoxyCodeLine{00188\ }
+\DoxyCodeLine{00194\ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\_nav\_sort\_mode\_t}}\ \mbox{\hyperlink{fs__navigator_8h_a38a1bea67c7cfb721779746a1cac6011}{fs\_nav\_get\_sort}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00195\ }
+\DoxyCodeLine{00201\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{fs__navigator_8h_a9ae9adf6529805c4fd5eb4d9ed7d6789}{fs\_nav\_is\_sort\_ascending}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00202\ }
+\DoxyCodeLine{00206\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{fs__navigator_8h_a8725a9caa561f26029371ece2d29cb17}{fs\_nav\_is\_sort\_enabled}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00207\ }
+\DoxyCodeLine{00221\ esp\_err\_t\ \mbox{\hyperlink{fs__navigator_8h_a7c945629672eec1df898202bb5a1dfd5}{fs\_nav\_set\_window}}(\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav,\ \textcolor{keywordtype}{size\_t}\ start,\ \textcolor{keywordtype}{size\_t}\ size);}
+\DoxyCodeLine{00222\ }
+\DoxyCodeLine{00226\ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{fs__navigator_8h_a8e9a47f37ea8d075f65e17ec78a661ae}{fs\_nav\_total\_items}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00227\ }
+\DoxyCodeLine{00231\ \textcolor{keywordtype}{size\_t}\ \mbox{\hyperlink{fs__navigator_8h_a3057090e465a5646b5f223ba952ec3a8}{fs\_nav\_window\_start}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav);}
+\DoxyCodeLine{00232\ }
+\DoxyCodeLine{00242\ esp\_err\_t\ \mbox{\hyperlink{fs__navigator_8h_a1c7c7318cd9b3fbfd4ac18bb7203304b}{fs\_nav\_compose\_path}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *item\_name,\ \textcolor{keywordtype}{char}\ *out,\ \textcolor{keywordtype}{size\_t}\ out\_len);}
+\DoxyCodeLine{00243\ }
+\DoxyCodeLine{00251\ esp\_err\_t\ \mbox{\hyperlink{fs__navigator_8h_af13983159a156d3c4f55f2b4319fc1c8}{fs\_nav\_ensure\_meta}}(\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\_nav\_t}}\ *nav,\ \textcolor{keywordtype}{size\_t}\ index);}
+\DoxyCodeLine{00252\ }
+\DoxyCodeLine{00253\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00254\ \}}
+\DoxyCodeLine{00255\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

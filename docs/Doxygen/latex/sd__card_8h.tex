@@ -1,0 +1,80 @@
+\doxysection{components/sd\+\_\+card/include/sd\+\_\+card.h File Reference}
+\hypertarget{sd__card_8h}{}\label{sd__card_8h}\index{components/sd\_card/include/sd\_card.h@{components/sd\_card/include/sd\_card.h}}
+{\ttfamily \#include "{}freertos/\+Free\+RTOS.\+h"{}}\newline
+{\ttfamily \#include "{}freertos/semphr.\+h"{}}\newline
+{\ttfamily \#include "{}freertos/task.\+h"{}}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+Include dependency graph for sd\+\_\+card.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{sd__card_8h_ad78a50dfc8be1e28effacc58f9a18aa1}{sd\+\_\+card\+\_\+init}} (void)
+\begin{DoxyCompactList}\small\item\em Initialize (or reinitialize) the SDSPI bus and mount the SD card filesystem. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sd__card_8h_a60c3fa6a7307e0c4f7983581bed397c5}{sd\+\_\+card\+\_\+retry\+\_\+init}} (void)
+\begin{DoxyCompactList}\small\item\em Prompt the user then retry SD card initialization with UI feedback. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sd__card_8h_adebf78dc07b83bc8966466bd3bc7ca01}{sd\+\_\+card\+\_\+schedule\+\_\+retry}} (void)
+\begin{DoxyCompactList}\small\item\em Launch the SD retry worker task if one is not already running. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+Semaphore\+Handle\+\_\+t \mbox{\hyperlink{sd__card_8h_abe1b20b3c678601d03678dca46d38d48}{reconnection\+\_\+success}}
+\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{sd__card_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{sd__card_8h_ad78a50dfc8be1e28effacc58f9a18aa1}\index{sd\_card.h@{sd\_card.h}!sd\_card\_init@{sd\_card\_init}}
+\index{sd\_card\_init@{sd\_card\_init}!sd\_card.h@{sd\_card.h}}
+\doxysubsubsection{\texorpdfstring{sd\_card\_init()}{sd\_card\_init()}}
+{\footnotesize\ttfamily \label{sd__card_8h_ad78a50dfc8be1e28effacc58f9a18aa1} 
+esp\+\_\+err\+\_\+t sd\+\_\+card\+\_\+init (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Initialize (or reinitialize) the SDSPI bus and mount the SD card filesystem. 
+
+Performs SPI bus setup and mounts FAT at {\ttfamily CONFIG\+\_\+\+SDSPI\+\_\+\+MOUNT\+\_\+\+POINT} via {\ttfamily esp\+\_\+vfs\+\_\+fat\+\_\+sdspi\+\_\+mount}. If a card is already mounted or the bus is active, they are gracefully unmounted/freed before attempting again.
+
+\begin{DoxyReturn}{Returns}
+esp\+\_\+err\+\_\+t
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP-\/\+IDF error code if SPI bus initialization or FAT mount fails 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\Hypertarget{sd__card_8h_a60c3fa6a7307e0c4f7983581bed397c5}\index{sd\_card.h@{sd\_card.h}!sd\_card\_retry\_init@{sd\_card\_retry\_init}}
+\index{sd\_card\_retry\_init@{sd\_card\_retry\_init}!sd\_card.h@{sd\_card.h}}
+\doxysubsubsection{\texorpdfstring{sd\_card\_retry\_init()}{sd\_card\_retry\_init()}}
+{\footnotesize\ttfamily \label{sd__card_8h_a60c3fa6a7307e0c4f7983581bed397c5} 
+void sd\+\_\+card\+\_\+retry\+\_\+init (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Prompt the user then retry SD card initialization with UI feedback. 
+
+\Hypertarget{sd__card_8h_adebf78dc07b83bc8966466bd3bc7ca01}\index{sd\_card.h@{sd\_card.h}!sd\_card\_schedule\_retry@{sd\_card\_schedule\_retry}}
+\index{sd\_card\_schedule\_retry@{sd\_card\_schedule\_retry}!sd\_card.h@{sd\_card.h}}
+\doxysubsubsection{\texorpdfstring{sd\_card\_schedule\_retry()}{sd\_card\_schedule\_retry()}}
+{\footnotesize\ttfamily \label{sd__card_8h_adebf78dc07b83bc8966466bd3bc7ca01} 
+void sd\+\_\+card\+\_\+schedule\+\_\+retry (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Launch the SD retry worker task if one is not already running. 
+
+
+
+\label{doc-var-members}
+\Hypertarget{sd__card_8h_doc-var-members}
+\doxysubsection{Variable Documentation}
+\Hypertarget{sd__card_8h_abe1b20b3c678601d03678dca46d38d48}\index{sd\_card.h@{sd\_card.h}!reconnection\_success@{reconnection\_success}}
+\index{reconnection\_success@{reconnection\_success}!sd\_card.h@{sd\_card.h}}
+\doxysubsubsection{\texorpdfstring{reconnection\_success}{reconnection\_success}}
+{\footnotesize\ttfamily \label{sd__card_8h_abe1b20b3c678601d03678dca46d38d48} 
+Semaphore\+Handle\+\_\+t reconnection\+\_\+success\hspace{0.3cm}{\ttfamily [extern]}}
+

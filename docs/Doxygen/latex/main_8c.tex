@@ -1,0 +1,78 @@
+\doxysection{main/main.c File Reference}
+\hypertarget{main_8c}{}\label{main_8c}\index{main/main.c@{main/main.c}}
+{\ttfamily \#include $<$stdint.\+h$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include "{}freertos/\+Free\+RTOS.\+h"{}}\newline
+{\ttfamily \#include "{}freertos/task.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+system.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}file\+\_\+manager.\+h"{}}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+{\ttfamily \#include "{}sd\+\_\+card.\+h"{}}\newline
+Include dependency graph for main.\+c\+:
+% FIG 0
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \{ \newline
+\mbox{\hyperlink{main_8c_a95fc67d3b7473173c77a48244c874015a32a986a3a968d278c9a4b9857eeaf563}{MAIN\+\_\+\+TASK\+\_\+\+STACK\+\_\+\+WORDS}} = 8 \texorpdfstring{$\ast$}{*} 1024
+, \mbox{\hyperlink{main_8c_a95fc67d3b7473173c77a48244c874015a231e378cda2c5e3392ca4f21da507a72}{MAIN\+\_\+\+TASK\+\_\+\+PRIORITY}} = 1
+, \mbox{\hyperlink{main_8c_a95fc67d3b7473173c77a48244c874015ae5b23b14110717b53e6b16597bf9130c}{MAIN\+\_\+\+TASK\+\_\+\+CORE}} = 0
+, \mbox{\hyperlink{main_8c_a95fc67d3b7473173c77a48244c874015ad64e4f7c34a88324d20ad38a99a1050b}{HEAP\+\_\+\+STATS\+\_\+\+TASK\+\_\+\+STACK\+\_\+\+WORDS}} = 4 \texorpdfstring{$\ast$}{*} 1024
+, \newline
+\mbox{\hyperlink{main_8c_a95fc67d3b7473173c77a48244c874015a3299c942f1fe1b840b6889650f605bd4}{HEAP\+\_\+\+STATS\+\_\+\+TASK\+\_\+\+PRIORITY}} = 1
+, \mbox{\hyperlink{main_8c_a95fc67d3b7473173c77a48244c874015afd2ec471aab46bc20c7e95e64b98bfc2}{HEAP\+\_\+\+STATS\+\_\+\+TASK\+\_\+\+CORE}} = 0
+ \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{main_8c_a630544a7f0a2cc40d8a7fefab7e2fe70}{app\+\_\+main}} (void)
+\end{DoxyCompactItemize}
+
+
+\label{doc-enum-members}
+\Hypertarget{main_8c_doc-enum-members}
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{main_8c_a95fc67d3b7473173c77a48244c874015}\doxysubsubsection{\texorpdfstring{anonymous enum}{anonymous enum}}
+{\footnotesize\ttfamily \label{main_8c_a95fc67d3b7473173c77a48244c874015} 
+anonymous enum}
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{MAIN\_TASK\_STACK\_WORDS@{MAIN\_TASK\_STACK\_WORDS}!main.c@{main.c}}\index{main.c@{main.c}!MAIN\_TASK\_STACK\_WORDS@{MAIN\_TASK\_STACK\_WORDS}}}\Hypertarget{main_8c_a95fc67d3b7473173c77a48244c874015a32a986a3a968d278c9a4b9857eeaf563}\label{main_8c_a95fc67d3b7473173c77a48244c874015a32a986a3a968d278c9a4b9857eeaf563} 
+MAIN\+\_\+\+TASK\+\_\+\+STACK\+\_\+\+WORDS&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{MAIN\_TASK\_PRIORITY@{MAIN\_TASK\_PRIORITY}!main.c@{main.c}}\index{main.c@{main.c}!MAIN\_TASK\_PRIORITY@{MAIN\_TASK\_PRIORITY}}}\Hypertarget{main_8c_a95fc67d3b7473173c77a48244c874015a231e378cda2c5e3392ca4f21da507a72}\label{main_8c_a95fc67d3b7473173c77a48244c874015a231e378cda2c5e3392ca4f21da507a72} 
+MAIN\+\_\+\+TASK\+\_\+\+PRIORITY&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{MAIN\_TASK\_CORE@{MAIN\_TASK\_CORE}!main.c@{main.c}}\index{main.c@{main.c}!MAIN\_TASK\_CORE@{MAIN\_TASK\_CORE}}}\Hypertarget{main_8c_a95fc67d3b7473173c77a48244c874015ae5b23b14110717b53e6b16597bf9130c}\label{main_8c_a95fc67d3b7473173c77a48244c874015ae5b23b14110717b53e6b16597bf9130c} 
+MAIN\+\_\+\+TASK\+\_\+\+CORE&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{HEAP\_STATS\_TASK\_STACK\_WORDS@{HEAP\_STATS\_TASK\_STACK\_WORDS}!main.c@{main.c}}\index{main.c@{main.c}!HEAP\_STATS\_TASK\_STACK\_WORDS@{HEAP\_STATS\_TASK\_STACK\_WORDS}}}\Hypertarget{main_8c_a95fc67d3b7473173c77a48244c874015ad64e4f7c34a88324d20ad38a99a1050b}\label{main_8c_a95fc67d3b7473173c77a48244c874015ad64e4f7c34a88324d20ad38a99a1050b} 
+HEAP\+\_\+\+STATS\+\_\+\+TASK\+\_\+\+STACK\+\_\+\+WORDS&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{HEAP\_STATS\_TASK\_PRIORITY@{HEAP\_STATS\_TASK\_PRIORITY}!main.c@{main.c}}\index{main.c@{main.c}!HEAP\_STATS\_TASK\_PRIORITY@{HEAP\_STATS\_TASK\_PRIORITY}}}\Hypertarget{main_8c_a95fc67d3b7473173c77a48244c874015a3299c942f1fe1b840b6889650f605bd4}\label{main_8c_a95fc67d3b7473173c77a48244c874015a3299c942f1fe1b840b6889650f605bd4} 
+HEAP\+\_\+\+STATS\+\_\+\+TASK\+\_\+\+PRIORITY&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{HEAP\_STATS\_TASK\_CORE@{HEAP\_STATS\_TASK\_CORE}!main.c@{main.c}}\index{main.c@{main.c}!HEAP\_STATS\_TASK\_CORE@{HEAP\_STATS\_TASK\_CORE}}}\Hypertarget{main_8c_a95fc67d3b7473173c77a48244c874015afd2ec471aab46bc20c7e95e64b98bfc2}\label{main_8c_a95fc67d3b7473173c77a48244c874015afd2ec471aab46bc20c7e95e64b98bfc2} 
+HEAP\+\_\+\+STATS\+\_\+\+TASK\+\_\+\+CORE&\\
+\hline
+
+\end{DoxyEnumFields}
+
+
+\label{doc-func-members}
+\Hypertarget{main_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{main_8c_a630544a7f0a2cc40d8a7fefab7e2fe70}\index{main.c@{main.c}!app\_main@{app\_main}}
+\index{app\_main@{app\_main}!main.c@{main.c}}
+\doxysubsubsection{\texorpdfstring{app\_main()}{app\_main()}}
+{\footnotesize\ttfamily \label{main_8c_a630544a7f0a2cc40d8a7fefab7e2fe70} 
+void app\+\_\+main (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+

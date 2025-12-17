@@ -1,0 +1,171 @@
+\doxysection{components/file\+\_\+manager/text\+\_\+viewer\+\_\+screen.c File Reference}
+\hypertarget{text__viewer__screen_8c}{}\label{text__viewer__screen_8c}\index{components/file\_manager/text\_viewer\_screen.c@{components/file\_manager/text\_viewer\_screen.c}}
+{\ttfamily \#include "{}text\+\_\+viewer\+\_\+screen.\+h"{}}\newline
+{\ttfamily \#include $<$sys/stat.\+h$>$}\newline
+{\ttfamily \#include $<$strings.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$errno.\+h$>$}\newline
+{\ttfamily \#include "{}fs\+\_\+navigator.\+h"{}}\newline
+{\ttfamily \#include "{}fs\+\_\+text\+\_\+ops.\+h"{}}\newline
+{\ttfamily \#include "{}Domine\+\_\+16.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}sd\+\_\+card.\+h"{}}\newline
+{\ttfamily \#include "{}styles.\+h"{}}\newline
+Include dependency graph for text\+\_\+viewer\+\_\+screen.\+c\+:
+% FIG 0
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structtext__viewer__graphics__t}{text\+\_\+viewer\+\_\+graphics\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structtext__viewer__flags__t}{text\+\_\+viewer\+\_\+flags\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structtext__viewer__ctx__t}{text\+\_\+viewer\+\_\+ctx\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Runtime state for the singleton text viewer/editor screen. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{text__viewer__screen_8c_ae88d5363e36458cbb7cf9ebf4874bcc7}{TEXT\+\_\+\+VIEWER\+\_\+\+PATH\+\_\+\+SCROLL\+\_\+\+DELAY\+\_\+\+MS}}~2000
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008ef}{text\+\_\+viewer\+\_\+chunk\+\_\+action\+\_\+t}} \{ \mbox{\hyperlink{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008efa20b0b669df44d8550d428bd7332119ea}{TEXT\+\_\+\+VIEWER\+\_\+\+CHUNK\+\_\+\+SAVE}} = 1
+, \mbox{\hyperlink{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008efa513a36a241f200e75b1a4877b4f94f30}{TEXT\+\_\+\+VIEWER\+\_\+\+CHUNK\+\_\+\+DISCARD}} = 2
+ \}
+\begin{DoxyCompactList}\small\item\em Actions in the chunk-\/change prompt. \end{DoxyCompactList}\item 
+enum \mbox{\hyperlink{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92d}{text\+\_\+viewer\+\_\+sd\+\_\+action\+\_\+t}} \{ \mbox{\hyperlink{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92da1b67c82800a9f3332f86c4df9ec4c637}{TEXT\+\_\+\+VIEWER\+\_\+\+SD\+\_\+\+NONE}} = 0
+, \mbox{\hyperlink{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92daba06ff132acb14664fa219d2dc11cac4}{TEXT\+\_\+\+VIEWER\+\_\+\+SD\+\_\+\+SAVE}}
+, \mbox{\hyperlink{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92dab99f65f812cf169bff9fb2870b84caca}{TEXT\+\_\+\+VIEWER\+\_\+\+SD\+\_\+\+CHUNK}}
+ \}
+\begin{DoxyCompactList}\small\item\em Actions to resume after SD reconnection. \end{DoxyCompactList}\item 
+enum \mbox{\hyperlink{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8b}{text\+\_\+viewer\+\_\+confirm\+\_\+action\+\_\+t}} \{ \mbox{\hyperlink{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8bafba9fa01d8c1bd24b89228efadebce89}{TEXT\+\_\+\+VIEWER\+\_\+\+CONFIRM\+\_\+\+SAVE}} = 1
+, \mbox{\hyperlink{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8babe5de52dadf7e210f95764ec1923eded}{TEXT\+\_\+\+VIEWER\+\_\+\+CONFIRM\+\_\+\+DISCARD}} = 2
+ \}
+\begin{DoxyCompactList}\small\item\em Confirmation actions used in the save/discard dialog. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{text__viewer__screen_8c_a90b8d94bda47f68b35666ca55f994905}{text\+\_\+viewer\+\_\+open}} (const \mbox{\hyperlink{structtext__viewer__open__opts__t}{text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}} \texorpdfstring{$\ast$}{*}opts)
+\begin{DoxyCompactList}\small\item\em Load the viewer screen and display the requested file. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{text__viewer__screen_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{text__viewer__screen_8c_ae88d5363e36458cbb7cf9ebf4874bcc7}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!TEXT\_VIEWER\_PATH\_SCROLL\_DELAY\_MS@{TEXT\_VIEWER\_PATH\_SCROLL\_DELAY\_MS}}
+\index{TEXT\_VIEWER\_PATH\_SCROLL\_DELAY\_MS@{TEXT\_VIEWER\_PATH\_SCROLL\_DELAY\_MS}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}
+\doxysubsubsection{\texorpdfstring{TEXT\_VIEWER\_PATH\_SCROLL\_DELAY\_MS}{TEXT\_VIEWER\_PATH\_SCROLL\_DELAY\_MS}}
+{\footnotesize\ttfamily \label{text__viewer__screen_8c_ae88d5363e36458cbb7cf9ebf4874bcc7} 
+\#define TEXT\+\_\+\+VIEWER\+\_\+\+PATH\+\_\+\+SCROLL\+\_\+\+DELAY\+\_\+\+MS~2000}
+
+
+
+\label{doc-enum-members}
+\Hypertarget{text__viewer__screen_8c_doc-enum-members}
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008ef}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!text\_viewer\_chunk\_action\_t@{text\_viewer\_chunk\_action\_t}}
+\index{text\_viewer\_chunk\_action\_t@{text\_viewer\_chunk\_action\_t}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}
+\doxysubsubsection{\texorpdfstring{text\_viewer\_chunk\_action\_t}{text\_viewer\_chunk\_action\_t}}
+{\footnotesize\ttfamily \label{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008ef} 
+enum \mbox{\hyperlink{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008ef}{text\+\_\+viewer\+\_\+chunk\+\_\+action\+\_\+t}}}
+
+
+
+Actions in the chunk-\/change prompt. 
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{TEXT\_VIEWER\_CHUNK\_SAVE@{TEXT\_VIEWER\_CHUNK\_SAVE}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!TEXT\_VIEWER\_CHUNK\_SAVE@{TEXT\_VIEWER\_CHUNK\_SAVE}}}\Hypertarget{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008efa20b0b669df44d8550d428bd7332119ea}\label{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008efa20b0b669df44d8550d428bd7332119ea} 
+TEXT\+\_\+\+VIEWER\+\_\+\+CHUNK\+\_\+\+SAVE&Save before loading new chunk \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{TEXT\_VIEWER\_CHUNK\_DISCARD@{TEXT\_VIEWER\_CHUNK\_DISCARD}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!TEXT\_VIEWER\_CHUNK\_DISCARD@{TEXT\_VIEWER\_CHUNK\_DISCARD}}}\Hypertarget{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008efa513a36a241f200e75b1a4877b4f94f30}\label{text__viewer__screen_8c_ad11d70fa16437e9fb723dcc8e1b008efa513a36a241f200e75b1a4877b4f94f30} 
+TEXT\+\_\+\+VIEWER\+\_\+\+CHUNK\+\_\+\+DISCARD&Discard changes and load new chunk \\
+\hline
+
+\end{DoxyEnumFields}
+\Hypertarget{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8b}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!text\_viewer\_confirm\_action\_t@{text\_viewer\_confirm\_action\_t}}
+\index{text\_viewer\_confirm\_action\_t@{text\_viewer\_confirm\_action\_t}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}
+\doxysubsubsection{\texorpdfstring{text\_viewer\_confirm\_action\_t}{text\_viewer\_confirm\_action\_t}}
+{\footnotesize\ttfamily \label{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8b} 
+enum \mbox{\hyperlink{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8b}{text\+\_\+viewer\+\_\+confirm\+\_\+action\+\_\+t}}}
+
+
+
+Confirmation actions used in the save/discard dialog. 
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{TEXT\_VIEWER\_CONFIRM\_SAVE@{TEXT\_VIEWER\_CONFIRM\_SAVE}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!TEXT\_VIEWER\_CONFIRM\_SAVE@{TEXT\_VIEWER\_CONFIRM\_SAVE}}}\Hypertarget{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8bafba9fa01d8c1bd24b89228efadebce89}\label{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8bafba9fa01d8c1bd24b89228efadebce89} 
+TEXT\+\_\+\+VIEWER\+\_\+\+CONFIRM\+\_\+\+SAVE&Confirm saving changes \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{TEXT\_VIEWER\_CONFIRM\_DISCARD@{TEXT\_VIEWER\_CONFIRM\_DISCARD}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!TEXT\_VIEWER\_CONFIRM\_DISCARD@{TEXT\_VIEWER\_CONFIRM\_DISCARD}}}\Hypertarget{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8babe5de52dadf7e210f95764ec1923eded}\label{text__viewer__screen_8c_a0f12188b9ddd779a5aa9ff335c57eb8babe5de52dadf7e210f95764ec1923eded} 
+TEXT\+\_\+\+VIEWER\+\_\+\+CONFIRM\+\_\+\+DISCARD&Confirm discarding changes \\
+\hline
+
+\end{DoxyEnumFields}
+\Hypertarget{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92d}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!text\_viewer\_sd\_action\_t@{text\_viewer\_sd\_action\_t}}
+\index{text\_viewer\_sd\_action\_t@{text\_viewer\_sd\_action\_t}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}
+\doxysubsubsection{\texorpdfstring{text\_viewer\_sd\_action\_t}{text\_viewer\_sd\_action\_t}}
+{\footnotesize\ttfamily \label{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92d} 
+enum \mbox{\hyperlink{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92d}{text\+\_\+viewer\+\_\+sd\+\_\+action\+\_\+t}}}
+
+
+
+Actions to resume after SD reconnection. 
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{TEXT\_VIEWER\_SD\_NONE@{TEXT\_VIEWER\_SD\_NONE}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!TEXT\_VIEWER\_SD\_NONE@{TEXT\_VIEWER\_SD\_NONE}}}\Hypertarget{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92da1b67c82800a9f3332f86c4df9ec4c637}\label{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92da1b67c82800a9f3332f86c4df9ec4c637} 
+TEXT\+\_\+\+VIEWER\+\_\+\+SD\+\_\+\+NONE&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{TEXT\_VIEWER\_SD\_SAVE@{TEXT\_VIEWER\_SD\_SAVE}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!TEXT\_VIEWER\_SD\_SAVE@{TEXT\_VIEWER\_SD\_SAVE}}}\Hypertarget{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92daba06ff132acb14664fa219d2dc11cac4}\label{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92daba06ff132acb14664fa219d2dc11cac4} 
+TEXT\+\_\+\+VIEWER\+\_\+\+SD\+\_\+\+SAVE&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{TEXT\_VIEWER\_SD\_CHUNK@{TEXT\_VIEWER\_SD\_CHUNK}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!TEXT\_VIEWER\_SD\_CHUNK@{TEXT\_VIEWER\_SD\_CHUNK}}}\Hypertarget{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92dab99f65f812cf169bff9fb2870b84caca}\label{text__viewer__screen_8c_a3daa9b9126347c8ebf7328643bc1e92dab99f65f812cf169bff9fb2870b84caca} 
+TEXT\+\_\+\+VIEWER\+\_\+\+SD\+\_\+\+CHUNK&\\
+\hline
+
+\end{DoxyEnumFields}
+
+
+\label{doc-func-members}
+\Hypertarget{text__viewer__screen_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{text__viewer__screen_8c_a90b8d94bda47f68b35666ca55f994905}\index{text\_viewer\_screen.c@{text\_viewer\_screen.c}!text\_viewer\_open@{text\_viewer\_open}}
+\index{text\_viewer\_open@{text\_viewer\_open}!text\_viewer\_screen.c@{text\_viewer\_screen.c}}
+\doxysubsubsection{\texorpdfstring{text\_viewer\_open()}{text\_viewer\_open()}}
+{\footnotesize\ttfamily \label{text__viewer__screen_8c_a90b8d94bda47f68b35666ca55f994905} 
+esp\+\_\+err\+\_\+t text\+\_\+viewer\+\_\+open (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structtext__viewer__open__opts__t}{text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{opts}{}\end{DoxyParamCaption})}
+
+
+
+Load the viewer screen and display the requested file. 
+
+Reads the file at {\ttfamily opts-\/\texorpdfstring{$>$}{>}path}, builds the screen (on first use), sets edit/view mode, populates the text area and status, and loads the screen. Original content is snapshotted to support dirty tracking.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em opts} & Options\+:
+\begin{DoxyItemize}
+\item {\ttfamily path\+:} full path to the text file to view/edit (omit or empty for new files)
+\item {\ttfamily directory\+:} parent directory used when {\ttfamily path} is NULL/empty
+\item {\ttfamily suggested\+\_\+name\+:} default filename populated when creating a new file
+\item {\ttfamily return\+\_\+screen} (required)\+: screen to return to on close
+\item {\ttfamily editable\+:} true to enable edit mode
+\item {\ttfamily on\+\_\+close\+:} optional callback invoked on close
+\item {\ttfamily user\+\_\+ctx\+:} user context for the close callback
+\end{DoxyItemize}\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG if required options are missing
+\item fs\+\_\+text\+\_\+read\+\_\+range error codes if reading fails 
+\end{DoxyItemize}
+\end{DoxyReturn}

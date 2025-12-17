@@ -1,0 +1,510 @@
+\doxysection{components/file\+\_\+manager/include/fs\+\_\+navigator.h File Reference}
+\hypertarget{fs__navigator_8h}{}\label{fs__navigator_8h}\index{components/file\_manager/include/fs\_navigator.h@{components/file\_manager/include/fs\_navigator.h}}
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$stddef.\+h$>$}\newline
+{\ttfamily \#include $<$time.\+h$>$}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+Include dependency graph for fs\+\_\+navigator.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structfs__nav__item__t}{fs\+\_\+nav\+\_\+item\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Item metadata owned by the navigator. \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structfs__nav}{fs\+\_\+nav}}
+\begin{DoxyCompactList}\small\item\em Navigator state (treated as opaque by users of this API). \end{DoxyCompactList}\item 
+struct \mbox{\hyperlink{structfs__nav__config__t}{fs\+\_\+nav\+\_\+config\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Navigator configuration. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+PATH}}~256
+\item 
+\#define \mbox{\hyperlink{fs__navigator_8h_a114e90f5e8fa8852445740f617541df5}{FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+NAME}}~96
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+typedef struct \mbox{\hyperlink{structfs__nav}{fs\+\_\+nav}} \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Navigator state (treated as opaque by users of this API). \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\+\_\+nav\+\_\+sort\+\_\+mode\+\_\+t}} \{ \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedac94352bee2bdb93e75322f9d7b9446af}{FS\+\_\+\+NAV\+\_\+\+SORT\+\_\+\+NAME}} = 0
+, \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedafbe645fb513ba68beb7ccb5e19bbc775}{FS\+\_\+\+NAV\+\_\+\+SORT\+\_\+\+DATE}} = 1
+, \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ceda554d6269e8c7de72151f7fc7b8b6dd87}{FS\+\_\+\+NAV\+\_\+\+SORT\+\_\+\+SIZE}} = 2
+, \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedaceb34dc068c34ac7a72ad5e83e4dcf89}{FS\+\_\+\+NAV\+\_\+\+SORT\+\_\+\+COUNT}}
+ \}
+\begin{DoxyCompactList}\small\item\em Sort criteria used by the navigator. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__navigator_8h_af34293f50c9cb51b35deae8fbe2022ef}{fs\+\_\+nav\+\_\+init}} (\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav, const \mbox{\hyperlink{structfs__nav__config__t}{fs\+\_\+nav\+\_\+config\+\_\+t}} \texorpdfstring{$\ast$}{*}cfg)
+\begin{DoxyCompactList}\small\item\em Initialize a navigator rooted at {\ttfamily cfg-\/\texorpdfstring{$>$}{>}root\+\_\+path} and load persisted state if present. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{fs__navigator_8h_ae88d0062693e96c497e71b424173cecd}{fs\+\_\+nav\+\_\+deinit}} (\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Release resources held by the navigator (directory items). \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__navigator_8h_a60f810f6bbd5d675e97b75ded781d9f8}{fs\+\_\+nav\+\_\+refresh}} (\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Rescan the current directory and refresh navigator state. \end{DoxyCompactList}\item 
+const \mbox{\hyperlink{structfs__nav__item__t}{fs\+\_\+nav\+\_\+item\+\_\+t}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{fs__navigator_8h_abda9e9f29e50ac58b3ae6a9ae7ebaf8b}{fs\+\_\+nav\+\_\+items}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav, size\+\_\+t \texorpdfstring{$\ast$}{*}count)
+\begin{DoxyCompactList}\small\item\em Get a pointer to the currently loaded items window. \end{DoxyCompactList}\item 
+const char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{fs__navigator_8h_ac6e6ce4926e00eb145d22cdc5ecdedf3}{fs\+\_\+nav\+\_\+current\+\_\+path}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Get absolute current path (root + relative). \end{DoxyCompactList}\item 
+const char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{fs__navigator_8h_ae56543fec97f3192ca74a34ddce320d2}{fs\+\_\+nav\+\_\+relative\+\_\+path}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Get relative path from root (\textquotesingle{}\textquotesingle{} means root). \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{fs__navigator_8h_adea0605860486c3d88af83ced47805fb}{fs\+\_\+nav\+\_\+can\+\_\+go\+\_\+parent}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Whether a parent directory exists (i.\+e., we are not at root). \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__navigator_8h_a8f82f45654f4076922bca566eff2ee8c}{fs\+\_\+nav\+\_\+enter}} (\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav, size\+\_\+t index)
+\begin{DoxyCompactList}\small\item\em Enter the directory at {\ttfamily index} in the current listing and refresh. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__navigator_8h_a6e9fb24d668273ffd66b26837c99dad8}{fs\+\_\+nav\+\_\+go\+\_\+parent}} (\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Go to parent directory (if any) and refresh. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__navigator_8h_ad991ddef08006a8815404aa2d5661944}{fs\+\_\+nav\+\_\+set\+\_\+sort}} (\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav, \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\+\_\+nav\+\_\+sort\+\_\+mode\+\_\+t}} mode, bool ascending)
+\begin{DoxyCompactList}\small\item\em Set sort mode and direction, then sort current items and persist state. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\+\_\+nav\+\_\+sort\+\_\+mode\+\_\+t}} \mbox{\hyperlink{fs__navigator_8h_a38a1bea67c7cfb721779746a1cac6011}{fs\+\_\+nav\+\_\+get\+\_\+sort}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Get current sort mode. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{fs__navigator_8h_a9ae9adf6529805c4fd5eb4d9ed7d6789}{fs\+\_\+nav\+\_\+is\+\_\+sort\+\_\+ascending}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Check if sort direction is ascending. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{fs__navigator_8h_a8725a9caa561f26029371ece2d29cb17}{fs\+\_\+nav\+\_\+is\+\_\+sort\+\_\+enabled}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Check if sorting is currently enabled (total\+\_\+items \texorpdfstring{$<$}{<}= max\+\_\+items or max\+\_\+items==0). \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__navigator_8h_a7c945629672eec1df898202bb5a1dfd5}{fs\+\_\+nav\+\_\+set\+\_\+window}} (\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav, size\+\_\+t start, size\+\_\+t size)
+\begin{DoxyCompactList}\small\item\em Set the current window (offset + size) to load for the directory listing. \end{DoxyCompactList}\item 
+size\+\_\+t \mbox{\hyperlink{fs__navigator_8h_a8e9a47f37ea8d075f65e17ec78a661ae}{fs\+\_\+nav\+\_\+total\+\_\+items}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Get total number of items in current directory. \end{DoxyCompactList}\item 
+size\+\_\+t \mbox{\hyperlink{fs__navigator_8h_a3057090e465a5646b5f223ba952ec3a8}{fs\+\_\+nav\+\_\+window\+\_\+start}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav)
+\begin{DoxyCompactList}\small\item\em Get current window start offset. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__navigator_8h_a1c7c7318cd9b3fbfd4ac18bb7203304b}{fs\+\_\+nav\+\_\+compose\+\_\+path}} (const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav, const char \texorpdfstring{$\ast$}{*}item\+\_\+name, char \texorpdfstring{$\ast$}{*}out, size\+\_\+t out\+\_\+len)
+\begin{DoxyCompactList}\small\item\em Compose an absolute path by appending {\ttfamily item\+\_\+name} to the current directory. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__navigator_8h_af13983159a156d3c4f55f2b4319fc1c8}{fs\+\_\+nav\+\_\+ensure\+\_\+meta}} (\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}nav, size\+\_\+t index)
+\begin{DoxyCompactList}\small\item\em Ensure metadata (stat) for an item if pending. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{fs__navigator_8h_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{fs__navigator_8h_a114e90f5e8fa8852445740f617541df5}\index{fs\_navigator.h@{fs\_navigator.h}!FS\_NAV\_MAX\_NAME@{FS\_NAV\_MAX\_NAME}}
+\index{FS\_NAV\_MAX\_NAME@{FS\_NAV\_MAX\_NAME}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{FS\_NAV\_MAX\_NAME}{FS\_NAV\_MAX\_NAME}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a114e90f5e8fa8852445740f617541df5} 
+\#define FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+NAME~96}
+
+\Hypertarget{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8}\index{fs\_navigator.h@{fs\_navigator.h}!FS\_NAV\_MAX\_PATH@{FS\_NAV\_MAX\_PATH}}
+\index{FS\_NAV\_MAX\_PATH@{FS\_NAV\_MAX\_PATH}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{FS\_NAV\_MAX\_PATH}{FS\_NAV\_MAX\_PATH}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a2b68fd1f18548c24d1bec5a50a5be8a8} 
+\#define FS\+\_\+\+NAV\+\_\+\+MAX\+\_\+\+PATH~256}
+
+
+
+\label{doc-typedef-members}
+\Hypertarget{fs__navigator_8h_doc-typedef-members}
+\doxysubsection{Typedef Documentation}
+\Hypertarget{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_t@{fs\_nav\_t}}
+\index{fs\_nav\_t@{fs\_nav\_t}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_t}{fs\_nav\_t}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad} 
+typedef struct \mbox{\hyperlink{structfs__nav}{fs\+\_\+nav}} \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}}}
+
+
+
+Navigator state (treated as opaque by users of this API). 
+
+Fields are internal and may change; external modules should interact only through the provided functions. 
+
+\label{doc-enum-members}
+\Hypertarget{fs__navigator_8h_doc-enum-members}
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_sort\_mode\_t@{fs\_nav\_sort\_mode\_t}}
+\index{fs\_nav\_sort\_mode\_t@{fs\_nav\_sort\_mode\_t}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_sort\_mode\_t}{fs\_nav\_sort\_mode\_t}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced} 
+enum \mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\+\_\+nav\+\_\+sort\+\_\+mode\+\_\+t}}}
+
+
+
+Sort criteria used by the navigator. 
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FS\_NAV\_SORT\_NAME@{FS\_NAV\_SORT\_NAME}!fs\_navigator.h@{fs\_navigator.h}}\index{fs\_navigator.h@{fs\_navigator.h}!FS\_NAV\_SORT\_NAME@{FS\_NAV\_SORT\_NAME}}}\Hypertarget{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedac94352bee2bdb93e75322f9d7b9446af}\label{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedac94352bee2bdb93e75322f9d7b9446af} 
+FS\+\_\+\+NAV\+\_\+\+SORT\+\_\+\+NAME&Case-\/insensitive name. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FS\_NAV\_SORT\_DATE@{FS\_NAV\_SORT\_DATE}!fs\_navigator.h@{fs\_navigator.h}}\index{fs\_navigator.h@{fs\_navigator.h}!FS\_NAV\_SORT\_DATE@{FS\_NAV\_SORT\_DATE}}}\Hypertarget{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedafbe645fb513ba68beb7ccb5e19bbc775}\label{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedafbe645fb513ba68beb7ccb5e19bbc775} 
+FS\+\_\+\+NAV\+\_\+\+SORT\+\_\+\+DATE&Last modification time. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FS\_NAV\_SORT\_SIZE@{FS\_NAV\_SORT\_SIZE}!fs\_navigator.h@{fs\_navigator.h}}\index{fs\_navigator.h@{fs\_navigator.h}!FS\_NAV\_SORT\_SIZE@{FS\_NAV\_SORT\_SIZE}}}\Hypertarget{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ceda554d6269e8c7de72151f7fc7b8b6dd87}\label{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ceda554d6269e8c7de72151f7fc7b8b6dd87} 
+FS\+\_\+\+NAV\+\_\+\+SORT\+\_\+\+SIZE&File size (directories grouped ahead of files). \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{FS\_NAV\_SORT\_COUNT@{FS\_NAV\_SORT\_COUNT}!fs\_navigator.h@{fs\_navigator.h}}\index{fs\_navigator.h@{fs\_navigator.h}!FS\_NAV\_SORT\_COUNT@{FS\_NAV\_SORT\_COUNT}}}\Hypertarget{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedaceb34dc068c34ac7a72ad5e83e4dcf89}\label{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661cedaceb34dc068c34ac7a72ad5e83e4dcf89} 
+FS\+\_\+\+NAV\+\_\+\+SORT\+\_\+\+COUNT&\\
+\hline
+
+\end{DoxyEnumFields}
+
+
+\label{doc-func-members}
+\Hypertarget{fs__navigator_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{fs__navigator_8h_adea0605860486c3d88af83ced47805fb}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_can\_go\_parent@{fs\_nav\_can\_go\_parent}}
+\index{fs\_nav\_can\_go\_parent@{fs\_nav\_can\_go\_parent}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_can\_go\_parent()}{fs\_nav\_can\_go\_parent()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_adea0605860486c3d88af83ced47805fb} 
+bool fs\+\_\+nav\+\_\+can\+\_\+go\+\_\+parent (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Whether a parent directory exists (i.\+e., we are not at root). 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em nav} & Navigator. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if {\ttfamily nav} is valid and relative path is non-\/empty. 
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_a1c7c7318cd9b3fbfd4ac18bb7203304b}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_compose\_path@{fs\_nav\_compose\_path}}
+\index{fs\_nav\_compose\_path@{fs\_nav\_compose\_path}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_compose\_path()}{fs\_nav\_compose\_path()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a1c7c7318cd9b3fbfd4ac18bb7203304b} 
+esp\+\_\+err\+\_\+t fs\+\_\+nav\+\_\+compose\+\_\+path (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{item\+\_\+name}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{out}{, }\item[{size\+\_\+t}]{out\+\_\+len}{}\end{DoxyParamCaption})}
+
+
+
+Compose an absolute path by appending {\ttfamily item\+\_\+name} to the current directory. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em nav} & Navigator (must be initialized). \\
+\hline
+\mbox{\texttt{in}}  & {\em item\+\_\+name} & Child item name (e.\+g., from \doxylink{fs__navigator_8h_abda9e9f29e50ac58b3ae6a9ae7ebaf8b}{fs\+\_\+nav\+\_\+items()}). \\
+\hline
+\mbox{\texttt{out}}  & {\em out} & Buffer for the resulting absolute path. \\
+\hline
+\mbox{\texttt{in}}  & {\em out\+\_\+len} & Size of {\ttfamily out}. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK on success, ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on bad inputs, ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+SIZE if buffer is too small. 
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_ac6e6ce4926e00eb145d22cdc5ecdedf3}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_current\_path@{fs\_nav\_current\_path}}
+\index{fs\_nav\_current\_path@{fs\_nav\_current\_path}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_current\_path()}{fs\_nav\_current\_path()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_ac6e6ce4926e00eb145d22cdc5ecdedf3} 
+const char \texorpdfstring{$\ast$}{*} fs\+\_\+nav\+\_\+current\+\_\+path (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Get absolute current path (root + relative). 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em nav} & Navigator. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+NUL-\/terminated path or NULL. 
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_ae88d0062693e96c497e71b424173cecd}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_deinit@{fs\_nav\_deinit}}
+\index{fs\_nav\_deinit@{fs\_nav\_deinit}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_deinit()}{fs\_nav\_deinit()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_ae88d0062693e96c497e71b424173cecd} 
+void fs\+\_\+nav\+\_\+deinit (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Release resources held by the navigator (directory items). 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in,out}}  & {\em nav} & Navigator to deinitialize (safe to pass NULL). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{fs__navigator_8h_af13983159a156d3c4f55f2b4319fc1c8}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_ensure\_meta@{fs\_nav\_ensure\_meta}}
+\index{fs\_nav\_ensure\_meta@{fs\_nav\_ensure\_meta}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_ensure\_meta()}{fs\_nav\_ensure\_meta()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_af13983159a156d3c4f55f2b4319fc1c8} 
+esp\+\_\+err\+\_\+t fs\+\_\+nav\+\_\+ensure\+\_\+meta (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{, }\item[{size\+\_\+t}]{index}{}\end{DoxyParamCaption})}
+
+
+
+Ensure metadata (stat) for an item if pending. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em nav} & Navigator. \\
+\hline
+{\em index} & Item index. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK on success; ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on bad inputs; ESP\+\_\+\+FAIL on stat errors. 
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_a8f82f45654f4076922bca566eff2ee8c}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_enter@{fs\_nav\_enter}}
+\index{fs\_nav\_enter@{fs\_nav\_enter}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_enter()}{fs\_nav\_enter()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a8f82f45654f4076922bca566eff2ee8c} 
+esp\+\_\+err\+\_\+t fs\+\_\+nav\+\_\+enter (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{, }\item[{size\+\_\+t}]{index}{}\end{DoxyParamCaption})}
+
+
+
+Enter the directory at {\ttfamily index} in the current listing and refresh. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in,out}}  & {\em nav} & Navigator. \\
+\hline
+\mbox{\texttt{in}}  & {\em index} & Index into {\ttfamily fs\+\_\+nav\+\_\+items}. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG for bad args/index
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+STATE if selected item is not a directory
+\item Errors from internal path set/refresh/store 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_a38a1bea67c7cfb721779746a1cac6011}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_get\_sort@{fs\_nav\_get\_sort}}
+\index{fs\_nav\_get\_sort@{fs\_nav\_get\_sort}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_get\_sort()}{fs\_nav\_get\_sort()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a38a1bea67c7cfb721779746a1cac6011} 
+\mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\+\_\+nav\+\_\+sort\+\_\+mode\+\_\+t}} fs\+\_\+nav\+\_\+get\+\_\+sort (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Get current sort mode. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em nav} & Navigator. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Sort mode (Name by default if {\ttfamily nav} is NULL). 
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_a6e9fb24d668273ffd66b26837c99dad8}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_go\_parent@{fs\_nav\_go\_parent}}
+\index{fs\_nav\_go\_parent@{fs\_nav\_go\_parent}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_go\_parent()}{fs\_nav\_go\_parent()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a6e9fb24d668273ffd66b26837c99dad8} 
+esp\+\_\+err\+\_\+t fs\+\_\+nav\+\_\+go\+\_\+parent (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Go to parent directory (if any) and refresh. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in,out}}  & {\em nav} & Navigator. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+STATE if already at root
+\item Errors from internal path set/refresh/store 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_af34293f50c9cb51b35deae8fbe2022ef}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_init@{fs\_nav\_init}}
+\index{fs\_nav\_init@{fs\_nav\_init}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_init()}{fs\_nav\_init()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_af34293f50c9cb51b35deae8fbe2022ef} 
+esp\+\_\+err\+\_\+t fs\+\_\+nav\+\_\+init (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{, }\item[{const \mbox{\hyperlink{structfs__nav__config__t}{fs\+\_\+nav\+\_\+config\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{cfg}{}\end{DoxyParamCaption})}
+
+
+
+Initialize a navigator rooted at {\ttfamily cfg-\/\texorpdfstring{$>$}{>}root\+\_\+path} and load persisted state if present. 
+
+Trims trailing slashes, validates root is an absolute directory, restores last relative path, sort mode and direction from NVS (best effort), then performs an initial directory scan.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{out}}  & {\em nav} & Navigator instance to initialize. \\
+\hline
+\mbox{\texttt{in}}  & {\em cfg} & Configuration (root path and item cap). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on null args or invalid root path
+\item ESP\+\_\+\+ERR\+\_\+\+NOT\+\_\+\+FOUND if root is not accessible
+\item Errors from fs\+\_\+nav\+\_\+refresh on initial scan failure 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_a9ae9adf6529805c4fd5eb4d9ed7d6789}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_is\_sort\_ascending@{fs\_nav\_is\_sort\_ascending}}
+\index{fs\_nav\_is\_sort\_ascending@{fs\_nav\_is\_sort\_ascending}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_is\_sort\_ascending()}{fs\_nav\_is\_sort\_ascending()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a9ae9adf6529805c4fd5eb4d9ed7d6789} 
+bool fs\+\_\+nav\+\_\+is\+\_\+sort\+\_\+ascending (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Check if sort direction is ascending. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em nav} & Navigator. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if ascending (default true when {\ttfamily nav} is NULL). 
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_a8725a9caa561f26029371ece2d29cb17}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_is\_sort\_enabled@{fs\_nav\_is\_sort\_enabled}}
+\index{fs\_nav\_is\_sort\_enabled@{fs\_nav\_is\_sort\_enabled}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_is\_sort\_enabled()}{fs\_nav\_is\_sort\_enabled()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a8725a9caa561f26029371ece2d29cb17} 
+bool fs\+\_\+nav\+\_\+is\+\_\+sort\+\_\+enabled (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Check if sorting is currently enabled (total\+\_\+items \texorpdfstring{$<$}{<}= max\+\_\+items or max\+\_\+items==0). 
+
+\Hypertarget{fs__navigator_8h_abda9e9f29e50ac58b3ae6a9ae7ebaf8b}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_items@{fs\_nav\_items}}
+\index{fs\_nav\_items@{fs\_nav\_items}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_items()}{fs\_nav\_items()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_abda9e9f29e50ac58b3ae6a9ae7ebaf8b} 
+const \mbox{\hyperlink{structfs__nav__item__t}{fs\+\_\+nav\+\_\+item\+\_\+t}} \texorpdfstring{$\ast$}{*} fs\+\_\+nav\+\_\+items (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{, }\item[{size\+\_\+t \texorpdfstring{$\ast$}{*}}]{count}{}\end{DoxyParamCaption})}
+
+
+
+Get a pointer to the currently loaded items window. 
+
+When sorting is enabled, returns a slice starting at {\ttfamily window\+\_\+start} of length up to {\ttfamily window\+\_\+size}. When sorting is disabled, returns the last window loaded via {\ttfamily \doxylink{fs__navigator_8h_a7c945629672eec1df898202bb5a1dfd5}{fs\+\_\+nav\+\_\+set\+\_\+window()}}.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em nav} & Navigator. \\
+\hline
+\mbox{\texttt{out}}  & {\em count} & Optional; set to number of valid items in the window. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to internal array (NULL if unavailable). 
+\end{DoxyReturn}
+\begin{DoxyWarning}{Warning}
+The pointer becomes invalid after {\ttfamily fs\+\_\+nav\+\_\+refresh}, {\ttfamily fs\+\_\+nav\+\_\+set\+\_\+window} or sort changes. 
+\end{DoxyWarning}
+\begin{DoxyNote}{Note}
+Item names are owned by the navigator and freed on refresh/deinit; do not free/mutate them. 
+\end{DoxyNote}
+\Hypertarget{fs__navigator_8h_a60f810f6bbd5d675e97b75ded781d9f8}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_refresh@{fs\_nav\_refresh}}
+\index{fs\_nav\_refresh@{fs\_nav\_refresh}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_refresh()}{fs\_nav\_refresh()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a60f810f6bbd5d675e97b75ded781d9f8} 
+esp\+\_\+err\+\_\+t fs\+\_\+nav\+\_\+refresh (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Rescan the current directory and refresh navigator state. 
+
+Computes {\ttfamily total\+\_\+items}. If {\ttfamily total\+\_\+items} \texorpdfstring{$<$}{<}= {\ttfamily max\+\_\+items} (or {\ttfamily max\+\_\+items==0}), sorting stays enabled and all items are loaded/sorted. Otherwise, sorting is disabled and only the first window is loaded; additional windows must be fetched via {\ttfamily \doxylink{fs__navigator_8h_a7c945629672eec1df898202bb5a1dfd5}{fs\+\_\+nav\+\_\+set\+\_\+window()}}.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in,out}}  & {\em nav} & Navigator. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG if {\ttfamily nav} is NULL
+\item ESP\+\_\+\+FAIL if directory cannot be opened
+\item ESP\+\_\+\+ERR\+\_\+\+NO\+\_\+\+MEM if allocation fails 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_ae56543fec97f3192ca74a34ddce320d2}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_relative\_path@{fs\_nav\_relative\_path}}
+\index{fs\_nav\_relative\_path@{fs\_nav\_relative\_path}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_relative\_path()}{fs\_nav\_relative\_path()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_ae56543fec97f3192ca74a34ddce320d2} 
+const char \texorpdfstring{$\ast$}{*} fs\+\_\+nav\+\_\+relative\+\_\+path (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Get relative path from root (\textquotesingle{}\textquotesingle{} means root). 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em nav} & Navigator. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+NUL-\/terminated relative path or NULL. 
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_ad991ddef08006a8815404aa2d5661944}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_set\_sort@{fs\_nav\_set\_sort}}
+\index{fs\_nav\_set\_sort@{fs\_nav\_set\_sort}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_set\_sort()}{fs\_nav\_set\_sort()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_ad991ddef08006a8815404aa2d5661944} 
+esp\+\_\+err\+\_\+t fs\+\_\+nav\+\_\+set\+\_\+sort (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{, }\item[{\mbox{\hyperlink{fs__navigator_8h_a43ed23700b9829c66f3ee09e99661ced}{fs\+\_\+nav\+\_\+sort\+\_\+mode\+\_\+t}}}]{mode}{, }\item[{bool}]{ascending}{}\end{DoxyParamCaption})}
+
+
+
+Set sort mode and direction, then sort current items and persist state. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in,out}}  & {\em nav} & Navigator. \\
+\hline
+\mbox{\texttt{in}}  & {\em mode} & Sort mode (Name/\+Date/\+Size). \\
+\hline
+\mbox{\texttt{in}}  & {\em ascending} & true for ascending, false for descending. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG if {\ttfamily nav} is NULL or mode is invalid
+\item Errors from state store 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_a7c945629672eec1df898202bb5a1dfd5}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_set\_window@{fs\_nav\_set\_window}}
+\index{fs\_nav\_set\_window@{fs\_nav\_set\_window}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_set\_window()}{fs\_nav\_set\_window()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a7c945629672eec1df898202bb5a1dfd5} 
+esp\+\_\+err\+\_\+t fs\+\_\+nav\+\_\+set\+\_\+window (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{, }\item[{size\+\_\+t}]{start}{, }\item[{size\+\_\+t}]{size}{}\end{DoxyParamCaption})}
+
+
+
+Set the current window (offset + size) to load for the directory listing. 
+
+When sorting is enabled (item count \texorpdfstring{$<$}{<}= max\+\_\+items), only the view window is adjusted. When sorting is disabled (item count \texorpdfstring{$>$}{>} max\+\_\+items or max\+\_\+items==0), this will reload just the requested window from the filesystem without holding all items.
+
+
+\begin{DoxyParams}{Parameters}
+{\em nav} & Navigator. \\
+\hline
+{\em start} & Zero-\/based offset into the directory items. \\
+\hline
+{\em size} & Number of items to load (must be \texorpdfstring{$>$}{>}0). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK on success; ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on bad params; ESP\+\_\+\+FAIL on I/O errors; ESP\+\_\+\+ERR\+\_\+\+NO\+\_\+\+MEM on allocation failure. 
+\end{DoxyReturn}
+\Hypertarget{fs__navigator_8h_a8e9a47f37ea8d075f65e17ec78a661ae}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_total\_items@{fs\_nav\_total\_items}}
+\index{fs\_nav\_total\_items@{fs\_nav\_total\_items}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_total\_items()}{fs\_nav\_total\_items()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a8e9a47f37ea8d075f65e17ec78a661ae} 
+size\+\_\+t fs\+\_\+nav\+\_\+total\+\_\+items (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Get total number of items in current directory. 
+
+\Hypertarget{fs__navigator_8h_a3057090e465a5646b5f223ba952ec3a8}\index{fs\_navigator.h@{fs\_navigator.h}!fs\_nav\_window\_start@{fs\_nav\_window\_start}}
+\index{fs\_nav\_window\_start@{fs\_nav\_window\_start}!fs\_navigator.h@{fs\_navigator.h}}
+\doxysubsubsection{\texorpdfstring{fs\_nav\_window\_start()}{fs\_nav\_window\_start()}}
+{\footnotesize\ttfamily \label{fs__navigator_8h_a3057090e465a5646b5f223ba952ec3a8} 
+size\+\_\+t fs\+\_\+nav\+\_\+window\+\_\+start (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{fs__navigator_8h_aa4ab7dfbed1955024a4662ee90c92cad}{fs\+\_\+nav\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{nav}{}\end{DoxyParamCaption})}
+
+
+
+Get current window start offset. 
+

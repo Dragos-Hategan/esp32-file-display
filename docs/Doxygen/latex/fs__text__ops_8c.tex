@@ -1,0 +1,217 @@
+\doxysection{components/file\+\_\+manager/fs\+\_\+text\+\_\+ops.c File Reference}
+\hypertarget{fs__text__ops_8c}{}\label{fs__text__ops_8c}\index{components/file\_manager/fs\_text\_ops.c@{components/file\_manager/fs\_text\_ops.c}}
+{\ttfamily \#include "{}fs\+\_\+text\+\_\+ops.\+h"{}}\newline
+{\ttfamily \#include $<$errno.\+h$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$strings.\+h$>$}\newline
+{\ttfamily \#include $<$sys/stat.\+h$>$}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+Include dependency graph for fs\+\_\+text\+\_\+ops.\+c\+:
+% FIG 0
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool \mbox{\hyperlink{fs__text__ops_8c_af6ea7baf1ba58a4b22df962241d3829e}{fs\+\_\+text\+\_\+is\+\_\+txt}} (const char \texorpdfstring{$\ast$}{*}name)
+\begin{DoxyCompactList}\small\item\em Check whether a file name/path uses a .txt extension (case-\/insensitive). \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__text__ops_8c_a7a720784a019fb96eeb4ec44872f9067}{fs\+\_\+text\+\_\+create}} (const char \texorpdfstring{$\ast$}{*}path)
+\begin{DoxyCompactList}\small\item\em Create a new empty file. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__text__ops_8c_a2f7a05987888c47ebd2343738319a420}{fs\+\_\+text\+\_\+read\+\_\+range}} (const char \texorpdfstring{$\ast$}{*}path, size\+\_\+t offset\+\_\+kb, char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}out\+\_\+buf, size\+\_\+t \texorpdfstring{$\ast$}{*}out\+\_\+len)
+\begin{DoxyCompactList}\small\item\em Read a fixed-\/size block of text bytes from a file starting at a given offset. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__text__ops_8c_ab96942645a374ac8984cf98685dc151a}{fs\+\_\+text\+\_\+write}} (const char \texorpdfstring{$\ast$}{*}path, const char \texorpdfstring{$\ast$}{*}data, size\+\_\+t len)
+\begin{DoxyCompactList}\small\item\em Atomically replace (or create) a text file with the provided buffer. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__text__ops_8c_a917f808d32802343ae438a9266dc760c}{fs\+\_\+text\+\_\+append}} (const char \texorpdfstring{$\ast$}{*}path, const char \texorpdfstring{$\ast$}{*}data, size\+\_\+t len)
+\begin{DoxyCompactList}\small\item\em Append binary/text data to an existing file (or create if missing). \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{fs__text__ops_8c_ada4c5aedaa8865cb936116c399add5c5}{fs\+\_\+text\+\_\+delete}} (const char \texorpdfstring{$\ast$}{*}path)
+\begin{DoxyCompactList}\small\item\em Delete a file from the filesystem. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{fs__text__ops_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{fs__text__ops_8c_a917f808d32802343ae438a9266dc760c}\index{fs\_text\_ops.c@{fs\_text\_ops.c}!fs\_text\_append@{fs\_text\_append}}
+\index{fs\_text\_append@{fs\_text\_append}!fs\_text\_ops.c@{fs\_text\_ops.c}}
+\doxysubsubsection{\texorpdfstring{fs\_text\_append()}{fs\_text\_append()}}
+{\footnotesize\ttfamily \label{fs__text__ops_8c_a917f808d32802343ae438a9266dc760c} 
+esp\+\_\+err\+\_\+t fs\+\_\+text\+\_\+append (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{path}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{data}{, }\item[{size\+\_\+t}]{len}{}\end{DoxyParamCaption})}
+
+
+
+Append binary/text data to an existing file (or create if missing). 
+
+Opens {\ttfamily path} in append mode and writes exactly {\ttfamily len} bytes from {\ttfamily data} to the end of the file. If the file does not exist, a new one is created.
+
+
+\begin{DoxyParams}{Parameters}
+{\em path} & Absolute or relative path to the target file. \\
+\hline
+{\em data} & Pointer to the data buffer to append. \\
+\hline
+{\em len} & Number of bytes to write.\\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyRetVals}{Return values}
+{\em ESP\+\_\+\+OK} & Data appended successfully. \\
+\hline
+{\em ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG} & Invalid path or NULL data pointer. \\
+\hline
+{\em ESP\+\_\+\+FAIL} & File could not be opened or write failed.\\
+\hline
+\end{DoxyRetVals}
+\begin{DoxyNote}{Note}
+The file is opened in binary mode ("{}ab"{} or "{}wb"{}), suitable for both text and raw data. Data is flushed and file closed before returning. 
+\end{DoxyNote}
+\begin{DoxyWarning}{Warning}
+If insufficient storage is available, partial writes may occur before failure is detected. 
+\end{DoxyWarning}
+\Hypertarget{fs__text__ops_8c_a7a720784a019fb96eeb4ec44872f9067}\index{fs\_text\_ops.c@{fs\_text\_ops.c}!fs\_text\_create@{fs\_text\_create}}
+\index{fs\_text\_create@{fs\_text\_create}!fs\_text\_ops.c@{fs\_text\_ops.c}}
+\doxysubsubsection{\texorpdfstring{fs\_text\_create()}{fs\_text\_create()}}
+{\footnotesize\ttfamily \label{fs__text__ops_8c_a7a720784a019fb96eeb4ec44872f9067} 
+esp\+\_\+err\+\_\+t fs\+\_\+text\+\_\+create (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{path}{}\end{DoxyParamCaption})}
+
+
+
+Create a new empty file. 
+
+Attempts to create a new file at {\ttfamily path}. If the file already exists, returns ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+STATE. The file is opened in binary write mode and immediately closed to ensure it exists and is empty.
+
+
+\begin{DoxyParams}{Parameters}
+{\em path} & Absolute or relative path to the file to create.\\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyRetVals}{Return values}
+{\em ESP\+\_\+\+OK} & File created successfully. \\
+\hline
+{\em ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG} & Invalid or unsafe path. \\
+\hline
+{\em ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+STATE} & File already exists. \\
+\hline
+{\em ESP\+\_\+\+FAIL} & Creation failed (e.\+g. permission or I/O error).\\
+\hline
+\end{DoxyRetVals}
+\begin{DoxyNote}{Note}
+The created file will have zero length. 
+\end{DoxyNote}
+\Hypertarget{fs__text__ops_8c_ada4c5aedaa8865cb936116c399add5c5}\index{fs\_text\_ops.c@{fs\_text\_ops.c}!fs\_text\_delete@{fs\_text\_delete}}
+\index{fs\_text\_delete@{fs\_text\_delete}!fs\_text\_ops.c@{fs\_text\_ops.c}}
+\doxysubsubsection{\texorpdfstring{fs\_text\_delete()}{fs\_text\_delete()}}
+{\footnotesize\ttfamily \label{fs__text__ops_8c_ada4c5aedaa8865cb936116c399add5c5} 
+esp\+\_\+err\+\_\+t fs\+\_\+text\+\_\+delete (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{path}{}\end{DoxyParamCaption})}
+
+
+
+Delete a file from the filesystem. 
+
+Removes the file located at {\ttfamily path}. If the file does not exist, the function logs an error and returns ESP\+\_\+\+FAIL.
+
+
+\begin{DoxyParams}{Parameters}
+{\em path} & Absolute or relative path to the file to delete.\\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyRetVals}{Return values}
+{\em ESP\+\_\+\+OK} & File successfully removed. \\
+\hline
+{\em ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG} & Invalid or unsafe path. \\
+\hline
+{\em ESP\+\_\+\+FAIL} & File could not be removed (errno reported).\\
+\hline
+\end{DoxyRetVals}
+\begin{DoxyNote}{Note}
+Uses standard C {\ttfamily remove()} for portability. 
+\end{DoxyNote}
+\begin{DoxyWarning}{Warning}
+Fails silently if the path points to a directory instead of a file. 
+\end{DoxyWarning}
+\Hypertarget{fs__text__ops_8c_af6ea7baf1ba58a4b22df962241d3829e}\index{fs\_text\_ops.c@{fs\_text\_ops.c}!fs\_text\_is\_txt@{fs\_text\_is\_txt}}
+\index{fs\_text\_is\_txt@{fs\_text\_is\_txt}!fs\_text\_ops.c@{fs\_text\_ops.c}}
+\doxysubsubsection{\texorpdfstring{fs\_text\_is\_txt()}{fs\_text\_is\_txt()}}
+{\footnotesize\ttfamily \label{fs__text__ops_8c_af6ea7baf1ba58a4b22df962241d3829e} 
+bool fs\+\_\+text\+\_\+is\+\_\+txt (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+
+Check whether a file name/path uses a .txt extension (case-\/insensitive). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em name} & File name or path. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if the string ends with "{}.\+txt"{}, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{fs__text__ops_8c_a2f7a05987888c47ebd2343738319a420}\index{fs\_text\_ops.c@{fs\_text\_ops.c}!fs\_text\_read\_range@{fs\_text\_read\_range}}
+\index{fs\_text\_read\_range@{fs\_text\_read\_range}!fs\_text\_ops.c@{fs\_text\_ops.c}}
+\doxysubsubsection{\texorpdfstring{fs\_text\_read\_range()}{fs\_text\_read\_range()}}
+{\footnotesize\ttfamily \label{fs__text__ops_8c_a2f7a05987888c47ebd2343738319a420} 
+esp\+\_\+err\+\_\+t fs\+\_\+text\+\_\+read\+\_\+range (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{path}{, }\item[{size\+\_\+t}]{offset\+\_\+kb}{, }\item[{char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{out\+\_\+buf}{, }\item[{size\+\_\+t \texorpdfstring{$\ast$}{*}}]{out\+\_\+len}{}\end{DoxyParamCaption})}
+
+
+
+Read a fixed-\/size block of text bytes from a file starting at a given offset. 
+
+This function reads a chunk of data (FS\+\_\+\+TEXT\+\_\+\+READ\+\_\+\+CHUNK\+\_\+\+SIZE\+\_\+B bytes) from a file, starting at an offset specified in kilobytes. It validates the file path, ensures the offset does not exceed the file size, adjusts the read length when near EOF, and allocates a null-\/terminated buffer for the output.
+
+The caller takes ownership of the allocated buffer and must free it.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em path} & Absolute file path to read from. \\
+\hline
+\mbox{\texttt{in}}  & {\em offset\+\_\+kb} & Offset in kilobytes from the start of the file. The actual byte offset becomes {\ttfamily offset\+\_\+kb \texorpdfstring{$\ast$}{*} 1024}. \\
+\hline
+\mbox{\texttt{out}}  & {\em out\+\_\+buf} & Pointer to a char\texorpdfstring{$\ast$}{*} that will receive the allocated buffer. Must not be NULL. \\
+\hline
+\mbox{\texttt{out}}  & {\em out\+\_\+len} & Optional pointer to receive the number of bytes actually read. Can be NULL.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK On success.
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG If parameters are invalid or the path fails validation.
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+SIZE If the requested read size exceeds FS\+\_\+\+TEXT\+\_\+\+MAX\+\_\+\+BYTES.
+\item ESP\+\_\+\+ERR\+\_\+\+NO\+\_\+\+MEM If memory allocation fails.
+\item ESP\+\_\+\+FAIL If file operations (stat, fopen, fseek, fread) fail.
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxyNote}{Note}
+
+\begin{DoxyItemize}
+\item The output buffer is always null-\/terminated, even when reading binary data.
+\item If the offset lands beyond EOF, a zero-\/length read is performed.
+\item FS\+\_\+\+TEXT\+\_\+\+READ\+\_\+\+CHUNK\+\_\+\+SIZE\+\_\+B defines the number of bytes to read per call.
+\item The function only works with regular files. 
+\end{DoxyItemize}
+\end{DoxyNote}
+\Hypertarget{fs__text__ops_8c_ab96942645a374ac8984cf98685dc151a}\index{fs\_text\_ops.c@{fs\_text\_ops.c}!fs\_text\_write@{fs\_text\_write}}
+\index{fs\_text\_write@{fs\_text\_write}!fs\_text\_ops.c@{fs\_text\_ops.c}}
+\doxysubsubsection{\texorpdfstring{fs\_text\_write()}{fs\_text\_write()}}
+{\footnotesize\ttfamily \label{fs__text__ops_8c_ab96942645a374ac8984cf98685dc151a} 
+esp\+\_\+err\+\_\+t fs\+\_\+text\+\_\+write (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{path}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{data}{, }\item[{size\+\_\+t}]{len}{}\end{DoxyParamCaption})}
+
+
+
+Atomically replace (or create) a text file with the provided buffer. 
+
+Writes the buffer to a temporary file in the same directory and renames it over {\ttfamily path}. When running on case-\/insensitive filesystems (e.\+g., FAT), an existing file is removed before the rename to ensure the case-\/only rename succeeds.
+
+
+\begin{DoxyParams}{Parameters}
+{\em path} & Absolute path to the .txt file. \\
+\hline
+{\em data} & Buffer to write (can be NULL if {\ttfamily len} == 0). \\
+\hline
+{\em len} & Number of bytes from {\ttfamily data} to write. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK on success, ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on bad params, ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+SIZE if path is too long, ESP\+\_\+\+FAIL on filesystem errors. 
+\end{DoxyReturn}

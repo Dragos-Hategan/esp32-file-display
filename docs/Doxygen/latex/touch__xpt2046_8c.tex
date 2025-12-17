@@ -1,0 +1,125 @@
+\doxysection{components/touch\+\_\+xpt2046/touch\+\_\+xpt2046.c File Reference}
+\hypertarget{touch__xpt2046_8c}{}\label{touch__xpt2046_8c}\index{components/touch\_xpt2046/touch\_xpt2046.c@{components/touch\_xpt2046/touch\_xpt2046.c}}
+{\ttfamily \#include "{}touch\+\_\+xpt2046.\+h"{}}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$stdint.\+h$>$}\newline
+{\ttfamily \#include "{}freertos/\+Free\+RTOS.\+h"{}}\newline
+{\ttfamily \#include "{}freertos/task.\+h"{}}\newline
+{\ttfamily \#include "{}driver/spi\+\_\+master.\+h"{}}\newline
+{\ttfamily \#include "{}bsp/esp-\/bsp.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+lcd\+\_\+touch\+\_\+xpt2046.\+h"{}}\newline
+{\ttfamily \#include "{}calibration\+\_\+xpt2046.\+h"{}}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+Include dependency graph for touch\+\_\+xpt2046.\+c\+:
+% FIG 0
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{touch__xpt2046_8c_acaf0982fa98a41e4e6db0fb9200054dc}{touch\+\_\+init}} (void)
+\begin{DoxyCompactList}\small\item\em Initialize the SPI bus and the XPT2046 touch driver. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{touch__xpt2046_8c_aa5dcb1d5f91599edc81362fa8a7671c5}{touch\+\_\+register\+\_\+to\+\_\+lvgl}} (void)
+\begin{DoxyCompactList}\small\item\em Registers the XPT2046 touch driver as an LVGL input device. \end{DoxyCompactList}\item 
+lv\+\_\+indev\+\_\+t \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{touch__xpt2046_8c_a03de146c7b26a0f9a0351550a3d3b1e0}{touch\+\_\+get\+\_\+indev}} (void)
+\begin{DoxyCompactList}\small\item\em Get a pointer to the global touch input device created by lv\+\_\+indev\+\_\+create(). \end{DoxyCompactList}\item 
+esp\+\_\+lcd\+\_\+touch\+\_\+handle\+\_\+t \mbox{\hyperlink{touch__xpt2046_8c_aaaeca84ff6624ca13980f74263d49a20}{touch\+\_\+get\+\_\+handle}} (void)
+\begin{DoxyCompactList}\small\item\em Get the global touch handle created by the XPT2046 driver. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{touch__xpt2046_8c_a7e2356bb935d73041f087c1780e27185}{touch\+\_\+log\+\_\+press}} (uint16\+\_\+t x, uint16\+\_\+t y)
+\begin{DoxyCompactList}\small\item\em Log a touch press with calibrated coordinates. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{touch__xpt2046_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{touch__xpt2046_8c_aaaeca84ff6624ca13980f74263d49a20}\index{touch\_xpt2046.c@{touch\_xpt2046.c}!touch\_get\_handle@{touch\_get\_handle}}
+\index{touch\_get\_handle@{touch\_get\_handle}!touch\_xpt2046.c@{touch\_xpt2046.c}}
+\doxysubsubsection{\texorpdfstring{touch\_get\_handle()}{touch\_get\_handle()}}
+{\footnotesize\ttfamily \label{touch__xpt2046_8c_aaaeca84ff6624ca13980f74263d49a20} 
+esp\+\_\+lcd\+\_\+touch\+\_\+handle\+\_\+t touch\+\_\+get\+\_\+handle (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the global touch handle created by the XPT2046 driver. 
+
+\begin{DoxyReturn}{Returns}
+esp\+\_\+lcd\+\_\+touch\+\_\+handle\+\_\+t Current touch handle or NULL if not initialized. 
+\end{DoxyReturn}
+\Hypertarget{touch__xpt2046_8c_a03de146c7b26a0f9a0351550a3d3b1e0}\index{touch\_xpt2046.c@{touch\_xpt2046.c}!touch\_get\_indev@{touch\_get\_indev}}
+\index{touch\_get\_indev@{touch\_get\_indev}!touch\_xpt2046.c@{touch\_xpt2046.c}}
+\doxysubsubsection{\texorpdfstring{touch\_get\_indev()}{touch\_get\_indev()}}
+{\footnotesize\ttfamily \label{touch__xpt2046_8c_a03de146c7b26a0f9a0351550a3d3b1e0} 
+lv\+\_\+indev\+\_\+t \texorpdfstring{$\ast$}{*} touch\+\_\+get\+\_\+indev (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get a pointer to the global touch input device created by lv\+\_\+indev\+\_\+create(). 
+
+\begin{DoxyReturn}{Returns}
+lv\+\_\+indev\+\_\+t Current touch input device pointer or NULL if not initialized. 
+\end{DoxyReturn}
+\Hypertarget{touch__xpt2046_8c_acaf0982fa98a41e4e6db0fb9200054dc}\index{touch\_xpt2046.c@{touch\_xpt2046.c}!touch\_init@{touch\_init}}
+\index{touch\_init@{touch\_init}!touch\_xpt2046.c@{touch\_xpt2046.c}}
+\doxysubsubsection{\texorpdfstring{touch\_init()}{touch\_init()}}
+{\footnotesize\ttfamily \label{touch__xpt2046_8c_acaf0982fa98a41e4e6db0fb9200054dc} 
+esp\+\_\+err\+\_\+t touch\+\_\+init (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Initialize the SPI bus and the XPT2046 touch driver. 
+
+This function sets up the SPI bus used by the XPT2046 touch controller, creates the {\ttfamily esp\+\_\+lcd\+\_\+panel\+\_\+io} handle, and initializes the XPT2046 touch driver through the {\ttfamily esp\+\_\+lcd\+\_\+touch} API. ~\newline
+ It also applies orientation flags such as axis swap and mirroring according to the configuration macros ({\ttfamily TOUCH\+\_\+\+SWAP\+\_\+\+XY}, {\ttfamily TOUCH\+\_\+\+MIRROR\+\_\+X}, {\ttfamily TOUCH\+\_\+\+MIRROR\+\_\+Y}).
+
+If the function is called multiple times, initialization will only be performed once. On success, a global handle to the touch driver is stored internally and can be retrieved later using {\ttfamily \doxylink{touch__xpt2046_8h_aaaeca84ff6624ca13980f74263d49a20}{touch\+\_\+get\+\_\+handle()}}.
+
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on successful initialization ~\newline
+
+\item Error code from underlying ESP-\/\+IDF driver functions if initialization fails ~\newline
+ (for example\+: {\ttfamily ESP\+\_\+\+ERR\+\_\+\+NO\+\_\+\+MEM}, {\ttfamily ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG}, etc.)
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxyNote}{Note}
+The SPI bus is initialized with automatic DMA channel selection. 
+
+The XPT2046 interrupt pin is expected to be active-\/low. 
+
+The recommended SPI clock for XPT2046 is typically \texorpdfstring{$\sim$}{\string~}2.5 MHz. 
+\end{DoxyNote}
+\Hypertarget{touch__xpt2046_8c_a7e2356bb935d73041f087c1780e27185}\index{touch\_xpt2046.c@{touch\_xpt2046.c}!touch\_log\_press@{touch\_log\_press}}
+\index{touch\_log\_press@{touch\_log\_press}!touch\_xpt2046.c@{touch\_xpt2046.c}}
+\doxysubsubsection{\texorpdfstring{touch\_log\_press()}{touch\_log\_press()}}
+{\footnotesize\ttfamily \label{touch__xpt2046_8c_a7e2356bb935d73041f087c1780e27185} 
+void touch\+\_\+log\+\_\+press (\begin{DoxyParamCaption}\item[{uint16\+\_\+t}]{x}{, }\item[{uint16\+\_\+t}]{y}{}\end{DoxyParamCaption})}
+
+
+
+Log a touch press with calibrated coordinates. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em x} & Calibrated X coordinate \\
+\hline
+{\em y} & Calibrated Y coordinate \\
+\hline
+\end{DoxyParams}
+\Hypertarget{touch__xpt2046_8c_aa5dcb1d5f91599edc81362fa8a7671c5}\index{touch\_xpt2046.c@{touch\_xpt2046.c}!touch\_register\_to\_lvgl@{touch\_register\_to\_lvgl}}
+\index{touch\_register\_to\_lvgl@{touch\_register\_to\_lvgl}!touch\_xpt2046.c@{touch\_xpt2046.c}}
+\doxysubsubsection{\texorpdfstring{touch\_register\_to\_lvgl()}{touch\_register\_to\_lvgl()}}
+{\footnotesize\ttfamily \label{touch__xpt2046_8c_aa5dcb1d5f91599edc81362fa8a7671c5} 
+esp\+\_\+err\+\_\+t touch\+\_\+register\+\_\+to\+\_\+lvgl (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Registers the XPT2046 touch driver as an LVGL input device. 
+
+This function locks the display, registers the touch driver with LVGL using {\ttfamily register\+\_\+touch\+\_\+with\+\_\+lvgl()}, and unlocks the display before returning.
+
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK Touch input device successfully registered. 
+
+ESP\+\_\+\+FAIL Failed to register the touch device (NULL handle). 
+\end{DoxyReturn}

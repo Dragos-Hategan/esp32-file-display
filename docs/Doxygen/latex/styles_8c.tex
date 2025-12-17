@@ -1,0 +1,295 @@
+\doxysection{components/styles/styles.c File Reference}
+\hypertarget{styles_8c}{}\label{styles_8c}\index{components/styles/styles.c@{components/styles/styles.c}}
+{\ttfamily \#include "{}styles.\+h"{}}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+Include dependency graph for styles.\+c\+:
+% FIG 0
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structstyle__colors__t}{style\+\_\+colors\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{styles_8c_a150674ce6c60dc90f15846754b810fe8}{styles\+\_\+init\+\_\+colors}} (void)
+\begin{DoxyCompactList}\small\item\em Initialize the color palette for light and dark themes. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a19755e9fefd4dd918afa4aa32d0c4535}{styles\+\_\+set\+\_\+bg\+\_\+color}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}obj, lv\+\_\+style\+\_\+selector\+\_\+t selector)
+\begin{DoxyCompactList}\small\item\em Set the background color based on the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a94bd7a29dbe8600a07d6ec77be35020d}{styles\+\_\+set\+\_\+border\+\_\+color}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}obj, lv\+\_\+style\+\_\+selector\+\_\+t selector)
+\begin{DoxyCompactList}\small\item\em Set the border color based on the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a55027839efee05a47f8ea911d9cafb5e}{styles\+\_\+set\+\_\+text\+\_\+color}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}obj, lv\+\_\+style\+\_\+selector\+\_\+t selector)
+\begin{DoxyCompactList}\small\item\em Set the text color based on the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_afa39572b3c41ae8e823571ae6df67b5c}{styles\+\_\+set\+\_\+card\+\_\+color}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}obj, lv\+\_\+style\+\_\+selector\+\_\+t selector)
+\begin{DoxyCompactList}\small\item\em Style a card/container background with the current theme color. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a1a1bba63a93477afe0a9b964db7efada}{styles\+\_\+set\+\_\+screen}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}screen)
+\begin{DoxyCompactList}\small\item\em Apply the theme color scheme to an LVGL screen. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a212b2495448f9f843d01265a8eb246c1}{styles\+\_\+set\+\_\+button}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}button)
+\begin{DoxyCompactList}\small\item\em Style a button using the accent color of the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a542fa18cd99a02d88dd692c055657950}{styles\+\_\+set\+\_\+list\+\_\+button}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}list\+\_\+button)
+\begin{DoxyCompactList}\small\item\em Style LV\+\_\+\+LIST items/buttons according to the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a3618d41ec63f47498d887be5709af533}{styles\+\_\+set\+\_\+dropdown}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}dropdown)
+\begin{DoxyCompactList}\small\item\em Style a dropdown, including its selected state, using the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a44815c0a4836e5e9f77effca9b289d89}{styles\+\_\+set\+\_\+switch}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}switch\+\_\+button)
+\begin{DoxyCompactList}\small\item\em Style an LVGL switch according to the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a49801d4ce730c3ebacaf1f512585e8de}{styles\+\_\+set\+\_\+slider}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}slider)
+\begin{DoxyCompactList}\small\item\em Style a slider according to the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_af3735ab7f8558a76efd71d8139aec554}{styles\+\_\+set\+\_\+arc}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}arc)
+\begin{DoxyCompactList}\small\item\em Style an lv\+\_\+arc according to the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a2ec929914b6078368c3894078bdbb9fd}{styles\+\_\+set\+\_\+textarea}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}textarea)
+\begin{DoxyCompactList}\small\item\em Style a textarea according to the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a624350940ee9f62919f7b028e2b841ff}{styles\+\_\+set\+\_\+msgbox}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}mbox)
+\begin{DoxyCompactList}\small\item\em Style a message box according to the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_a4457d0859e22b3f88cadb790981edbde}{styles\+\_\+set\+\_\+dialog}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}dialog)
+\begin{DoxyCompactList}\small\item\em Style a dialog (generic container) according to the current theme. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{styles_8c_aef823e6a90e1c62edc1f964ac64095ec}{styles\+\_\+set\+\_\+keyboard}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}kbd)
+\begin{DoxyCompactList}\small\item\em Style the LVGL keyboard, including key states, using the current theme. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{styles_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{styles_8c_a150674ce6c60dc90f15846754b810fe8}\index{styles.c@{styles.c}!styles\_init\_colors@{styles\_init\_colors}}
+\index{styles\_init\_colors@{styles\_init\_colors}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_init\_colors()}{styles\_init\_colors()}}
+{\footnotesize\ttfamily \label{styles_8c_a150674ce6c60dc90f15846754b810fe8} 
+void styles\+\_\+init\+\_\+colors (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Initialize the color palette for light and dark themes. 
+
+Loads the UI\+\_\+\+COLOR\+\_\+\texorpdfstring{$\ast$}{*} macro values into internal theme structures. Call once before applying any styles to LVGL objects; uses the current theme selection provided by the settings module. \Hypertarget{styles_8c_af3735ab7f8558a76efd71d8139aec554}\index{styles.c@{styles.c}!styles\_set\_arc@{styles\_set\_arc}}
+\index{styles\_set\_arc@{styles\_set\_arc}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_arc()}{styles\_set\_arc()}}
+{\footnotesize\ttfamily \label{styles_8c_af3735ab7f8558a76efd71d8139aec554} 
+void styles\+\_\+set\+\_\+arc (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{arc}{}\end{DoxyParamCaption})}
+
+
+
+Style an lv\+\_\+arc according to the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em arc} & Arc object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a19755e9fefd4dd918afa4aa32d0c4535}\index{styles.c@{styles.c}!styles\_set\_bg\_color@{styles\_set\_bg\_color}}
+\index{styles\_set\_bg\_color@{styles\_set\_bg\_color}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_bg\_color()}{styles\_set\_bg\_color()}}
+{\footnotesize\ttfamily \label{styles_8c_a19755e9fefd4dd918afa4aa32d0c4535} 
+void styles\+\_\+set\+\_\+bg\+\_\+color (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{obj}{, }\item[{lv\+\_\+style\+\_\+selector\+\_\+t}]{selector}{}\end{DoxyParamCaption})}
+
+
+
+Set the background color based on the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em obj} & LVGL object to be styled (ignored if NULL). \\
+\hline
+{\em selector} & Style selector (part/state) that receives the color. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a94bd7a29dbe8600a07d6ec77be35020d}\index{styles.c@{styles.c}!styles\_set\_border\_color@{styles\_set\_border\_color}}
+\index{styles\_set\_border\_color@{styles\_set\_border\_color}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_border\_color()}{styles\_set\_border\_color()}}
+{\footnotesize\ttfamily \label{styles_8c_a94bd7a29dbe8600a07d6ec77be35020d} 
+void styles\+\_\+set\+\_\+border\+\_\+color (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{obj}{, }\item[{lv\+\_\+style\+\_\+selector\+\_\+t}]{selector}{}\end{DoxyParamCaption})}
+
+
+
+Set the border color based on the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em obj} & LVGL object to be styled (ignored if NULL). \\
+\hline
+{\em selector} & Style selector (part/state) that receives the color. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a212b2495448f9f843d01265a8eb246c1}\index{styles.c@{styles.c}!styles\_set\_button@{styles\_set\_button}}
+\index{styles\_set\_button@{styles\_set\_button}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_button()}{styles\_set\_button()}}
+{\footnotesize\ttfamily \label{styles_8c_a212b2495448f9f843d01265a8eb246c1} 
+void styles\+\_\+set\+\_\+button (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{button}{}\end{DoxyParamCaption})}
+
+
+
+Style a button using the accent color of the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em button} & Button object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_afa39572b3c41ae8e823571ae6df67b5c}\index{styles.c@{styles.c}!styles\_set\_card\_color@{styles\_set\_card\_color}}
+\index{styles\_set\_card\_color@{styles\_set\_card\_color}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_card\_color()}{styles\_set\_card\_color()}}
+{\footnotesize\ttfamily \label{styles_8c_afa39572b3c41ae8e823571ae6df67b5c} 
+void styles\+\_\+set\+\_\+card\+\_\+color (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{obj}{, }\item[{lv\+\_\+style\+\_\+selector\+\_\+t}]{selector}{}\end{DoxyParamCaption})}
+
+
+
+Style a card/container background with the current theme color. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em obj} & LVGL object to be styled (ignored if NULL). \\
+\hline
+{\em selector} & Kept for API symmetry; color is applied on the main part (0). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a4457d0859e22b3f88cadb790981edbde}\index{styles.c@{styles.c}!styles\_set\_dialog@{styles\_set\_dialog}}
+\index{styles\_set\_dialog@{styles\_set\_dialog}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_dialog()}{styles\_set\_dialog()}}
+{\footnotesize\ttfamily \label{styles_8c_a4457d0859e22b3f88cadb790981edbde} 
+void styles\+\_\+set\+\_\+dialog (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{dialog}{}\end{DoxyParamCaption})}
+
+
+
+Style a dialog (generic container) according to the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em dialog} & Dialog object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a3618d41ec63f47498d887be5709af533}\index{styles.c@{styles.c}!styles\_set\_dropdown@{styles\_set\_dropdown}}
+\index{styles\_set\_dropdown@{styles\_set\_dropdown}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_dropdown()}{styles\_set\_dropdown()}}
+{\footnotesize\ttfamily \label{styles_8c_a3618d41ec63f47498d887be5709af533} 
+void styles\+\_\+set\+\_\+dropdown (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{dropdown}{}\end{DoxyParamCaption})}
+
+
+
+Style a dropdown, including its selected state, using the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em dropdown} & Dropdown object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_aef823e6a90e1c62edc1f964ac64095ec}\index{styles.c@{styles.c}!styles\_set\_keyboard@{styles\_set\_keyboard}}
+\index{styles\_set\_keyboard@{styles\_set\_keyboard}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_keyboard()}{styles\_set\_keyboard()}}
+{\footnotesize\ttfamily \label{styles_8c_aef823e6a90e1c62edc1f964ac64095ec} 
+void styles\+\_\+set\+\_\+keyboard (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{kbd}{}\end{DoxyParamCaption})}
+
+
+
+Style the LVGL keyboard, including key states, using the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em kbd} & Keyboard object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a542fa18cd99a02d88dd692c055657950}\index{styles.c@{styles.c}!styles\_set\_list\_button@{styles\_set\_list\_button}}
+\index{styles\_set\_list\_button@{styles\_set\_list\_button}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_list\_button()}{styles\_set\_list\_button()}}
+{\footnotesize\ttfamily \label{styles_8c_a542fa18cd99a02d88dd692c055657950} 
+void styles\+\_\+set\+\_\+list\+\_\+button (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{list\+\_\+button}{}\end{DoxyParamCaption})}
+
+
+
+Style LV\+\_\+\+LIST items/buttons according to the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list\+\_\+button} & List item/button object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a624350940ee9f62919f7b028e2b841ff}\index{styles.c@{styles.c}!styles\_set\_msgbox@{styles\_set\_msgbox}}
+\index{styles\_set\_msgbox@{styles\_set\_msgbox}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_msgbox()}{styles\_set\_msgbox()}}
+{\footnotesize\ttfamily \label{styles_8c_a624350940ee9f62919f7b028e2b841ff} 
+void styles\+\_\+set\+\_\+msgbox (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{mbox}{}\end{DoxyParamCaption})}
+
+
+
+Style a message box according to the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em mbox} & Message box object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a1a1bba63a93477afe0a9b964db7efada}\index{styles.c@{styles.c}!styles\_set\_screen@{styles\_set\_screen}}
+\index{styles\_set\_screen@{styles\_set\_screen}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_screen()}{styles\_set\_screen()}}
+{\footnotesize\ttfamily \label{styles_8c_a1a1bba63a93477afe0a9b964db7efada} 
+void styles\+\_\+set\+\_\+screen (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{screen}{}\end{DoxyParamCaption})}
+
+
+
+Apply the theme color scheme to an LVGL screen. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em screen} & Screen object (lv\+\_\+scr\+\_\+act or similar); ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a49801d4ce730c3ebacaf1f512585e8de}\index{styles.c@{styles.c}!styles\_set\_slider@{styles\_set\_slider}}
+\index{styles\_set\_slider@{styles\_set\_slider}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_slider()}{styles\_set\_slider()}}
+{\footnotesize\ttfamily \label{styles_8c_a49801d4ce730c3ebacaf1f512585e8de} 
+void styles\+\_\+set\+\_\+slider (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{slider}{}\end{DoxyParamCaption})}
+
+
+
+Style a slider according to the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em slider} & Slider object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a44815c0a4836e5e9f77effca9b289d89}\index{styles.c@{styles.c}!styles\_set\_switch@{styles\_set\_switch}}
+\index{styles\_set\_switch@{styles\_set\_switch}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_switch()}{styles\_set\_switch()}}
+{\footnotesize\ttfamily \label{styles_8c_a44815c0a4836e5e9f77effca9b289d89} 
+void styles\+\_\+set\+\_\+switch (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{switch\+\_\+button}{}\end{DoxyParamCaption})}
+
+
+
+Style an LVGL switch according to the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em switch\+\_\+button} & Switch object; ignored if NULL. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a55027839efee05a47f8ea911d9cafb5e}\index{styles.c@{styles.c}!styles\_set\_text\_color@{styles\_set\_text\_color}}
+\index{styles\_set\_text\_color@{styles\_set\_text\_color}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_text\_color()}{styles\_set\_text\_color()}}
+{\footnotesize\ttfamily \label{styles_8c_a55027839efee05a47f8ea911d9cafb5e} 
+void styles\+\_\+set\+\_\+text\+\_\+color (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{obj}{, }\item[{lv\+\_\+style\+\_\+selector\+\_\+t}]{selector}{}\end{DoxyParamCaption})}
+
+
+
+Set the text color based on the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em obj} & LVGL object to be styled (ignored if NULL). \\
+\hline
+{\em selector} & Style selector (part/state) that receives the color. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{styles_8c_a2ec929914b6078368c3894078bdbb9fd}\index{styles.c@{styles.c}!styles\_set\_textarea@{styles\_set\_textarea}}
+\index{styles\_set\_textarea@{styles\_set\_textarea}!styles.c@{styles.c}}
+\doxysubsubsection{\texorpdfstring{styles\_set\_textarea()}{styles\_set\_textarea()}}
+{\footnotesize\ttfamily \label{styles_8c_a2ec929914b6078368c3894078bdbb9fd} 
+void styles\+\_\+set\+\_\+textarea (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{textarea}{}\end{DoxyParamCaption})}
+
+
+
+Style a textarea according to the current theme. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em textarea} & Textarea object; ignored if NULL. \\
+\hline
+\end{DoxyParams}

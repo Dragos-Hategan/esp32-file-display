@@ -1,0 +1,137 @@
+\doxysection{components/touch\+\_\+xpt2046/include/calibration\+\_\+xpt2046.h File Reference}
+\hypertarget{calibration__xpt2046_8h}{}\label{calibration__xpt2046_8h}\index{components/touch\_xpt2046/include/calibration\_xpt2046.h@{components/touch\_xpt2046/include/calibration\_xpt2046.h}}
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$stdint.\+h$>$}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+lcd\+\_\+touch.\+h"{}}\newline
+{\ttfamily \#include "{}lvgl.\+h"{}}\newline
+Include dependency graph for calibration\+\_\+xpt2046.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{calibration__xpt2046_8h_a937325159af23baa84e9cc45befd10f8}{calibration\+\_\+load\+\_\+cal\+\_\+data}} (bool \texorpdfstring{$\ast$}{*}calibration\+\_\+found)
+\begin{DoxyCompactList}\small\item\em Load touch calibration data from NVS and indicate whether it was found. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{calibration__xpt2046_8h_a7f07b91d111bdfc2cad7f8e5532f180d}{calibration\+\_\+run\+\_\+cal}} (bool calibration\+\_\+found)
+\begin{DoxyCompactList}\small\item\em Run touch screen calibration if needed or requested by the user. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{calibration__xpt2046_8h_aa9d95df5ad54e8ba5b3bb33f55b4ecc9}{calibration\+\_\+set\+\_\+show\+\_\+loader}} (bool enable)
+\begin{DoxyCompactList}\small\item\em Control whether the countdown loader is shown in the calibration dialog. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{calibration__xpt2046_8h_ae0fae6abe130704a348fa90b72f1dd52}{calibration\+\_\+apply\+\_\+cal\+\_\+data}} (uint16\+\_\+t raw\+\_\+x, uint16\+\_\+t raw\+\_\+y, lv\+\_\+point\+\_\+t \texorpdfstring{$\ast$}{*}out\+\_\+point, int xmax, int ymax)
+\begin{DoxyCompactList}\small\item\em Apply current touch calibration to a raw (x,y) reading. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{calibration__xpt2046_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{calibration__xpt2046_8h_ae0fae6abe130704a348fa90b72f1dd52}\index{calibration\_xpt2046.h@{calibration\_xpt2046.h}!calibration\_apply\_cal\_data@{calibration\_apply\_cal\_data}}
+\index{calibration\_apply\_cal\_data@{calibration\_apply\_cal\_data}!calibration\_xpt2046.h@{calibration\_xpt2046.h}}
+\doxysubsubsection{\texorpdfstring{calibration\_apply\_cal\_data()}{calibration\_apply\_cal\_data()}}
+{\footnotesize\ttfamily \label{calibration__xpt2046_8h_ae0fae6abe130704a348fa90b72f1dd52} 
+void calibration\+\_\+apply\+\_\+cal\+\_\+data (\begin{DoxyParamCaption}\item[{uint16\+\_\+t}]{raw\+\_\+x}{, }\item[{uint16\+\_\+t}]{raw\+\_\+y}{, }\item[{lv\+\_\+point\+\_\+t \texorpdfstring{$\ast$}{*}}]{out\+\_\+point}{, }\item[{int}]{xmax}{, }\item[{int}]{ymax}{}\end{DoxyParamCaption})}
+
+
+
+Apply current touch calibration to a raw (x,y) reading. 
+
+If no valid calibration is available, the raw coordinates are clamped to the display bounds. Otherwise, an affine transform is applied\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{x\textcolor{stringliteral}{'\ =\ xA*x\ +\ xB*y\ +\ xC}}
+\DoxyCodeLine{\textcolor{stringliteral}{y'}\ =\ yA*x\ +\ yB*y\ +\ yC}
+
+\end{DoxyCode}
+
+
+
+\begin{DoxyParams}[1]{Parameters}
+ & {\em raw\+\_\+x} & Raw X from controller. \\
+\hline
+ & {\em raw\+\_\+y} & Raw Y from controller. \\
+\hline
+\mbox{\texttt{out}}  & {\em out\+\_\+point} & Output LVGL point (screen space). \\
+\hline
+ & {\em xmax} & Screen width (max X, exclusive). \\
+\hline
+ & {\em ymax} & Screen height (max Y, exclusive). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{calibration__xpt2046_8h_a937325159af23baa84e9cc45befd10f8}\index{calibration\_xpt2046.h@{calibration\_xpt2046.h}!calibration\_load\_cal\_data@{calibration\_load\_cal\_data}}
+\index{calibration\_load\_cal\_data@{calibration\_load\_cal\_data}!calibration\_xpt2046.h@{calibration\_xpt2046.h}}
+\doxysubsubsection{\texorpdfstring{calibration\_load\_cal\_data()}{calibration\_load\_cal\_data()}}
+{\footnotesize\ttfamily \label{calibration__xpt2046_8h_a937325159af23baa84e9cc45befd10f8} 
+void calibration\+\_\+load\+\_\+cal\+\_\+data (\begin{DoxyParamCaption}\item[{bool \texorpdfstring{$\ast$}{*}}]{calibration\+\_\+found}{}\end{DoxyParamCaption})}
+
+
+
+Load touch calibration data from NVS and indicate whether it was found. 
+
+This function attempts to read previously saved touch calibration data from NVS. It checks if valid calibration data exists and updates the provided flag accordingly. If no calibration is found, the system will print a message indicating that a new calibration is required.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{out}}  & {\em calibration\+\_\+found} & Pointer to a boolean that will be set to {\ttfamily true} if valid calibration data was found, or {\ttfamily false} otherwise.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyNote}{Note}
+This function relies on the touch calibration subsystem and should be called after {\ttfamily init\+\_\+nvs()} and touch driver initialization.
+\end{DoxyNote}
+\begin{DoxySeeAlso}{See also}
+touch\+\_\+cal\+\_\+load\+\_\+nvs() 
+\end{DoxySeeAlso}
+\Hypertarget{calibration__xpt2046_8h_a7f07b91d111bdfc2cad7f8e5532f180d}\index{calibration\_xpt2046.h@{calibration\_xpt2046.h}!calibration\_run\_cal@{calibration\_run\_cal}}
+\index{calibration\_run\_cal@{calibration\_run\_cal}!calibration\_xpt2046.h@{calibration\_xpt2046.h}}
+\doxysubsubsection{\texorpdfstring{calibration\_run\_cal()}{calibration\_run\_cal()}}
+{\footnotesize\ttfamily \label{calibration__xpt2046_8h_a7f07b91d111bdfc2cad7f8e5532f180d} 
+esp\+\_\+err\+\_\+t calibration\+\_\+run\+\_\+cal (\begin{DoxyParamCaption}\item[{bool}]{calibration\+\_\+found}{}\end{DoxyParamCaption})}
+
+
+
+Run touch screen calibration if needed or requested by the user. 
+
+This helper checks whether a valid calibration was previously found and either\+:
+\begin{DoxyItemize}
+\item runs the 5-\/point calibration immediately if {\ttfamily calibration\+\_\+found} is false, or
+\item asks the user (via a yes/no LVGL dialog) whether to run calibration again if {\ttfamily calibration\+\_\+found} is true.
+\end{DoxyItemize}
+
+Behavior\+:
+\begin{DoxyItemize}
+\item If no calibration is found\+: calls run\+\_\+5point\+\_\+touch\+\_\+calibration().
+\item If calibration exists\+:
+\begin{DoxyItemize}
+\item On "{}\+Yes"{}\+: runs run\+\_\+5point\+\_\+touch\+\_\+calibration().
+\item On "{}\+No"{} \+: keeps the existing calibration (s\+\_\+cal) and clears the active LVGL screen.
+\end{DoxyItemize}
+\end{DoxyItemize}
+
+UI objects used during the prompt are created and cleaned up internally.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\texttt{in}}  & {\em calibration\+\_\+found} & True if a valid calibration was loaded from NVS, false if no calibration data is available.\\
+\hline
+\end{DoxyParams}
+\begin{DoxyNote}{Note}
+User prompt behavior\+:
+\begin{DoxyItemize}
+\item When the loader is enabled (see \doxylink{calibration__xpt2046_8c_aa9d95df5ad54e8ba5b3bb33f55b4ecc9}{calibration\+\_\+set\+\_\+show\+\_\+loader}), the Yes/\+No dialog auto-\/confirms "{}\+Yes"{} after 10 seconds.
+\item When the loader is disabled (Settings flow), there is no countdown and the function waits for an explicit Yes/\+No.
+\end{DoxyItemize}
+\end{DoxyNote}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK Calibration flow completed successfully (either run or skipped by user). 
+
+Other esp\+\_\+err\+\_\+t codes If run\+\_\+5point\+\_\+touch\+\_\+calibration() fails. 
+\end{DoxyReturn}
+\Hypertarget{calibration__xpt2046_8h_aa9d95df5ad54e8ba5b3bb33f55b4ecc9}\index{calibration\_xpt2046.h@{calibration\_xpt2046.h}!calibration\_set\_show\_loader@{calibration\_set\_show\_loader}}
+\index{calibration\_set\_show\_loader@{calibration\_set\_show\_loader}!calibration\_xpt2046.h@{calibration\_xpt2046.h}}
+\doxysubsubsection{\texorpdfstring{calibration\_set\_show\_loader()}{calibration\_set\_show\_loader()}}
+{\footnotesize\ttfamily \label{calibration__xpt2046_8h_aa9d95df5ad54e8ba5b3bb33f55b4ecc9} 
+void calibration\+\_\+set\+\_\+show\+\_\+loader (\begin{DoxyParamCaption}\item[{bool}]{enable}{}\end{DoxyParamCaption})}
+
+
+
+Control whether the countdown loader is shown in the calibration dialog. 
+
+Call with {\ttfamily false} when launching calibration from Settings to skip the loader, and {\ttfamily true} for the startup flow to keep it visible. 

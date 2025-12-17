@@ -1,0 +1,53 @@
+\doxysection{components/image\+\_\+viewer/include/jpg.h File Reference}
+\hypertarget{jpg_8h}{}\label{jpg_8h}\index{components/image\_viewer/include/jpg.h@{components/image\_viewer/include/jpg.h}}
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include "{}lvgl.\+h"{}}\newline
+Include dependency graph for jpg.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structjpg__viewer__open__opts__t}{jpg\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}}
+\begin{DoxyCompactList}\small\item\em Options passed to {\ttfamily jpg\+\_\+viewer\+\_\+open}. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{jpg_8h_a200bd68b9dfd8f734d1f758c1f17e1eb}{jpg\+\_\+viewer\+\_\+open}} (const \mbox{\hyperlink{structjpg__viewer__open__opts__t}{jpg\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}} \texorpdfstring{$\ast$}{*}opts)
+\begin{DoxyCompactList}\small\item\em Open a simple viewer screen that displays a JPEG file. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-func-members}
+\Hypertarget{jpg_8h_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{jpg_8h_a200bd68b9dfd8f734d1f758c1f17e1eb}\index{jpg.h@{jpg.h}!jpg\_viewer\_open@{jpg\_viewer\_open}}
+\index{jpg\_viewer\_open@{jpg\_viewer\_open}!jpg.h@{jpg.h}}
+\doxysubsubsection{\texorpdfstring{jpg\_viewer\_open()}{jpg\_viewer\_open()}}
+{\footnotesize\ttfamily \label{jpg_8h_a200bd68b9dfd8f734d1f758c1f17e1eb} 
+esp\+\_\+err\+\_\+t jpg\+\_\+viewer\+\_\+open (\begin{DoxyParamCaption}\item[{const \mbox{\hyperlink{structjpg__viewer__open__opts__t}{jpg\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t}} \texorpdfstring{$\ast$}{*}}]{opts}{}\end{DoxyParamCaption})}
+
+
+
+Open a simple viewer screen that displays a JPEG file. 
+
+The viewer builds a new LVGL screen with a close button and an image widget whose source is the provided {\ttfamily path}. On close, it returns to {\ttfamily return\+\_\+screen} if provided; otherwise it loads the previously active screen.
+
+Must be called from the LVGL/task context that owns the display lock.
+
+
+\begin{DoxyParams}{Parameters}
+{\em opts} & Options struct (must not be NULL); {\ttfamily path} must be non-\/empty. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on bad input
+\item ESP\+\_\+\+ERR\+\_\+\+NOT\+\_\+\+FOUND if the file is missing
+\item ESP\+\_\+\+ERR\+\_\+\+TIMEOUT if display lock cannot be acquired, or ESP\+\_\+\+FAIL on LVGL source set failure.
+\item ESP\+\_\+\+ERR\+\_\+\+NOT\+\_\+\+SUPPORTED if the jpg file is corrupted or it\textquotesingle{}s specific type is not supported
+\item ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+SIZE if the image can\textquotesingle{}t fit in the screen even after the downscale 
+\end{DoxyItemize}
+\end{DoxyReturn}

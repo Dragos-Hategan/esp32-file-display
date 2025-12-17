@@ -1,0 +1,91 @@
+\doxysection{components/sntp\+\_\+wifi/sntp.c File Reference}
+\hypertarget{sntp_8c}{}\label{sntp_8c}\index{components/sntp\_wifi/sntp.c@{components/sntp\_wifi/sntp.c}}
+{\ttfamily \#include "{}sntp\+\_\+header.\+h"{}}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$time.\+h$>$}\newline
+{\ttfamily \#include "{}esp\+\_\+netif\+\_\+sntp.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+sntp.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}wifi.\+h"{}}\newline
+Include dependency graph for sntp.\+c\+:
+% FIG 0
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{sntp_8c_a46bd8c038c1398ef2802d23325ad33ad}{SNTP\+\_\+\+RETRY\+\_\+\+NUMBER}}~5
+\item 
+\#define \mbox{\hyperlink{sntp_8c_aae5f93e829fe1c00f06ee509eac7c9c7}{SNTP\+\_\+\+MIN\+\_\+\+VALID\+\_\+\+YEAR}}~(2016)
+\item 
+\#define \mbox{\hyperlink{sntp_8c_a408171691c6ad0846cd8363cd09d8a06}{SNTP\+\_\+\+POLL\+\_\+\+STEP\+\_\+\+MS}}~(1000)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{sntp_8c_adc5305413f9ba9d6e9ad364ed2e2928b}{sntp\+\_\+wait\+\_\+for\+\_\+time\+\_\+blocking}} (uint32\+\_\+t timeout\+\_\+ms)
+\begin{DoxyCompactList}\small\item\em Block until time is synced or a timeout elapses. \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{sntp_8c_a89467c0c75345ca30a74eab663f30c04}{sntp\+\_\+initialize}} (void)
+\begin{DoxyCompactList}\small\item\em Initialize SNTP, set timezone, and wait for synchronization. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{sntp_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{sntp_8c_aae5f93e829fe1c00f06ee509eac7c9c7}\index{sntp.c@{sntp.c}!SNTP\_MIN\_VALID\_YEAR@{SNTP\_MIN\_VALID\_YEAR}}
+\index{SNTP\_MIN\_VALID\_YEAR@{SNTP\_MIN\_VALID\_YEAR}!sntp.c@{sntp.c}}
+\doxysubsubsection{\texorpdfstring{SNTP\_MIN\_VALID\_YEAR}{SNTP\_MIN\_VALID\_YEAR}}
+{\footnotesize\ttfamily \label{sntp_8c_aae5f93e829fe1c00f06ee509eac7c9c7} 
+\#define SNTP\+\_\+\+MIN\+\_\+\+VALID\+\_\+\+YEAR~(2016)}
+
+\Hypertarget{sntp_8c_a408171691c6ad0846cd8363cd09d8a06}\index{sntp.c@{sntp.c}!SNTP\_POLL\_STEP\_MS@{SNTP\_POLL\_STEP\_MS}}
+\index{SNTP\_POLL\_STEP\_MS@{SNTP\_POLL\_STEP\_MS}!sntp.c@{sntp.c}}
+\doxysubsubsection{\texorpdfstring{SNTP\_POLL\_STEP\_MS}{SNTP\_POLL\_STEP\_MS}}
+{\footnotesize\ttfamily \label{sntp_8c_a408171691c6ad0846cd8363cd09d8a06} 
+\#define SNTP\+\_\+\+POLL\+\_\+\+STEP\+\_\+\+MS~(1000)}
+
+\Hypertarget{sntp_8c_a46bd8c038c1398ef2802d23325ad33ad}\index{sntp.c@{sntp.c}!SNTP\_RETRY\_NUMBER@{SNTP\_RETRY\_NUMBER}}
+\index{SNTP\_RETRY\_NUMBER@{SNTP\_RETRY\_NUMBER}!sntp.c@{sntp.c}}
+\doxysubsubsection{\texorpdfstring{SNTP\_RETRY\_NUMBER}{SNTP\_RETRY\_NUMBER}}
+{\footnotesize\ttfamily \label{sntp_8c_a46bd8c038c1398ef2802d23325ad33ad} 
+\#define SNTP\+\_\+\+RETRY\+\_\+\+NUMBER~5}
+
+
+
+\label{doc-func-members}
+\Hypertarget{sntp_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{sntp_8c_a89467c0c75345ca30a74eab663f30c04}\index{sntp.c@{sntp.c}!sntp\_initialize@{sntp\_initialize}}
+\index{sntp\_initialize@{sntp\_initialize}!sntp.c@{sntp.c}}
+\doxysubsubsection{\texorpdfstring{sntp\_initialize()}{sntp\_initialize()}}
+{\footnotesize\ttfamily \label{sntp_8c_a89467c0c75345ca30a74eab663f30c04} 
+esp\+\_\+err\+\_\+t sntp\+\_\+initialize (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Initialize SNTP, set timezone, and wait for synchronization. 
+
+Starts SNTP, applies the default timezone from {\ttfamily SNTP\+\_\+\+DEFAULT\+\_\+\+TIMEZONE}, and waits up to 10 seconds for time to become valid.
+
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK on success or an esp\+\_\+err\+\_\+t from SNTP init/sync. 
+\end{DoxyReturn}
+\Hypertarget{sntp_8c_adc5305413f9ba9d6e9ad364ed2e2928b}\index{sntp.c@{sntp.c}!sntp\_wait\_for\_time\_blocking@{sntp\_wait\_for\_time\_blocking}}
+\index{sntp\_wait\_for\_time\_blocking@{sntp\_wait\_for\_time\_blocking}!sntp.c@{sntp.c}}
+\doxysubsubsection{\texorpdfstring{sntp\_wait\_for\_time\_blocking()}{sntp\_wait\_for\_time\_blocking()}}
+{\footnotesize\ttfamily \label{sntp_8c_adc5305413f9ba9d6e9ad364ed2e2928b} 
+esp\+\_\+err\+\_\+t sntp\+\_\+wait\+\_\+for\+\_\+time\+\_\+blocking (\begin{DoxyParamCaption}\item[{uint32\+\_\+t}]{timeout\+\_\+ms}{}\end{DoxyParamCaption})}
+
+
+
+Block until time is synced or a timeout elapses. 
+
+Polls SNTP sync status in 1s steps up to {\ttfamily timeout\+\_\+ms} and validates the resulting time against a minimum year. Returns ESP\+\_\+\+ERR\+\_\+\+TIMEOUT on failure.
+
+
+\begin{DoxyParams}{Parameters}
+{\em timeout\+\_\+ms} & Maximum wait in milliseconds. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK if time is valid, ESP\+\_\+\+ERR\+\_\+\+TIMEOUT otherwise. 
+\end{DoxyReturn}

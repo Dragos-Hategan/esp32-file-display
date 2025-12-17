@@ -1,0 +1,69 @@
+\doxysection{settings.\+h}
+\hypertarget{settings_8h_source}{}\label{settings_8h_source}\index{components/settings/include/settings.h@{components/settings/include/settings.h}}
+\mbox{\hyperlink{settings_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}\ \{}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <stdbool.h>}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ "{}esp\_err.h"{}}}
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}lvgl.h"{}}}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00019\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a49f4c4275bf05db2bccb839dd67236ae}{settings\_starting\_routine}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00027\ esp\_err\_t\ \mbox{\hyperlink{settings_8h_acf24b7a684c9bc230252c011a261ea5e}{settings\_open\_settings}}(lv\_obj\_t\ *return\_screen);}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00038\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a00977dd4f60c5b39183c0097097dc5c2}{settings\_show\_date\_time\_dialog}}(lv\_obj\_t\ *return\_screen);}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00047\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a04c458ac717c77c1d0d5c3c9e8601b4b}{settings\_show\_sntp\_dialog}}(lv\_obj\_t\ *return\_screen);}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00057\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a33836c1fe73ee9b59e819d5969ce5ea6}{settings\_register\_time\_callbacks}}(\textcolor{keywordtype}{void}\ (*on\_time\_set)(\textcolor{keywordtype}{void}),}
+\DoxyCodeLine{00058\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ (*on\_time\_reset)(\textcolor{keywordtype}{void}));}
+\DoxyCodeLine{00059\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00063\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a07f685dbaa2faf4c472b2a808cd610f6}{settings\_shutdown\_save\_time}}(\textcolor{keywordtype}{void});\ \ \ }
+\DoxyCodeLine{00064\ }
+\DoxyCodeLine{00068\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_aced8739a6efea581a75d14446797b610}{settings\_persist\_sd\_card\_restart}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00069\ }
+\DoxyCodeLine{00075\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_ada5fbc543a9d935068960e2527316c5f}{settings\_set\_sd\_card\_restart}}(\textcolor{keywordtype}{bool}\ enable);}
+\DoxyCodeLine{00076\ }
+\DoxyCodeLine{00082\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{settings_8h_a3d5d2f5208ba6b57ffd5dd854c26846e}{settings\_is\_time\_valid}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00083\ }
+\DoxyCodeLine{00087\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a410b5d8d49c9be09b1cbc614feaaa6f3}{settings\_fade\_to\_saved\_brightness}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00088\ }
+\DoxyCodeLine{00092\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_afd9b342f168e1f5b88ecca86af3d1883}{settings\_start\_screensaver\_timers}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00093\ }
+\DoxyCodeLine{00098\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{settings_8h_a3f32db1ddff47a137a04570dc8f75799}{settings\_is\_wake\_in\_progress}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00099\ }
+\DoxyCodeLine{00104\ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{settings_8h_abd5a1f83319177839909ea51587f28dd}{settings\_get\_active\_brightness}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00105\ }
+\DoxyCodeLine{00110\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{settings_8h_af0d8a8509e4013b3ba70bc3d374cd24a}{settings\_is\_brightness\_changing}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00111\ }
+\DoxyCodeLine{00117\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{settings_8h_a8d996817d6c7b5fd186609cf5c0c3f84}{settings\_get\_calibration\_prompt\_enabled}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00118\ }
+\DoxyCodeLine{00124\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a9f40f6e1a72c7d0a6d0f0f2ab69b3c5d}{settings\_set\_calibration\_prompt\_enabled}}(\textcolor{keywordtype}{bool}\ enable);}
+\DoxyCodeLine{00125\ }
+\DoxyCodeLine{00131\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{settings_8h_a9df3203fb9681b7760072af3b52596b3}{settings\_get\_running\_calibration}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00132\ }
+\DoxyCodeLine{00138\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a402e66791b625bb6d6e73d1fb8798f0b}{settings\_set\_running\_calibration}}(\textcolor{keywordtype}{bool}\ enable);}
+\DoxyCodeLine{00139\ }
+\DoxyCodeLine{00145\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{settings_8h_a723416ad6ad254c42a3f249277ea442a}{settings\_is\_theme\_dark}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00146\ }
+\DoxyCodeLine{00150\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_ac62726b3e575083438303597e49cdf38}{settings\_set\_dark\_theme\_flag}}(\textcolor{keywordtype}{bool}\ is\_dark);}
+\DoxyCodeLine{00151\ }
+\DoxyCodeLine{00157\ \textcolor{keywordtype}{char}*\ \mbox{\hyperlink{settings_8h_aa9fb4f6af10b07922b4d353a118e44c5}{settings\_get\_ap\_ssid}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00158\ }
+\DoxyCodeLine{00164\ \textcolor{keywordtype}{char}*\ \mbox{\hyperlink{settings_8h_ab156515ed83060cfe1b9c1cdc661c905}{settings\_get\_ap\_pwd}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00165\ }
+\DoxyCodeLine{00169\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_ab794260555ed66561e70dc1c76e826de}{screensaver\_off\_stop}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00170\ }
+\DoxyCodeLine{00174\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{settings_8h_a29e309012a2cefcdbaa39973d014fb13}{screensaver\_dim\_stop}}(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{00175\ }
+\DoxyCodeLine{00176\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00177\ \}}
+\DoxyCodeLine{00178\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

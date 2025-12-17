@@ -1,0 +1,33 @@
+\doxysection{text\+\_\+viewer\+\_\+screen.\+h}
+\hypertarget{text__viewer__screen_8h_source}{}\label{text__viewer__screen_8h_source}\index{components/file\_manager/include/text\_viewer\_screen.h@{components/file\_manager/include/text\_viewer\_screen.h}}
+\mbox{\hyperlink{text__viewer__screen_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00004\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}\ \{}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <stdbool.h>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ "{}esp\_err.h"{}}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ "{}lvgl.h"{}}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00017\ \textcolor{keyword}{typedef}\ void\ (*\mbox{\hyperlink{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab}{text\_viewer\_close\_cb\_t}})(\textcolor{keywordtype}{bool}\ content\_changed,\ \textcolor{keywordtype}{void}\ *user\_ctx);}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00022\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00023\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\mbox{\hyperlink{structtext__viewer__open__opts__t_a123dc7257c440237d1038522c441e7b3}{path}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00024\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\mbox{\hyperlink{structtext__viewer__open__opts__t_ab0b38e3903b1c57bcc3a5feab4894697}{directory}};\ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00025\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *\mbox{\hyperlink{structtext__viewer__open__opts__t_ae587845a7e8d21841917656a9c4ec945}{suggested\_name}};\ \ \ \ \ \ \ }
+\DoxyCodeLine{00026\ \ \ \ \ lv\_obj\_t\ *\mbox{\hyperlink{structtext__viewer__open__opts__t_a97a4dd99e6e255542223aa8303fec646}{return\_screen}};\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{structtext__viewer__open__opts__t_a5cde730f0a20df0770f361a0fad5794b}{editable}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00028\ \ \ \ \ \mbox{\hyperlink{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab}{text\_viewer\_close\_cb\_t}}\ \mbox{\hyperlink{structtext__viewer__open__opts__t_ad4e625df65c071b4cf947a118469bb06}{on\_close}};\ \ }
+\DoxyCodeLine{00029\ \ \ \ \ \textcolor{keywordtype}{void}\ *\mbox{\hyperlink{structtext__viewer__open__opts__t_a811cc3276af36acfc54ce4a774f05134}{user\_ctx}};\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00030\ \}\ \mbox{\hyperlink{structtext__viewer__open__opts__t}{text\_viewer\_open\_opts\_t}};}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00053\ esp\_err\_t\ \mbox{\hyperlink{text__viewer__screen_8h_a90b8d94bda47f68b35666ca55f994905}{text\_viewer\_open}}(\textcolor{keyword}{const}\ \mbox{\hyperlink{structtext__viewer__open__opts__t}{text\_viewer\_open\_opts\_t}}\ *opts);}
+\DoxyCodeLine{00054\ }
+\DoxyCodeLine{00055\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{00056\ \}}
+\DoxyCodeLine{00057\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

@@ -1,0 +1,849 @@
+\doxysection{components/settings/settings.c File Reference}
+\hypertarget{settings_8c}{}\label{settings_8c}\index{components/settings/settings.c@{components/settings/settings.c}}
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+{\ttfamily \#include $<$stddef.\+h$>$}\newline
+{\ttfamily \#include $<$stdint.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$time.\+h$>$}\newline
+{\ttfamily \#include $<$sys/time.\+h$>$}\newline
+{\ttfamily \#include "{}freertos/\+Free\+RTOS.\+h"{}}\newline
+{\ttfamily \#include "{}freertos/task.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+rom\+\_\+uart.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+system.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+timer.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+sleep.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+wifi.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+err.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+lvgl\+\_\+port.\+h"{}}\newline
+{\ttfamily \#include "{}driver/rtc\+\_\+io.\+h"{}}\newline
+{\ttfamily \#include "{}driver/gpio.\+h"{}}\newline
+{\ttfamily \#include "{}Goldman\+\_\+\+Regular\+\_\+35.\+h"{}}\newline
+{\ttfamily \#include "{}bsp/esp-\/bsp.\+h"{}}\newline
+{\ttfamily \#include "{}Domine\+\_\+14.\+h"{}}\newline
+{\ttfamily \#include "{}Domine\+\_\+16.\+h"{}}\newline
+{\ttfamily \#include "{}nvs\+\_\+flash.\+h"{}}\newline
+{\ttfamily \#include "{}wifi.\+h"{}}\newline
+{\ttfamily \#include "{}nvs.\+h"{}}\newline
+{\ttfamily \#include "{}calibration\+\_\+xpt2046.\+h"{}}\newline
+{\ttfamily \#include "{}touch\+\_\+xpt2046.\+h"{}}\newline
+{\ttfamily \#include "{}sntp\+\_\+header.\+h"{}}\newline
+{\ttfamily \#include "{}styles.\+h"{}}\newline
+Include dependency graph for settings.\+c\+:
+% FIG 0
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structsettings__display__t}{settings\+\_\+display\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structsettings__time__t}{settings\+\_\+time\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structsettings__t}{settings\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structsettings__ctx__graphics__t}{settings\+\_\+ctx\+\_\+graphics\+\_\+t}}
+\item 
+struct \mbox{\hyperlink{structsettings__ctx__t}{settings\+\_\+ctx\+\_\+t}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a5f539903d5273c466692ced89238fb16}{SETTINGS\+\_\+\+NVS\+\_\+\+REFRESH\+\_\+\+SNTP\+\_\+\+STARTUP\+\_\+\+KEY}}~"{}refresh\+\_\+sntp"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a5ceccb1307e6d5ac76604de137d23e79}{SETTINGS\+\_\+\+NVS\+\_\+\+VALID\+\_\+\+TIME\+\_\+\+FLAG\+\_\+\+KEY}}~"{}is\+\_\+time\+\_\+valid"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a279e0bcc2fa40d65980c42fe1a63835f}{SETTINGS\+\_\+\+NVS\+\_\+\+SD\+\_\+\+CARD\+\_\+\+RESTART\+\_\+\+KEY}}~"{}sd\+\_\+card\+\_\+restart"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a577e637122627cf390ad977c2086a8f0}{SETTINGS\+\_\+\+NVS\+\_\+\+MANUAL\+\_\+\+RESTART\+\_\+\+KEY}}~"{}manual\+\_\+restart"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_adebef87cb25ac046713f1bd4216b726e}{SETTINGS\+\_\+\+NVS\+\_\+\+AUTO\+\_\+\+CONNECT\+\_\+\+KEY}}~"{}auto\+\_\+connect"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a2dcaf5f5fc683f03e61c9d76f589cd24}{SETTINGS\+\_\+\+NVS\+\_\+\+CALIB\+\_\+\+PROMPT\+\_\+\+KEY}}~"{}calib\+\_\+prompt"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a22193650cc8a038f6d67da7494ed9f08}{SETTINGS\+\_\+\+NVS\+\_\+\+SNTP\+\_\+\+RESULT\+\_\+\+KEY}}~"{}sntp\+\_\+result"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_ae3df428d6c8298868ae5871643a033f6}{SETTINGS\+\_\+\+NVS\+\_\+\+BRIGHTNESS\+\_\+\+KEY}}~"{}brightness\+\_\+pct"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a3f9c68e6b6e3e49bdc9f3663b141c373}{SETTINGS\+\_\+\+NVS\+\_\+\+DIM\+\_\+\+LEVEL\+\_\+\+KEY}}~"{}dim\+\_\+level"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_aa68ab2abdf9a8b66449d84d47b332263}{SETTINGS\+\_\+\+NVS\+\_\+\+DIM\+\_\+\+TIME\+\_\+\+KEY}}~"{}dim\+\_\+time"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_aa87ba8ec506bf536605894793e27535f}{SETTINGS\+\_\+\+NVS\+\_\+\+OFF\+\_\+\+TIME\+\_\+\+KEY}}~"{}off\+\_\+time"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a1dbf44458a5a2c698df61f5cd71b727e}{SETTINGS\+\_\+\+NVS\+\_\+\+AP\+\_\+\+SSID\+\_\+\+KEY}}~"{}ap\+\_\+ssid"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a3a00b8d1dbe10b62dc8b08648d8b2891}{SETTINGS\+\_\+\+NVS\+\_\+\+AP\+\_\+\+PWD\+\_\+\+KEY}}~"{}ap\+\_\+pwd"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a53554df0b4b1e16a42a654e988f8f4d9}{SETTINGS\+\_\+\+NVS\+\_\+\+OFF\+\_\+\+EN\+\_\+\+KEY}}~"{}off\+\_\+en"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a968d2ee9c839ead550caede21de0e867}{SETTINGS\+\_\+\+NVS\+\_\+\+DIM\+\_\+\+EN\+\_\+\+KEY}}~"{}dim\+\_\+en"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_acabec6ed209911a65a398b8fac7b29ba}{SETTINGS\+\_\+\+NVS\+\_\+\+THEME\+\_\+\+KEY}}~"{}theme"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_a760075ed43933a01515a0d4b5ab392a0}{SETTINGS\+\_\+\+NVS\+\_\+\+TIME\+\_\+\+KEY}}~"{}time\+\_\+epoch"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_ad82114228e8f93ac7ecde2772f5a761f}{SETTINGS\+\_\+\+NVS\+\_\+\+ROT\+\_\+\+KEY}}~"{}rotation\+\_\+step"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_aa539ae6fdfa68e08aadbe7f55ad103bb}{SETTINGS\+\_\+\+NVS\+\_\+\+SNTP\+\_\+\+ERROR\+\_\+\+KEY}}~"{}sntp\+\_\+err"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_af0e7c600e26ff137673f8ee2b52cfffb}{SETTINGS\+\_\+\+NVS\+\_\+\+NS}}~"{}settings"{}
+\item 
+\#define \mbox{\hyperlink{settings_8c_abd216f975e36a002474f205d7d9fbf1d}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+STARTUP\+\_\+\+SNTP\+\_\+\+AUTO\+\_\+\+CONNECT}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_af3c3788c6981f977dd83ab0e988c5caf}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+REFRESH\+\_\+\+SNTP\+\_\+\+STARTUP}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_aecc0730a0a5694ffbaee3a9fe6429f65}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+RUNNING\+\_\+\+CALIBRATION}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_a42ff393566db1c69659f02d3d1897d85}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+CALI\+\_\+\+PROMPT\+\_\+\+ENABLE}}~true
+\item 
+\#define \mbox{\hyperlink{settings_8c_a4609e027ec871158081a1043695ca651}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+DIM\+\_\+\+LEVEL}}~-\/1
+\item 
+\#define \mbox{\hyperlink{settings_8c_a90e88deb5a33a5e67912d8f92fd4bdb0}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+SD\+\_\+\+CARD\+\_\+\+RESTART}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_ab60c2bc483398f5c5e6a471e01e3eccd}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+MANUAL\+\_\+\+RESTART}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_a4354ce06b355623c6f086d792ef22244}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+DIM\+\_\+\+TIME}}~-\/1
+\item 
+\#define \mbox{\hyperlink{settings_8c_a1745249be508f58278fc04f914fe8d95}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+OFF\+\_\+\+TIME}}~-\/1
+\item 
+\#define \mbox{\hyperlink{settings_8c_a8bd2565b8200b09f2221ba049b0ccacd}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+ROTATION\+\_\+\+STEP}}~3
+\item 
+\#define \mbox{\hyperlink{settings_8c_abbab17dacb81a66721e5252956daf6f9}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+SNTP\+\_\+\+SUCCESS}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_a9d3843c3925536f1edbecc0ee6448491}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+BRIGHTNESS}}~100
+\item 
+\#define \mbox{\hyperlink{settings_8c_ae8bef6008048fc2099dacf29dce4bdc2}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+DIM}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_a92b725af9553f1c11693f871111217f8}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+OFF}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_a33ce83b8c79a29ab8295a59063a5fefb}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+DARK\+\_\+\+THEME}}~true
+\item 
+\#define \mbox{\hyperlink{settings_8c_ac41c99aba8369e11ec4a3a1cd7880424}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+TIME\+\_\+\+VALID}}~false
+\item 
+\#define \mbox{\hyperlink{settings_8c_a8d472237c8716e626ac8800216bbf32e}{SETTINGS\+\_\+\+DEFAULT\+\_\+\+SNTP\+\_\+\+ERR\+\_\+\+CODE}}~ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+STATE
+\item 
+\#define \mbox{\hyperlink{settings_8c_a6a12c38b9835e8aa39050e1977c85bc1}{SETTINGS\+\_\+\+CALIBRATION\+\_\+\+TASK\+\_\+\+STACK}}~(10 \texorpdfstring{$\ast$}{*} 1024)
+\item 
+\#define \mbox{\hyperlink{settings_8c_a3a2e7f523e47198169be1935fee1220a}{SETTINGS\+\_\+\+CALIBRATION\+\_\+\+TASK\+\_\+\+PRIO}}~(5)
+\item 
+\#define \mbox{\hyperlink{settings_8c_aafd6e5af5c49c172332300959c07bd08}{SETTINGS\+\_\+\+MINIMUM\+\_\+\+BRIGHTNESS}}~1
+\item 
+\#define \mbox{\hyperlink{settings_8c_a5b2bf14ab7d30dc6b0c3d9c7b7dcc054}{SETTINGS\+\_\+\+AP\+\_\+\+SSID\+\_\+\+MAX\+\_\+\+LEN}}~32
+\item 
+\#define \mbox{\hyperlink{settings_8c_ac402a8be0b058daab6eb14084f73e3e0}{SETTINGS\+\_\+\+AP\+\_\+\+PWD\+\_\+\+MAX\+\_\+\+LEN}}~63
+\item 
+\#define \mbox{\hyperlink{settings_8c_adc94a5c90d6105e86d08be2f0546d024}{SETTINGS\+\_\+\+ROTATION\+\_\+\+STEPS}}~4
+\item 
+\#define \mbox{\hyperlink{settings_8c_abcd01690d869c5c26489e42a00cdc9ec}{SETTINGS\+\_\+\+DIM\+\_\+\+FADE\+\_\+\+MS}}~500
+\item 
+\#define \mbox{\hyperlink{settings_8c_afc13ecf6947c69db4eeb348da29cf723}{SETTINGS\+\_\+\+OFF\+\_\+\+FADE\+\_\+\+MS}}~500
+\item 
+\#define \mbox{\hyperlink{settings_8c_a986d3c513190ce0c908f4bf7cd12ac1c}{SETTINGS\+\_\+\+UP\+\_\+\+FADE\+\_\+\+MS}}~250
+\item 
+\#define \mbox{\hyperlink{settings_8c_a9dd2064391465dd8aa95e179c4e23a4c}{SETTINGS\+\_\+\+LIGHT\+\_\+\+SLEEP\+\_\+\+TASK\+\_\+\+CORE}}~0
+\item 
+\#define \mbox{\hyperlink{settings_8c_a41502ae9252593be9cb409b0aba4983f}{SETTINGS\+\_\+\+LIGHT\+\_\+\+SLEEP\+\_\+\+TASK\+\_\+\+PRIORITY}}~(tsk\+IDLE\+\_\+\+PRIORITY + 1)
+\item 
+\#define \mbox{\hyperlink{settings_8c_ad05e5e86eb1c11831d6c377587d3fb07}{SETTINGS\+\_\+\+LIGHT\+\_\+\+SLEEP\+\_\+\+TASK\+\_\+\+STACK\+\_\+\+WORDS}}~(4 \texorpdfstring{$\ast$}{*} 1024)
+\item 
+\#define \mbox{\hyperlink{settings_8c_a3b4abbf4ba6fdb2897b8a8a601f9d0c5}{TOUCH\+\_\+\+IRQ\+\_\+\+WAKE\+\_\+\+LEVEL}}~0
+\item 
+\#define \mbox{\hyperlink{settings_8c_a890d84b9b5d0b0aede9eea1092a7a10a}{STR\+\_\+\+HELPER}}(x)
+\item 
+\#define \mbox{\hyperlink{settings_8c_a18d295a837ac71add5578860b55e5502}{STR}}(x)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{settings_8c_a49f4c4275bf05db2bccb839dd67236ae}{settings\+\_\+starting\+\_\+routine}} (void)
+\begin{DoxyCompactList}\small\item\em Execute the full startup flow (NVS, display, settings, SNTP, touch). \end{DoxyCompactList}\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{settings_8c_acf24b7a684c9bc230252c011a261ea5e}{settings\+\_\+open\+\_\+settings}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}return\+\_\+screen)
+\begin{DoxyCompactList}\small\item\em Open the Settings UI, creating it on first call and loading it into LVGL. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_a00977dd4f60c5b39183c0097097dc5c2}{settings\+\_\+show\+\_\+date\+\_\+time\+\_\+dialog}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}return\+\_\+screen)
+\begin{DoxyCompactList}\small\item\em Show the Set Date\&Time dialog. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_a04c458ac717c77c1d0d5c3c9e8601b4b}{settings\+\_\+show\+\_\+sntp\+\_\+dialog}} (lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}return\+\_\+screen)
+\begin{DoxyCompactList}\small\item\em Show the SNTP refresh confirmation dialog. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_a33836c1fe73ee9b59e819d5969ce5ea6}{settings\+\_\+register\+\_\+time\+\_\+callbacks}} (void(\texorpdfstring{$\ast$}{*}on\+\_\+time\+\_\+set)(void), void(\texorpdfstring{$\ast$}{*}on\+\_\+time\+\_\+reset)(void))
+\begin{DoxyCompactList}\small\item\em Register callbacks for time set/reset events. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_a07f685dbaa2faf4c472b2a808cd610f6}{settings\+\_\+shutdown\+\_\+save\+\_\+time}} (void)
+\begin{DoxyCompactList}\small\item\em persists current system time to NVS. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8c_a3d5d2f5208ba6b57ffd5dd854c26846e}{settings\+\_\+is\+\_\+time\+\_\+valid}} (void)
+\begin{DoxyCompactList}\small\item\em Check if there is any valid value in NVS for system time. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_a410b5d8d49c9be09b1cbc614feaaa6f3}{settings\+\_\+fade\+\_\+to\+\_\+saved\+\_\+brightness}} (void)
+\begin{DoxyCompactList}\small\item\em Fade brightness to saved\+\_\+brightness over SETTINGS\+\_\+\+UP\+\_\+\+FADE\+\_\+\+MS. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_afd9b342f168e1f5b88ecca86af3d1883}{settings\+\_\+start\+\_\+screensaver\+\_\+timers}} (void)
+\begin{DoxyCompactList}\small\item\em (Re)start dim/off timers according to current settings state. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{settings_8c_abd5a1f83319177839909ea51587f28dd}{settings\+\_\+get\+\_\+active\+\_\+brightness}} (void)
+\begin{DoxyCompactList}\small\item\em Get the current active brightness percentage. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8c_a3f32db1ddff47a137a04570dc8f75799}{settings\+\_\+is\+\_\+wake\+\_\+in\+\_\+progress}} (void)
+\begin{DoxyCompactList}\small\item\em Check if a wake fade (brightness ramp-\/up) is in progress. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8c_af0d8a8509e4013b3ba70bc3d374cd24a}{settings\+\_\+is\+\_\+brightness\+\_\+changing}} (void)
+\begin{DoxyCompactList}\small\item\em Get whether brightness/backlight is effectively on ( \texorpdfstring{$>$}{>}0 ). \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8c_a8d996817d6c7b5fd186609cf5c0c3f84}{settings\+\_\+get\+\_\+calibration\+\_\+prompt\+\_\+enabled}} (void)
+\begin{DoxyCompactList}\small\item\em Get the stored preference for prompting calibration at startup. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_a9f40f6e1a72c7d0a6d0f0f2ab69b3c5d}{settings\+\_\+set\+\_\+calibration\+\_\+prompt\+\_\+enabled}} (bool enable)
+\begin{DoxyCompactList}\small\item\em Persist the preference for prompting calibration at startup. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8c_a9df3203fb9681b7760072af3b52596b3}{settings\+\_\+get\+\_\+running\+\_\+calibration}} (void)
+\begin{DoxyCompactList}\small\item\em Get the state of the calibration wizard. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_a402e66791b625bb6d6e73d1fb8798f0b}{settings\+\_\+set\+\_\+running\+\_\+calibration}} (bool enable)
+\begin{DoxyCompactList}\small\item\em Set the calibration running guard flag. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{settings_8c_a723416ad6ad254c42a3f249277ea442a}{settings\+\_\+is\+\_\+theme\+\_\+dark}} (void)
+\begin{DoxyCompactList}\small\item\em Get the dark theme flag. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_ac62726b3e575083438303597e49cdf38}{settings\+\_\+set\+\_\+dark\+\_\+theme\+\_\+flag}} (bool is\+\_\+dark)
+\begin{DoxyCompactList}\small\item\em Set the dark theme flag. \end{DoxyCompactList}\item 
+char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{settings_8c_a37a9f13e88f3cea45827f68d50edd0a0}{settings\+\_\+get\+\_\+ap\+\_\+ssid}} ()
+\begin{DoxyCompactList}\small\item\em Get the configured Access Point SSID string. \end{DoxyCompactList}\item 
+char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{settings_8c_ab156515ed83060cfe1b9c1cdc661c905}{settings\+\_\+get\+\_\+ap\+\_\+pwd}} (void)
+\begin{DoxyCompactList}\small\item\em Get the configured Access Point password string. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_ab794260555ed66561e70dc1c76e826de}{screensaver\+\_\+off\+\_\+stop}} (void)
+\begin{DoxyCompactList}\small\item\em Stop the screensaver off timer. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_a29e309012a2cefcdbaa39973d014fb13}{screensaver\+\_\+dim\+\_\+stop}} (void)
+\begin{DoxyCompactList}\small\item\em Stop the screensaver dim timer. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_ada5fbc543a9d935068960e2527316c5f}{settings\+\_\+set\+\_\+sd\+\_\+card\+\_\+restart}} (bool enable)
+\begin{DoxyCompactList}\small\item\em Set the SD card restart flag in RAM (non-\/persistent). \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{settings_8c_aced8739a6efea581a75d14446797b610}{settings\+\_\+persist\+\_\+sd\+\_\+card\+\_\+restart}} (void)
+\begin{DoxyCompactList}\small\item\em Persist the SD card restart flag to NVS. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{settings_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{settings_8c_ac402a8be0b058daab6eb14084f73e3e0}\index{settings.c@{settings.c}!SETTINGS\_AP\_PWD\_MAX\_LEN@{SETTINGS\_AP\_PWD\_MAX\_LEN}}
+\index{SETTINGS\_AP\_PWD\_MAX\_LEN@{SETTINGS\_AP\_PWD\_MAX\_LEN}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_AP\_PWD\_MAX\_LEN}{SETTINGS\_AP\_PWD\_MAX\_LEN}}
+{\footnotesize\ttfamily \label{settings_8c_ac402a8be0b058daab6eb14084f73e3e0} 
+\#define SETTINGS\+\_\+\+AP\+\_\+\+PWD\+\_\+\+MAX\+\_\+\+LEN~63}
+
+\Hypertarget{settings_8c_a5b2bf14ab7d30dc6b0c3d9c7b7dcc054}\index{settings.c@{settings.c}!SETTINGS\_AP\_SSID\_MAX\_LEN@{SETTINGS\_AP\_SSID\_MAX\_LEN}}
+\index{SETTINGS\_AP\_SSID\_MAX\_LEN@{SETTINGS\_AP\_SSID\_MAX\_LEN}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_AP\_SSID\_MAX\_LEN}{SETTINGS\_AP\_SSID\_MAX\_LEN}}
+{\footnotesize\ttfamily \label{settings_8c_a5b2bf14ab7d30dc6b0c3d9c7b7dcc054} 
+\#define SETTINGS\+\_\+\+AP\+\_\+\+SSID\+\_\+\+MAX\+\_\+\+LEN~32}
+
+\Hypertarget{settings_8c_a3a2e7f523e47198169be1935fee1220a}\index{settings.c@{settings.c}!SETTINGS\_CALIBRATION\_TASK\_PRIO@{SETTINGS\_CALIBRATION\_TASK\_PRIO}}
+\index{SETTINGS\_CALIBRATION\_TASK\_PRIO@{SETTINGS\_CALIBRATION\_TASK\_PRIO}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_CALIBRATION\_TASK\_PRIO}{SETTINGS\_CALIBRATION\_TASK\_PRIO}}
+{\footnotesize\ttfamily \label{settings_8c_a3a2e7f523e47198169be1935fee1220a} 
+\#define SETTINGS\+\_\+\+CALIBRATION\+\_\+\+TASK\+\_\+\+PRIO~(5)}
+
+\Hypertarget{settings_8c_a6a12c38b9835e8aa39050e1977c85bc1}\index{settings.c@{settings.c}!SETTINGS\_CALIBRATION\_TASK\_STACK@{SETTINGS\_CALIBRATION\_TASK\_STACK}}
+\index{SETTINGS\_CALIBRATION\_TASK\_STACK@{SETTINGS\_CALIBRATION\_TASK\_STACK}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_CALIBRATION\_TASK\_STACK}{SETTINGS\_CALIBRATION\_TASK\_STACK}}
+{\footnotesize\ttfamily \label{settings_8c_a6a12c38b9835e8aa39050e1977c85bc1} 
+\#define SETTINGS\+\_\+\+CALIBRATION\+\_\+\+TASK\+\_\+\+STACK~(10 \texorpdfstring{$\ast$}{*} 1024)}
+
+\Hypertarget{settings_8c_a9d3843c3925536f1edbecc0ee6448491}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_BRIGHTNESS@{SETTINGS\_DEFAULT\_BRIGHTNESS}}
+\index{SETTINGS\_DEFAULT\_BRIGHTNESS@{SETTINGS\_DEFAULT\_BRIGHTNESS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_BRIGHTNESS}{SETTINGS\_DEFAULT\_BRIGHTNESS}}
+{\footnotesize\ttfamily \label{settings_8c_a9d3843c3925536f1edbecc0ee6448491} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+BRIGHTNESS~100}
+
+\Hypertarget{settings_8c_a42ff393566db1c69659f02d3d1897d85}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_CALI\_PROMPT\_ENABLE@{SETTINGS\_DEFAULT\_CALI\_PROMPT\_ENABLE}}
+\index{SETTINGS\_DEFAULT\_CALI\_PROMPT\_ENABLE@{SETTINGS\_DEFAULT\_CALI\_PROMPT\_ENABLE}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_CALI\_PROMPT\_ENABLE}{SETTINGS\_DEFAULT\_CALI\_PROMPT\_ENABLE}}
+{\footnotesize\ttfamily \label{settings_8c_a42ff393566db1c69659f02d3d1897d85} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+CALI\+\_\+\+PROMPT\+\_\+\+ENABLE~true}
+
+\Hypertarget{settings_8c_a33ce83b8c79a29ab8295a59063a5fefb}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_DARK\_THEME@{SETTINGS\_DEFAULT\_DARK\_THEME}}
+\index{SETTINGS\_DEFAULT\_DARK\_THEME@{SETTINGS\_DEFAULT\_DARK\_THEME}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_DARK\_THEME}{SETTINGS\_DEFAULT\_DARK\_THEME}}
+{\footnotesize\ttfamily \label{settings_8c_a33ce83b8c79a29ab8295a59063a5fefb} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+DARK\+\_\+\+THEME~true}
+
+\Hypertarget{settings_8c_ab60c2bc483398f5c5e6a471e01e3eccd}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_MANUAL\_RESTART@{SETTINGS\_DEFAULT\_MANUAL\_RESTART}}
+\index{SETTINGS\_DEFAULT\_MANUAL\_RESTART@{SETTINGS\_DEFAULT\_MANUAL\_RESTART}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_MANUAL\_RESTART}{SETTINGS\_DEFAULT\_MANUAL\_RESTART}}
+{\footnotesize\ttfamily \label{settings_8c_ab60c2bc483398f5c5e6a471e01e3eccd} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+MANUAL\+\_\+\+RESTART~false}
+
+\Hypertarget{settings_8c_af3c3788c6981f977dd83ab0e988c5caf}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_REFRESH\_SNTP\_STARTUP@{SETTINGS\_DEFAULT\_REFRESH\_SNTP\_STARTUP}}
+\index{SETTINGS\_DEFAULT\_REFRESH\_SNTP\_STARTUP@{SETTINGS\_DEFAULT\_REFRESH\_SNTP\_STARTUP}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_REFRESH\_SNTP\_STARTUP}{SETTINGS\_DEFAULT\_REFRESH\_SNTP\_STARTUP}}
+{\footnotesize\ttfamily \label{settings_8c_af3c3788c6981f977dd83ab0e988c5caf} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+REFRESH\+\_\+\+SNTP\+\_\+\+STARTUP~false}
+
+\Hypertarget{settings_8c_a8bd2565b8200b09f2221ba049b0ccacd}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_ROTATION\_STEP@{SETTINGS\_DEFAULT\_ROTATION\_STEP}}
+\index{SETTINGS\_DEFAULT\_ROTATION\_STEP@{SETTINGS\_DEFAULT\_ROTATION\_STEP}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_ROTATION\_STEP}{SETTINGS\_DEFAULT\_ROTATION\_STEP}}
+{\footnotesize\ttfamily \label{settings_8c_a8bd2565b8200b09f2221ba049b0ccacd} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+ROTATION\+\_\+\+STEP~3}
+
+\Hypertarget{settings_8c_aecc0730a0a5694ffbaee3a9fe6429f65}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_RUNNING\_CALIBRATION@{SETTINGS\_DEFAULT\_RUNNING\_CALIBRATION}}
+\index{SETTINGS\_DEFAULT\_RUNNING\_CALIBRATION@{SETTINGS\_DEFAULT\_RUNNING\_CALIBRATION}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_RUNNING\_CALIBRATION}{SETTINGS\_DEFAULT\_RUNNING\_CALIBRATION}}
+{\footnotesize\ttfamily \label{settings_8c_aecc0730a0a5694ffbaee3a9fe6429f65} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+RUNNING\+\_\+\+CALIBRATION~false}
+
+\Hypertarget{settings_8c_ae8bef6008048fc2099dacf29dce4bdc2}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_SCREEN\_DIM@{SETTINGS\_DEFAULT\_SCREEN\_DIM}}
+\index{SETTINGS\_DEFAULT\_SCREEN\_DIM@{SETTINGS\_DEFAULT\_SCREEN\_DIM}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_SCREEN\_DIM}{SETTINGS\_DEFAULT\_SCREEN\_DIM}}
+{\footnotesize\ttfamily \label{settings_8c_ae8bef6008048fc2099dacf29dce4bdc2} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+DIM~false}
+
+\Hypertarget{settings_8c_a4609e027ec871158081a1043695ca651}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_SCREEN\_DIM\_LEVEL@{SETTINGS\_DEFAULT\_SCREEN\_DIM\_LEVEL}}
+\index{SETTINGS\_DEFAULT\_SCREEN\_DIM\_LEVEL@{SETTINGS\_DEFAULT\_SCREEN\_DIM\_LEVEL}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_SCREEN\_DIM\_LEVEL}{SETTINGS\_DEFAULT\_SCREEN\_DIM\_LEVEL}}
+{\footnotesize\ttfamily \label{settings_8c_a4609e027ec871158081a1043695ca651} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+DIM\+\_\+\+LEVEL~-\/1}
+
+\Hypertarget{settings_8c_a4354ce06b355623c6f086d792ef22244}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_SCREEN\_DIM\_TIME@{SETTINGS\_DEFAULT\_SCREEN\_DIM\_TIME}}
+\index{SETTINGS\_DEFAULT\_SCREEN\_DIM\_TIME@{SETTINGS\_DEFAULT\_SCREEN\_DIM\_TIME}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_SCREEN\_DIM\_TIME}{SETTINGS\_DEFAULT\_SCREEN\_DIM\_TIME}}
+{\footnotesize\ttfamily \label{settings_8c_a4354ce06b355623c6f086d792ef22244} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+DIM\+\_\+\+TIME~-\/1}
+
+\Hypertarget{settings_8c_a92b725af9553f1c11693f871111217f8}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_SCREEN\_OFF@{SETTINGS\_DEFAULT\_SCREEN\_OFF}}
+\index{SETTINGS\_DEFAULT\_SCREEN\_OFF@{SETTINGS\_DEFAULT\_SCREEN\_OFF}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_SCREEN\_OFF}{SETTINGS\_DEFAULT\_SCREEN\_OFF}}
+{\footnotesize\ttfamily \label{settings_8c_a92b725af9553f1c11693f871111217f8} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+OFF~false}
+
+\Hypertarget{settings_8c_a1745249be508f58278fc04f914fe8d95}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_SCREEN\_OFF\_TIME@{SETTINGS\_DEFAULT\_SCREEN\_OFF\_TIME}}
+\index{SETTINGS\_DEFAULT\_SCREEN\_OFF\_TIME@{SETTINGS\_DEFAULT\_SCREEN\_OFF\_TIME}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_SCREEN\_OFF\_TIME}{SETTINGS\_DEFAULT\_SCREEN\_OFF\_TIME}}
+{\footnotesize\ttfamily \label{settings_8c_a1745249be508f58278fc04f914fe8d95} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+SCREEN\+\_\+\+OFF\+\_\+\+TIME~-\/1}
+
+\Hypertarget{settings_8c_a90e88deb5a33a5e67912d8f92fd4bdb0}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_SD\_CARD\_RESTART@{SETTINGS\_DEFAULT\_SD\_CARD\_RESTART}}
+\index{SETTINGS\_DEFAULT\_SD\_CARD\_RESTART@{SETTINGS\_DEFAULT\_SD\_CARD\_RESTART}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_SD\_CARD\_RESTART}{SETTINGS\_DEFAULT\_SD\_CARD\_RESTART}}
+{\footnotesize\ttfamily \label{settings_8c_a90e88deb5a33a5e67912d8f92fd4bdb0} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+SD\+\_\+\+CARD\+\_\+\+RESTART~false}
+
+\Hypertarget{settings_8c_a8d472237c8716e626ac8800216bbf32e}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_SNTP\_ERR\_CODE@{SETTINGS\_DEFAULT\_SNTP\_ERR\_CODE}}
+\index{SETTINGS\_DEFAULT\_SNTP\_ERR\_CODE@{SETTINGS\_DEFAULT\_SNTP\_ERR\_CODE}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_SNTP\_ERR\_CODE}{SETTINGS\_DEFAULT\_SNTP\_ERR\_CODE}}
+{\footnotesize\ttfamily \label{settings_8c_a8d472237c8716e626ac8800216bbf32e} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+SNTP\+\_\+\+ERR\+\_\+\+CODE~ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+STATE}
+
+\Hypertarget{settings_8c_abbab17dacb81a66721e5252956daf6f9}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_SNTP\_SUCCESS@{SETTINGS\_DEFAULT\_SNTP\_SUCCESS}}
+\index{SETTINGS\_DEFAULT\_SNTP\_SUCCESS@{SETTINGS\_DEFAULT\_SNTP\_SUCCESS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_SNTP\_SUCCESS}{SETTINGS\_DEFAULT\_SNTP\_SUCCESS}}
+{\footnotesize\ttfamily \label{settings_8c_abbab17dacb81a66721e5252956daf6f9} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+SNTP\+\_\+\+SUCCESS~false}
+
+\Hypertarget{settings_8c_abd216f975e36a002474f205d7d9fbf1d}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_STARTUP\_SNTP\_AUTO\_CONNECT@{SETTINGS\_DEFAULT\_STARTUP\_SNTP\_AUTO\_CONNECT}}
+\index{SETTINGS\_DEFAULT\_STARTUP\_SNTP\_AUTO\_CONNECT@{SETTINGS\_DEFAULT\_STARTUP\_SNTP\_AUTO\_CONNECT}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_STARTUP\_SNTP\_AUTO\_CONNECT}{SETTINGS\_DEFAULT\_STARTUP\_SNTP\_AUTO\_CONNECT}}
+{\footnotesize\ttfamily \label{settings_8c_abd216f975e36a002474f205d7d9fbf1d} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+STARTUP\+\_\+\+SNTP\+\_\+\+AUTO\+\_\+\+CONNECT~false}
+
+\Hypertarget{settings_8c_ac41c99aba8369e11ec4a3a1cd7880424}\index{settings.c@{settings.c}!SETTINGS\_DEFAULT\_TIME\_VALID@{SETTINGS\_DEFAULT\_TIME\_VALID}}
+\index{SETTINGS\_DEFAULT\_TIME\_VALID@{SETTINGS\_DEFAULT\_TIME\_VALID}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DEFAULT\_TIME\_VALID}{SETTINGS\_DEFAULT\_TIME\_VALID}}
+{\footnotesize\ttfamily \label{settings_8c_ac41c99aba8369e11ec4a3a1cd7880424} 
+\#define SETTINGS\+\_\+\+DEFAULT\+\_\+\+TIME\+\_\+\+VALID~false}
+
+\Hypertarget{settings_8c_abcd01690d869c5c26489e42a00cdc9ec}\index{settings.c@{settings.c}!SETTINGS\_DIM\_FADE\_MS@{SETTINGS\_DIM\_FADE\_MS}}
+\index{SETTINGS\_DIM\_FADE\_MS@{SETTINGS\_DIM\_FADE\_MS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_DIM\_FADE\_MS}{SETTINGS\_DIM\_FADE\_MS}}
+{\footnotesize\ttfamily \label{settings_8c_abcd01690d869c5c26489e42a00cdc9ec} 
+\#define SETTINGS\+\_\+\+DIM\+\_\+\+FADE\+\_\+\+MS~500}
+
+\Hypertarget{settings_8c_a9dd2064391465dd8aa95e179c4e23a4c}\index{settings.c@{settings.c}!SETTINGS\_LIGHT\_SLEEP\_TASK\_CORE@{SETTINGS\_LIGHT\_SLEEP\_TASK\_CORE}}
+\index{SETTINGS\_LIGHT\_SLEEP\_TASK\_CORE@{SETTINGS\_LIGHT\_SLEEP\_TASK\_CORE}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_LIGHT\_SLEEP\_TASK\_CORE}{SETTINGS\_LIGHT\_SLEEP\_TASK\_CORE}}
+{\footnotesize\ttfamily \label{settings_8c_a9dd2064391465dd8aa95e179c4e23a4c} 
+\#define SETTINGS\+\_\+\+LIGHT\+\_\+\+SLEEP\+\_\+\+TASK\+\_\+\+CORE~0}
+
+\Hypertarget{settings_8c_a41502ae9252593be9cb409b0aba4983f}\index{settings.c@{settings.c}!SETTINGS\_LIGHT\_SLEEP\_TASK\_PRIORITY@{SETTINGS\_LIGHT\_SLEEP\_TASK\_PRIORITY}}
+\index{SETTINGS\_LIGHT\_SLEEP\_TASK\_PRIORITY@{SETTINGS\_LIGHT\_SLEEP\_TASK\_PRIORITY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_LIGHT\_SLEEP\_TASK\_PRIORITY}{SETTINGS\_LIGHT\_SLEEP\_TASK\_PRIORITY}}
+{\footnotesize\ttfamily \label{settings_8c_a41502ae9252593be9cb409b0aba4983f} 
+\#define SETTINGS\+\_\+\+LIGHT\+\_\+\+SLEEP\+\_\+\+TASK\+\_\+\+PRIORITY~(tsk\+IDLE\+\_\+\+PRIORITY + 1)}
+
+\Hypertarget{settings_8c_ad05e5e86eb1c11831d6c377587d3fb07}\index{settings.c@{settings.c}!SETTINGS\_LIGHT\_SLEEP\_TASK\_STACK\_WORDS@{SETTINGS\_LIGHT\_SLEEP\_TASK\_STACK\_WORDS}}
+\index{SETTINGS\_LIGHT\_SLEEP\_TASK\_STACK\_WORDS@{SETTINGS\_LIGHT\_SLEEP\_TASK\_STACK\_WORDS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_LIGHT\_SLEEP\_TASK\_STACK\_WORDS}{SETTINGS\_LIGHT\_SLEEP\_TASK\_STACK\_WORDS}}
+{\footnotesize\ttfamily \label{settings_8c_ad05e5e86eb1c11831d6c377587d3fb07} 
+\#define SETTINGS\+\_\+\+LIGHT\+\_\+\+SLEEP\+\_\+\+TASK\+\_\+\+STACK\+\_\+\+WORDS~(4 \texorpdfstring{$\ast$}{*} 1024)}
+
+\Hypertarget{settings_8c_aafd6e5af5c49c172332300959c07bd08}\index{settings.c@{settings.c}!SETTINGS\_MINIMUM\_BRIGHTNESS@{SETTINGS\_MINIMUM\_BRIGHTNESS}}
+\index{SETTINGS\_MINIMUM\_BRIGHTNESS@{SETTINGS\_MINIMUM\_BRIGHTNESS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_MINIMUM\_BRIGHTNESS}{SETTINGS\_MINIMUM\_BRIGHTNESS}}
+{\footnotesize\ttfamily \label{settings_8c_aafd6e5af5c49c172332300959c07bd08} 
+\#define SETTINGS\+\_\+\+MINIMUM\+\_\+\+BRIGHTNESS~1}
+
+Lowest brightness percentage to avoid black screen \Hypertarget{settings_8c_a3a00b8d1dbe10b62dc8b08648d8b2891}\index{settings.c@{settings.c}!SETTINGS\_NVS\_AP\_PWD\_KEY@{SETTINGS\_NVS\_AP\_PWD\_KEY}}
+\index{SETTINGS\_NVS\_AP\_PWD\_KEY@{SETTINGS\_NVS\_AP\_PWD\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_AP\_PWD\_KEY}{SETTINGS\_NVS\_AP\_PWD\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a3a00b8d1dbe10b62dc8b08648d8b2891} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+AP\+\_\+\+PWD\+\_\+\+KEY~"{}ap\+\_\+pwd"{}}
+
+\Hypertarget{settings_8c_a1dbf44458a5a2c698df61f5cd71b727e}\index{settings.c@{settings.c}!SETTINGS\_NVS\_AP\_SSID\_KEY@{SETTINGS\_NVS\_AP\_SSID\_KEY}}
+\index{SETTINGS\_NVS\_AP\_SSID\_KEY@{SETTINGS\_NVS\_AP\_SSID\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_AP\_SSID\_KEY}{SETTINGS\_NVS\_AP\_SSID\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a1dbf44458a5a2c698df61f5cd71b727e} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+AP\+\_\+\+SSID\+\_\+\+KEY~"{}ap\+\_\+ssid"{}}
+
+\Hypertarget{settings_8c_adebef87cb25ac046713f1bd4216b726e}\index{settings.c@{settings.c}!SETTINGS\_NVS\_AUTO\_CONNECT\_KEY@{SETTINGS\_NVS\_AUTO\_CONNECT\_KEY}}
+\index{SETTINGS\_NVS\_AUTO\_CONNECT\_KEY@{SETTINGS\_NVS\_AUTO\_CONNECT\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_AUTO\_CONNECT\_KEY}{SETTINGS\_NVS\_AUTO\_CONNECT\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_adebef87cb25ac046713f1bd4216b726e} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+AUTO\+\_\+\+CONNECT\+\_\+\+KEY~"{}auto\+\_\+connect"{}}
+
+\Hypertarget{settings_8c_ae3df428d6c8298868ae5871643a033f6}\index{settings.c@{settings.c}!SETTINGS\_NVS\_BRIGHTNESS\_KEY@{SETTINGS\_NVS\_BRIGHTNESS\_KEY}}
+\index{SETTINGS\_NVS\_BRIGHTNESS\_KEY@{SETTINGS\_NVS\_BRIGHTNESS\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_BRIGHTNESS\_KEY}{SETTINGS\_NVS\_BRIGHTNESS\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_ae3df428d6c8298868ae5871643a033f6} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+BRIGHTNESS\+\_\+\+KEY~"{}brightness\+\_\+pct"{}}
+
+\Hypertarget{settings_8c_a2dcaf5f5fc683f03e61c9d76f589cd24}\index{settings.c@{settings.c}!SETTINGS\_NVS\_CALIB\_PROMPT\_KEY@{SETTINGS\_NVS\_CALIB\_PROMPT\_KEY}}
+\index{SETTINGS\_NVS\_CALIB\_PROMPT\_KEY@{SETTINGS\_NVS\_CALIB\_PROMPT\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_CALIB\_PROMPT\_KEY}{SETTINGS\_NVS\_CALIB\_PROMPT\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a2dcaf5f5fc683f03e61c9d76f589cd24} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+CALIB\+\_\+\+PROMPT\+\_\+\+KEY~"{}calib\+\_\+prompt"{}}
+
+\Hypertarget{settings_8c_a968d2ee9c839ead550caede21de0e867}\index{settings.c@{settings.c}!SETTINGS\_NVS\_DIM\_EN\_KEY@{SETTINGS\_NVS\_DIM\_EN\_KEY}}
+\index{SETTINGS\_NVS\_DIM\_EN\_KEY@{SETTINGS\_NVS\_DIM\_EN\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_DIM\_EN\_KEY}{SETTINGS\_NVS\_DIM\_EN\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a968d2ee9c839ead550caede21de0e867} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+DIM\+\_\+\+EN\+\_\+\+KEY~"{}dim\+\_\+en"{}}
+
+\Hypertarget{settings_8c_a3f9c68e6b6e3e49bdc9f3663b141c373}\index{settings.c@{settings.c}!SETTINGS\_NVS\_DIM\_LEVEL\_KEY@{SETTINGS\_NVS\_DIM\_LEVEL\_KEY}}
+\index{SETTINGS\_NVS\_DIM\_LEVEL\_KEY@{SETTINGS\_NVS\_DIM\_LEVEL\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_DIM\_LEVEL\_KEY}{SETTINGS\_NVS\_DIM\_LEVEL\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a3f9c68e6b6e3e49bdc9f3663b141c373} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+DIM\+\_\+\+LEVEL\+\_\+\+KEY~"{}dim\+\_\+level"{}}
+
+\Hypertarget{settings_8c_aa68ab2abdf9a8b66449d84d47b332263}\index{settings.c@{settings.c}!SETTINGS\_NVS\_DIM\_TIME\_KEY@{SETTINGS\_NVS\_DIM\_TIME\_KEY}}
+\index{SETTINGS\_NVS\_DIM\_TIME\_KEY@{SETTINGS\_NVS\_DIM\_TIME\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_DIM\_TIME\_KEY}{SETTINGS\_NVS\_DIM\_TIME\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_aa68ab2abdf9a8b66449d84d47b332263} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+DIM\+\_\+\+TIME\+\_\+\+KEY~"{}dim\+\_\+time"{}}
+
+\Hypertarget{settings_8c_a577e637122627cf390ad977c2086a8f0}\index{settings.c@{settings.c}!SETTINGS\_NVS\_MANUAL\_RESTART\_KEY@{SETTINGS\_NVS\_MANUAL\_RESTART\_KEY}}
+\index{SETTINGS\_NVS\_MANUAL\_RESTART\_KEY@{SETTINGS\_NVS\_MANUAL\_RESTART\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_MANUAL\_RESTART\_KEY}{SETTINGS\_NVS\_MANUAL\_RESTART\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a577e637122627cf390ad977c2086a8f0} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+MANUAL\+\_\+\+RESTART\+\_\+\+KEY~"{}manual\+\_\+restart"{}}
+
+\Hypertarget{settings_8c_af0e7c600e26ff137673f8ee2b52cfffb}\index{settings.c@{settings.c}!SETTINGS\_NVS\_NS@{SETTINGS\_NVS\_NS}}
+\index{SETTINGS\_NVS\_NS@{SETTINGS\_NVS\_NS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_NS}{SETTINGS\_NVS\_NS}}
+{\footnotesize\ttfamily \label{settings_8c_af0e7c600e26ff137673f8ee2b52cfffb} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+NS~"{}settings"{}}
+
+\Hypertarget{settings_8c_a53554df0b4b1e16a42a654e988f8f4d9}\index{settings.c@{settings.c}!SETTINGS\_NVS\_OFF\_EN\_KEY@{SETTINGS\_NVS\_OFF\_EN\_KEY}}
+\index{SETTINGS\_NVS\_OFF\_EN\_KEY@{SETTINGS\_NVS\_OFF\_EN\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_OFF\_EN\_KEY}{SETTINGS\_NVS\_OFF\_EN\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a53554df0b4b1e16a42a654e988f8f4d9} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+OFF\+\_\+\+EN\+\_\+\+KEY~"{}off\+\_\+en"{}}
+
+\Hypertarget{settings_8c_aa87ba8ec506bf536605894793e27535f}\index{settings.c@{settings.c}!SETTINGS\_NVS\_OFF\_TIME\_KEY@{SETTINGS\_NVS\_OFF\_TIME\_KEY}}
+\index{SETTINGS\_NVS\_OFF\_TIME\_KEY@{SETTINGS\_NVS\_OFF\_TIME\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_OFF\_TIME\_KEY}{SETTINGS\_NVS\_OFF\_TIME\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_aa87ba8ec506bf536605894793e27535f} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+OFF\+\_\+\+TIME\+\_\+\+KEY~"{}off\+\_\+time"{}}
+
+\Hypertarget{settings_8c_a5f539903d5273c466692ced89238fb16}\index{settings.c@{settings.c}!SETTINGS\_NVS\_REFRESH\_SNTP\_STARTUP\_KEY@{SETTINGS\_NVS\_REFRESH\_SNTP\_STARTUP\_KEY}}
+\index{SETTINGS\_NVS\_REFRESH\_SNTP\_STARTUP\_KEY@{SETTINGS\_NVS\_REFRESH\_SNTP\_STARTUP\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_REFRESH\_SNTP\_STARTUP\_KEY}{SETTINGS\_NVS\_REFRESH\_SNTP\_STARTUP\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a5f539903d5273c466692ced89238fb16} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+REFRESH\+\_\+\+SNTP\+\_\+\+STARTUP\+\_\+\+KEY~"{}refresh\+\_\+sntp"{}}
+
+\Hypertarget{settings_8c_ad82114228e8f93ac7ecde2772f5a761f}\index{settings.c@{settings.c}!SETTINGS\_NVS\_ROT\_KEY@{SETTINGS\_NVS\_ROT\_KEY}}
+\index{SETTINGS\_NVS\_ROT\_KEY@{SETTINGS\_NVS\_ROT\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_ROT\_KEY}{SETTINGS\_NVS\_ROT\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_ad82114228e8f93ac7ecde2772f5a761f} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+ROT\+\_\+\+KEY~"{}rotation\+\_\+step"{}}
+
+\Hypertarget{settings_8c_a279e0bcc2fa40d65980c42fe1a63835f}\index{settings.c@{settings.c}!SETTINGS\_NVS\_SD\_CARD\_RESTART\_KEY@{SETTINGS\_NVS\_SD\_CARD\_RESTART\_KEY}}
+\index{SETTINGS\_NVS\_SD\_CARD\_RESTART\_KEY@{SETTINGS\_NVS\_SD\_CARD\_RESTART\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_SD\_CARD\_RESTART\_KEY}{SETTINGS\_NVS\_SD\_CARD\_RESTART\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a279e0bcc2fa40d65980c42fe1a63835f} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+SD\+\_\+\+CARD\+\_\+\+RESTART\+\_\+\+KEY~"{}sd\+\_\+card\+\_\+restart"{}}
+
+\Hypertarget{settings_8c_aa539ae6fdfa68e08aadbe7f55ad103bb}\index{settings.c@{settings.c}!SETTINGS\_NVS\_SNTP\_ERROR\_KEY@{SETTINGS\_NVS\_SNTP\_ERROR\_KEY}}
+\index{SETTINGS\_NVS\_SNTP\_ERROR\_KEY@{SETTINGS\_NVS\_SNTP\_ERROR\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_SNTP\_ERROR\_KEY}{SETTINGS\_NVS\_SNTP\_ERROR\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_aa539ae6fdfa68e08aadbe7f55ad103bb} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+SNTP\+\_\+\+ERROR\+\_\+\+KEY~"{}sntp\+\_\+err"{}}
+
+\Hypertarget{settings_8c_a22193650cc8a038f6d67da7494ed9f08}\index{settings.c@{settings.c}!SETTINGS\_NVS\_SNTP\_RESULT\_KEY@{SETTINGS\_NVS\_SNTP\_RESULT\_KEY}}
+\index{SETTINGS\_NVS\_SNTP\_RESULT\_KEY@{SETTINGS\_NVS\_SNTP\_RESULT\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_SNTP\_RESULT\_KEY}{SETTINGS\_NVS\_SNTP\_RESULT\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a22193650cc8a038f6d67da7494ed9f08} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+SNTP\+\_\+\+RESULT\+\_\+\+KEY~"{}sntp\+\_\+result"{}}
+
+\Hypertarget{settings_8c_acabec6ed209911a65a398b8fac7b29ba}\index{settings.c@{settings.c}!SETTINGS\_NVS\_THEME\_KEY@{SETTINGS\_NVS\_THEME\_KEY}}
+\index{SETTINGS\_NVS\_THEME\_KEY@{SETTINGS\_NVS\_THEME\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_THEME\_KEY}{SETTINGS\_NVS\_THEME\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_acabec6ed209911a65a398b8fac7b29ba} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+THEME\+\_\+\+KEY~"{}theme"{}}
+
+\Hypertarget{settings_8c_a760075ed43933a01515a0d4b5ab392a0}\index{settings.c@{settings.c}!SETTINGS\_NVS\_TIME\_KEY@{SETTINGS\_NVS\_TIME\_KEY}}
+\index{SETTINGS\_NVS\_TIME\_KEY@{SETTINGS\_NVS\_TIME\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_TIME\_KEY}{SETTINGS\_NVS\_TIME\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a760075ed43933a01515a0d4b5ab392a0} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+TIME\+\_\+\+KEY~"{}time\+\_\+epoch"{}}
+
+\Hypertarget{settings_8c_a5ceccb1307e6d5ac76604de137d23e79}\index{settings.c@{settings.c}!SETTINGS\_NVS\_VALID\_TIME\_FLAG\_KEY@{SETTINGS\_NVS\_VALID\_TIME\_FLAG\_KEY}}
+\index{SETTINGS\_NVS\_VALID\_TIME\_FLAG\_KEY@{SETTINGS\_NVS\_VALID\_TIME\_FLAG\_KEY}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_NVS\_VALID\_TIME\_FLAG\_KEY}{SETTINGS\_NVS\_VALID\_TIME\_FLAG\_KEY}}
+{\footnotesize\ttfamily \label{settings_8c_a5ceccb1307e6d5ac76604de137d23e79} 
+\#define SETTINGS\+\_\+\+NVS\+\_\+\+VALID\+\_\+\+TIME\+\_\+\+FLAG\+\_\+\+KEY~"{}is\+\_\+time\+\_\+valid"{}}
+
+\Hypertarget{settings_8c_afc13ecf6947c69db4eeb348da29cf723}\index{settings.c@{settings.c}!SETTINGS\_OFF\_FADE\_MS@{SETTINGS\_OFF\_FADE\_MS}}
+\index{SETTINGS\_OFF\_FADE\_MS@{SETTINGS\_OFF\_FADE\_MS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_OFF\_FADE\_MS}{SETTINGS\_OFF\_FADE\_MS}}
+{\footnotesize\ttfamily \label{settings_8c_afc13ecf6947c69db4eeb348da29cf723} 
+\#define SETTINGS\+\_\+\+OFF\+\_\+\+FADE\+\_\+\+MS~500}
+
+\Hypertarget{settings_8c_adc94a5c90d6105e86d08be2f0546d024}\index{settings.c@{settings.c}!SETTINGS\_ROTATION\_STEPS@{SETTINGS\_ROTATION\_STEPS}}
+\index{SETTINGS\_ROTATION\_STEPS@{SETTINGS\_ROTATION\_STEPS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_ROTATION\_STEPS}{SETTINGS\_ROTATION\_STEPS}}
+{\footnotesize\ttfamily \label{settings_8c_adc94a5c90d6105e86d08be2f0546d024} 
+\#define SETTINGS\+\_\+\+ROTATION\+\_\+\+STEPS~4}
+
+\Hypertarget{settings_8c_a986d3c513190ce0c908f4bf7cd12ac1c}\index{settings.c@{settings.c}!SETTINGS\_UP\_FADE\_MS@{SETTINGS\_UP\_FADE\_MS}}
+\index{SETTINGS\_UP\_FADE\_MS@{SETTINGS\_UP\_FADE\_MS}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_UP\_FADE\_MS}{SETTINGS\_UP\_FADE\_MS}}
+{\footnotesize\ttfamily \label{settings_8c_a986d3c513190ce0c908f4bf7cd12ac1c} 
+\#define SETTINGS\+\_\+\+UP\+\_\+\+FADE\+\_\+\+MS~250}
+
+\Hypertarget{settings_8c_a18d295a837ac71add5578860b55e5502}\index{settings.c@{settings.c}!STR@{STR}}
+\index{STR@{STR}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{STR}{STR}}
+{\footnotesize\ttfamily \label{settings_8c_a18d295a837ac71add5578860b55e5502} 
+\#define STR(\begin{DoxyParamCaption}\item[{}]{x}{}\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\mbox{\hyperlink{settings_8c_a890d84b9b5d0b0aede9eea1092a7a10a}{STR\_HELPER}}(x)}
+
+\end{DoxyCode}
+\Hypertarget{settings_8c_a890d84b9b5d0b0aede9eea1092a7a10a}\index{settings.c@{settings.c}!STR\_HELPER@{STR\_HELPER}}
+\index{STR\_HELPER@{STR\_HELPER}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{STR\_HELPER}{STR\_HELPER}}
+{\footnotesize\ttfamily \label{settings_8c_a890d84b9b5d0b0aede9eea1092a7a10a} 
+\#define STR\+\_\+\+HELPER(\begin{DoxyParamCaption}\item[{}]{x}{}\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{preprocessor}{\#x}}
+
+\end{DoxyCode}
+\Hypertarget{settings_8c_a3b4abbf4ba6fdb2897b8a8a601f9d0c5}\index{settings.c@{settings.c}!TOUCH\_IRQ\_WAKE\_LEVEL@{TOUCH\_IRQ\_WAKE\_LEVEL}}
+\index{TOUCH\_IRQ\_WAKE\_LEVEL@{TOUCH\_IRQ\_WAKE\_LEVEL}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{TOUCH\_IRQ\_WAKE\_LEVEL}{TOUCH\_IRQ\_WAKE\_LEVEL}}
+{\footnotesize\ttfamily \label{settings_8c_a3b4abbf4ba6fdb2897b8a8a601f9d0c5} 
+\#define TOUCH\+\_\+\+IRQ\+\_\+\+WAKE\+\_\+\+LEVEL~0}
+
+
+
+\label{doc-func-members}
+\Hypertarget{settings_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{settings_8c_a29e309012a2cefcdbaa39973d014fb13}\index{settings.c@{settings.c}!screensaver\_dim\_stop@{screensaver\_dim\_stop}}
+\index{screensaver\_dim\_stop@{screensaver\_dim\_stop}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{screensaver\_dim\_stop()}{screensaver\_dim\_stop()}}
+{\footnotesize\ttfamily \label{settings_8c_a29e309012a2cefcdbaa39973d014fb13} 
+void screensaver\+\_\+dim\+\_\+stop (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Stop the screensaver dim timer. 
+
+\Hypertarget{settings_8c_ab794260555ed66561e70dc1c76e826de}\index{settings.c@{settings.c}!screensaver\_off\_stop@{screensaver\_off\_stop}}
+\index{screensaver\_off\_stop@{screensaver\_off\_stop}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{screensaver\_off\_stop()}{screensaver\_off\_stop()}}
+{\footnotesize\ttfamily \label{settings_8c_ab794260555ed66561e70dc1c76e826de} 
+void screensaver\+\_\+off\+\_\+stop (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Stop the screensaver off timer. 
+
+\Hypertarget{settings_8c_a410b5d8d49c9be09b1cbc614feaaa6f3}\index{settings.c@{settings.c}!settings\_fade\_to\_saved\_brightness@{settings\_fade\_to\_saved\_brightness}}
+\index{settings\_fade\_to\_saved\_brightness@{settings\_fade\_to\_saved\_brightness}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_fade\_to\_saved\_brightness()}{settings\_fade\_to\_saved\_brightness()}}
+{\footnotesize\ttfamily \label{settings_8c_a410b5d8d49c9be09b1cbc614feaaa6f3} 
+void settings\+\_\+fade\+\_\+to\+\_\+saved\+\_\+brightness (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Fade brightness to saved\+\_\+brightness over SETTINGS\+\_\+\+UP\+\_\+\+FADE\+\_\+\+MS. 
+
+\Hypertarget{settings_8c_abd5a1f83319177839909ea51587f28dd}\index{settings.c@{settings.c}!settings\_get\_active\_brightness@{settings\_get\_active\_brightness}}
+\index{settings\_get\_active\_brightness@{settings\_get\_active\_brightness}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_active\_brightness()}{settings\_get\_active\_brightness()}}
+{\footnotesize\ttfamily \label{settings_8c_abd5a1f83319177839909ea51587f28dd} 
+int settings\+\_\+get\+\_\+active\+\_\+brightness (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the current active brightness percentage. 
+
+\begin{DoxyReturn}{Returns}
+Brightness percent (0..100). 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_ab156515ed83060cfe1b9c1cdc661c905}\index{settings.c@{settings.c}!settings\_get\_ap\_pwd@{settings\_get\_ap\_pwd}}
+\index{settings\_get\_ap\_pwd@{settings\_get\_ap\_pwd}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_ap\_pwd()}{settings\_get\_ap\_pwd()}}
+{\footnotesize\ttfamily \label{settings_8c_ab156515ed83060cfe1b9c1cdc661c905} 
+char \texorpdfstring{$\ast$}{*} settings\+\_\+get\+\_\+ap\+\_\+pwd (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the configured Access Point password string. 
+
+\begin{DoxyReturn}{Returns}
+Pointer to the null-\/terminated password stored in settings (do not free or modify). 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_a37a9f13e88f3cea45827f68d50edd0a0}\index{settings.c@{settings.c}!settings\_get\_ap\_ssid@{settings\_get\_ap\_ssid}}
+\index{settings\_get\_ap\_ssid@{settings\_get\_ap\_ssid}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_ap\_ssid()}{settings\_get\_ap\_ssid()}}
+{\footnotesize\ttfamily \label{settings_8c_a37a9f13e88f3cea45827f68d50edd0a0} 
+char \texorpdfstring{$\ast$}{*} settings\+\_\+get\+\_\+ap\+\_\+ssid (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the configured Access Point SSID string. 
+
+\begin{DoxyReturn}{Returns}
+Pointer to the null-\/terminated SSID stored in settings (do not free or modify). 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_a8d996817d6c7b5fd186609cf5c0c3f84}\index{settings.c@{settings.c}!settings\_get\_calibration\_prompt\_enabled@{settings\_get\_calibration\_prompt\_enabled}}
+\index{settings\_get\_calibration\_prompt\_enabled@{settings\_get\_calibration\_prompt\_enabled}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_calibration\_prompt\_enabled()}{settings\_get\_calibration\_prompt\_enabled()}}
+{\footnotesize\ttfamily \label{settings_8c_a8d996817d6c7b5fd186609cf5c0c3f84} 
+bool settings\+\_\+get\+\_\+calibration\+\_\+prompt\+\_\+enabled (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the stored preference for prompting calibration at startup. 
+
+\begin{DoxyReturn}{Returns}
+true if the prompt is enabled, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_a9df3203fb9681b7760072af3b52596b3}\index{settings.c@{settings.c}!settings\_get\_running\_calibration@{settings\_get\_running\_calibration}}
+\index{settings\_get\_running\_calibration@{settings\_get\_running\_calibration}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_get\_running\_calibration()}{settings\_get\_running\_calibration()}}
+{\footnotesize\ttfamily \label{settings_8c_a9df3203fb9681b7760072af3b52596b3} 
+bool settings\+\_\+get\+\_\+running\+\_\+calibration (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the state of the calibration wizard. 
+
+\begin{DoxyReturn}{Returns}
+true if the calibration is being run, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_af0d8a8509e4013b3ba70bc3d374cd24a}\index{settings.c@{settings.c}!settings\_is\_brightness\_changing@{settings\_is\_brightness\_changing}}
+\index{settings\_is\_brightness\_changing@{settings\_is\_brightness\_changing}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_is\_brightness\_changing()}{settings\_is\_brightness\_changing()}}
+{\footnotesize\ttfamily \label{settings_8c_af0d8a8509e4013b3ba70bc3d374cd24a} 
+bool settings\+\_\+is\+\_\+brightness\+\_\+changing (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get whether brightness/backlight is effectively on ( \texorpdfstring{$>$}{>}0 ). 
+
+\begin{DoxyReturn}{Returns}
+true if brightness \texorpdfstring{$>$}{>} 0, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_a723416ad6ad254c42a3f249277ea442a}\index{settings.c@{settings.c}!settings\_is\_theme\_dark@{settings\_is\_theme\_dark}}
+\index{settings\_is\_theme\_dark@{settings\_is\_theme\_dark}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_is\_theme\_dark()}{settings\_is\_theme\_dark()}}
+{\footnotesize\ttfamily \label{settings_8c_a723416ad6ad254c42a3f249277ea442a} 
+bool settings\+\_\+is\+\_\+theme\+\_\+dark (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Get the dark theme flag. 
+
+\begin{DoxyReturn}{Returns}
+true if the dark theme is on, false otherwise.\texorpdfstring{$\ast$}{*} 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_a3d5d2f5208ba6b57ffd5dd854c26846e}\index{settings.c@{settings.c}!settings\_is\_time\_valid@{settings\_is\_time\_valid}}
+\index{settings\_is\_time\_valid@{settings\_is\_time\_valid}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_is\_time\_valid()}{settings\_is\_time\_valid()}}
+{\footnotesize\ttfamily \label{settings_8c_a3d5d2f5208ba6b57ffd5dd854c26846e} 
+bool settings\+\_\+is\+\_\+time\+\_\+valid (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Check if there is any valid value in NVS for system time. 
+
+\begin{DoxyReturn}{Returns}
+true if time is valid, false otherwise. 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_a3f32db1ddff47a137a04570dc8f75799}\index{settings.c@{settings.c}!settings\_is\_wake\_in\_progress@{settings\_is\_wake\_in\_progress}}
+\index{settings\_is\_wake\_in\_progress@{settings\_is\_wake\_in\_progress}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_is\_wake\_in\_progress()}{settings\_is\_wake\_in\_progress()}}
+{\footnotesize\ttfamily \label{settings_8c_a3f32db1ddff47a137a04570dc8f75799} 
+bool settings\+\_\+is\+\_\+wake\+\_\+in\+\_\+progress (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Check if a wake fade (brightness ramp-\/up) is in progress. 
+
+\begin{DoxyReturn}{Returns}
+true if currently fading up from 0 toward saved\+\_\+brightness. 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_acf24b7a684c9bc230252c011a261ea5e}\index{settings.c@{settings.c}!settings\_open\_settings@{settings\_open\_settings}}
+\index{settings\_open\_settings@{settings\_open\_settings}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_open\_settings()}{settings\_open\_settings()}}
+{\footnotesize\ttfamily \label{settings_8c_acf24b7a684c9bc230252c011a261ea5e} 
+esp\+\_\+err\+\_\+t settings\+\_\+open\+\_\+settings (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{return\+\_\+screen}{}\end{DoxyParamCaption})}
+
+
+
+Open the Settings UI, creating it on first call and loading it into LVGL. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em return\+\_\+screen} & Screen to switch back to when closing settings (nullable). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+ESP\+\_\+\+OK on success, ESP\+\_\+\+ERR\+\_\+\+INVALID\+\_\+\+ARG on bad return screen 
+\end{DoxyReturn}
+\Hypertarget{settings_8c_aced8739a6efea581a75d14446797b610}\index{settings.c@{settings.c}!settings\_persist\_sd\_card\_restart@{settings\_persist\_sd\_card\_restart}}
+\index{settings\_persist\_sd\_card\_restart@{settings\_persist\_sd\_card\_restart}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_persist\_sd\_card\_restart()}{settings\_persist\_sd\_card\_restart()}}
+{\footnotesize\ttfamily \label{settings_8c_aced8739a6efea581a75d14446797b610} 
+void settings\+\_\+persist\+\_\+sd\+\_\+card\+\_\+restart (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Persist the SD card restart flag to NVS. 
+
+\Hypertarget{settings_8c_a33836c1fe73ee9b59e819d5969ce5ea6}\index{settings.c@{settings.c}!settings\_register\_time\_callbacks@{settings\_register\_time\_callbacks}}
+\index{settings\_register\_time\_callbacks@{settings\_register\_time\_callbacks}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_register\_time\_callbacks()}{settings\_register\_time\_callbacks()}}
+{\footnotesize\ttfamily \label{settings_8c_a33836c1fe73ee9b59e819d5969ce5ea6} 
+void settings\+\_\+register\+\_\+time\+\_\+callbacks (\begin{DoxyParamCaption}\item[{void(\texorpdfstring{$\ast$}{*}}]{on\+\_\+time\+\_\+set~}{)(void), }\item[{void(\texorpdfstring{$\ast$}{*}}]{on\+\_\+time\+\_\+reset~}{)(void)}\end{DoxyParamCaption})}
+
+
+
+Register callbacks for time set/reset events. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em on\+\_\+time\+\_\+set} & Called after a successful Apply in the date\&time dialog. \\
+\hline
+{\em on\+\_\+time\+\_\+reset} & Called when settings are reset (to clear clock UI).\\
+\hline
+\end{DoxyParams}
+Callbacks run in the LVGL/task context that owns the dialog; avoid heavy work. \Hypertarget{settings_8c_a9f40f6e1a72c7d0a6d0f0f2ab69b3c5d}\index{settings.c@{settings.c}!settings\_set\_calibration\_prompt\_enabled@{settings\_set\_calibration\_prompt\_enabled}}
+\index{settings\_set\_calibration\_prompt\_enabled@{settings\_set\_calibration\_prompt\_enabled}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_set\_calibration\_prompt\_enabled()}{settings\_set\_calibration\_prompt\_enabled()}}
+{\footnotesize\ttfamily \label{settings_8c_a9f40f6e1a72c7d0a6d0f0f2ab69b3c5d} 
+void settings\+\_\+set\+\_\+calibration\+\_\+prompt\+\_\+enabled (\begin{DoxyParamCaption}\item[{bool}]{enable}{}\end{DoxyParamCaption})}
+
+
+
+Persist the preference for prompting calibration at startup. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enable} & true to enable the prompt, false to disable. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8c_ac62726b3e575083438303597e49cdf38}\index{settings.c@{settings.c}!settings\_set\_dark\_theme\_flag@{settings\_set\_dark\_theme\_flag}}
+\index{settings\_set\_dark\_theme\_flag@{settings\_set\_dark\_theme\_flag}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_set\_dark\_theme\_flag()}{settings\_set\_dark\_theme\_flag()}}
+{\footnotesize\ttfamily \label{settings_8c_ac62726b3e575083438303597e49cdf38} 
+void settings\+\_\+set\+\_\+dark\+\_\+theme\+\_\+flag (\begin{DoxyParamCaption}\item[{bool}]{is\+\_\+dark}{}\end{DoxyParamCaption})}
+
+
+
+Set the dark theme flag. 
+
+\Hypertarget{settings_8c_a402e66791b625bb6d6e73d1fb8798f0b}\index{settings.c@{settings.c}!settings\_set\_running\_calibration@{settings\_set\_running\_calibration}}
+\index{settings\_set\_running\_calibration@{settings\_set\_running\_calibration}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_set\_running\_calibration()}{settings\_set\_running\_calibration()}}
+{\footnotesize\ttfamily \label{settings_8c_a402e66791b625bb6d6e73d1fb8798f0b} 
+void settings\+\_\+set\+\_\+running\+\_\+calibration (\begin{DoxyParamCaption}\item[{bool}]{enable}{}\end{DoxyParamCaption})}
+
+
+
+Set the calibration running guard flag. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enable} & true when calibration is in progress, false when idle. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8c_ada5fbc543a9d935068960e2527316c5f}\index{settings.c@{settings.c}!settings\_set\_sd\_card\_restart@{settings\_set\_sd\_card\_restart}}
+\index{settings\_set\_sd\_card\_restart@{settings\_set\_sd\_card\_restart}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_set\_sd\_card\_restart()}{settings\_set\_sd\_card\_restart()}}
+{\footnotesize\ttfamily \label{settings_8c_ada5fbc543a9d935068960e2527316c5f} 
+void settings\+\_\+set\+\_\+sd\+\_\+card\+\_\+restart (\begin{DoxyParamCaption}\item[{bool}]{enable}{}\end{DoxyParamCaption})}
+
+
+
+Set the SD card restart flag in RAM (non-\/persistent). 
+
+
+\begin{DoxyParams}{Parameters}
+{\em enable} & True to request restart after SD events; false to clear. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8c_a00977dd4f60c5b39183c0097097dc5c2}\index{settings.c@{settings.c}!settings\_show\_date\_time\_dialog@{settings\_show\_date\_time\_dialog}}
+\index{settings\_show\_date\_time\_dialog@{settings\_show\_date\_time\_dialog}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_show\_date\_time\_dialog()}{settings\_show\_date\_time\_dialog()}}
+{\footnotesize\ttfamily \label{settings_8c_a00977dd4f60c5b39183c0097097dc5c2} 
+void settings\+\_\+show\+\_\+date\+\_\+time\+\_\+dialog (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{return\+\_\+screen}{}\end{DoxyParamCaption})}
+
+
+
+Show the Set Date\&Time dialog. 
+
+Builds the date\&time picker overlay on the top layer. Caller provides the screen to return focus to (used for context). The dialog uses the shared settings context/state.
+
+
+\begin{DoxyParams}{Parameters}
+{\em return\+\_\+screen} & Screen that owns the caller UI (can be NULL). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8c_a04c458ac717c77c1d0d5c3c9e8601b4b}\index{settings.c@{settings.c}!settings\_show\_sntp\_dialog@{settings\_show\_sntp\_dialog}}
+\index{settings\_show\_sntp\_dialog@{settings\_show\_sntp\_dialog}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_show\_sntp\_dialog()}{settings\_show\_sntp\_dialog()}}
+{\footnotesize\ttfamily \label{settings_8c_a04c458ac717c77c1d0d5c3c9e8601b4b} 
+void settings\+\_\+show\+\_\+sntp\+\_\+dialog (\begin{DoxyParamCaption}\item[{lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*}}]{return\+\_\+screen}{}\end{DoxyParamCaption})}
+
+
+
+Show the SNTP refresh confirmation dialog. 
+
+Stores the caller screen and builds a confirmation message box to refresh time via SNTP.
+
+
+\begin{DoxyParams}{Parameters}
+{\em return\+\_\+screen} & Screen that owns the caller UI (can be NULL). \\
+\hline
+\end{DoxyParams}
+\Hypertarget{settings_8c_a07f685dbaa2faf4c472b2a808cd610f6}\index{settings.c@{settings.c}!settings\_shutdown\_save\_time@{settings\_shutdown\_save\_time}}
+\index{settings\_shutdown\_save\_time@{settings\_shutdown\_save\_time}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_shutdown\_save\_time()}{settings\_shutdown\_save\_time()}}
+{\footnotesize\ttfamily \label{settings_8c_a07f685dbaa2faf4c472b2a808cd610f6} 
+void settings\+\_\+shutdown\+\_\+save\+\_\+time (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+persists current system time to NVS. 
+
+\Hypertarget{settings_8c_afd9b342f168e1f5b88ecca86af3d1883}\index{settings.c@{settings.c}!settings\_start\_screensaver\_timers@{settings\_start\_screensaver\_timers}}
+\index{settings\_start\_screensaver\_timers@{settings\_start\_screensaver\_timers}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_start\_screensaver\_timers()}{settings\_start\_screensaver\_timers()}}
+{\footnotesize\ttfamily \label{settings_8c_afd9b342f168e1f5b88ecca86af3d1883} 
+void settings\+\_\+start\+\_\+screensaver\+\_\+timers (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+(Re)start dim/off timers according to current settings state. 
+
+\Hypertarget{settings_8c_a49f4c4275bf05db2bccb839dd67236ae}\index{settings.c@{settings.c}!settings\_starting\_routine@{settings\_starting\_routine}}
+\index{settings\_starting\_routine@{settings\_starting\_routine}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{settings\_starting\_routine()}{settings\_starting\_routine()}}
+{\footnotesize\ttfamily \label{settings_8c_a49f4c4275bf05db2bccb839dd67236ae} 
+void settings\+\_\+starting\+\_\+routine (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Execute the full startup flow (NVS, display, settings, SNTP, touch). 
+
+Initializes NVS, starts the display and styles, loads persisted settings, then either shows the splash screen with SNTP sync on power-\/on resets or resumes the saved SNTP state after other resets. Finally, it brings up the touch driver and optionally runs calibration. 

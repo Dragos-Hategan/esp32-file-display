@@ -1,0 +1,83 @@
+\doxysection{text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t Struct Reference}
+\hypertarget{structtext__viewer__open__opts__t}{}\label{structtext__viewer__open__opts__t}\index{text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}}
+
+
+Options describing how to open the text viewer.  
+
+
+
+
+{\ttfamily \#include $<$text\+\_\+viewer\+\_\+screen.\+h$>$}
+
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structtext__viewer__open__opts__t_a123dc7257c440237d1038522c441e7b3}{path}}
+\item 
+const char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structtext__viewer__open__opts__t_ab0b38e3903b1c57bcc3a5feab4894697}{directory}}
+\item 
+const char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structtext__viewer__open__opts__t_ae587845a7e8d21841917656a9c4ec945}{suggested\+\_\+name}}
+\item 
+lv\+\_\+obj\+\_\+t \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structtext__viewer__open__opts__t_a97a4dd99e6e255542223aa8303fec646}{return\+\_\+screen}}
+\item 
+bool \mbox{\hyperlink{structtext__viewer__open__opts__t_a5cde730f0a20df0770f361a0fad5794b}{editable}}
+\item 
+\mbox{\hyperlink{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab}{text\+\_\+viewer\+\_\+close\+\_\+cb\+\_\+t}} \mbox{\hyperlink{structtext__viewer__open__opts__t_ad4e625df65c071b4cf947a118469bb06}{on\+\_\+close}}
+\item 
+void \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{structtext__viewer__open__opts__t_a811cc3276af36acfc54ce4a774f05134}{user\+\_\+ctx}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Options describing how to open the text viewer. 
+
+\label{doc-variable-members}
+\Hypertarget{structtext__viewer__open__opts__t_doc-variable-members}
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structtext__viewer__open__opts__t_ab0b38e3903b1c57bcc3a5feab4894697}\index{text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}!directory@{directory}}
+\index{directory@{directory}!text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}}
+\doxysubsubsection{\texorpdfstring{directory}{directory}}
+{\footnotesize\ttfamily \label{structtext__viewer__open__opts__t_ab0b38e3903b1c57bcc3a5feab4894697} 
+const char\texorpdfstring{$\ast$}{*} text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t\+::directory}
+
+Directory used when creating a new file. \Hypertarget{structtext__viewer__open__opts__t_a5cde730f0a20df0770f361a0fad5794b}\index{text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}!editable@{editable}}
+\index{editable@{editable}!text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}}
+\doxysubsubsection{\texorpdfstring{editable}{editable}}
+{\footnotesize\ttfamily \label{structtext__viewer__open__opts__t_a5cde730f0a20df0770f361a0fad5794b} 
+bool text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t\+::editable}
+
+true to enable editing (cursor, keyboard, save). \Hypertarget{structtext__viewer__open__opts__t_ad4e625df65c071b4cf947a118469bb06}\index{text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}!on\_close@{on\_close}}
+\index{on\_close@{on\_close}!text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}}
+\doxysubsubsection{\texorpdfstring{on\_close}{on\_close}}
+{\footnotesize\ttfamily \label{structtext__viewer__open__opts__t_ad4e625df65c071b4cf947a118469bb06} 
+\mbox{\hyperlink{text__viewer__screen_8h_a2c304a43372100ecf33d3aae762295ab}{text\+\_\+viewer\+\_\+close\+\_\+cb\+\_\+t}} text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t\+::on\+\_\+close}
+
+Optional callback invoked on close. \Hypertarget{structtext__viewer__open__opts__t_a123dc7257c440237d1038522c441e7b3}\index{text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}!path@{path}}
+\index{path@{path}!text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}}
+\doxysubsubsection{\texorpdfstring{path}{path}}
+{\footnotesize\ttfamily \label{structtext__viewer__open__opts__t_a123dc7257c440237d1038522c441e7b3} 
+const char\texorpdfstring{$\ast$}{*} text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t\+::path}
+
+Absolute path to existing file (NULL/empty for new files). \Hypertarget{structtext__viewer__open__opts__t_a97a4dd99e6e255542223aa8303fec646}\index{text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}!return\_screen@{return\_screen}}
+\index{return\_screen@{return\_screen}!text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}}
+\doxysubsubsection{\texorpdfstring{return\_screen}{return\_screen}}
+{\footnotesize\ttfamily \label{structtext__viewer__open__opts__t_a97a4dd99e6e255542223aa8303fec646} 
+lv\+\_\+obj\+\_\+t\texorpdfstring{$\ast$}{*} text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t\+::return\+\_\+screen}
+
+Screen to restore when the viewer closes. \Hypertarget{structtext__viewer__open__opts__t_ae587845a7e8d21841917656a9c4ec945}\index{text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}!suggested\_name@{suggested\_name}}
+\index{suggested\_name@{suggested\_name}!text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}}
+\doxysubsubsection{\texorpdfstring{suggested\_name}{suggested\_name}}
+{\footnotesize\ttfamily \label{structtext__viewer__open__opts__t_ae587845a7e8d21841917656a9c4ec945} 
+const char\texorpdfstring{$\ast$}{*} text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t\+::suggested\+\_\+name}
+
+Suggested filename when creating a new file. \Hypertarget{structtext__viewer__open__opts__t_a811cc3276af36acfc54ce4a774f05134}\index{text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}!user\_ctx@{user\_ctx}}
+\index{user\_ctx@{user\_ctx}!text\_viewer\_open\_opts\_t@{text\_viewer\_open\_opts\_t}}
+\doxysubsubsection{\texorpdfstring{user\_ctx}{user\_ctx}}
+{\footnotesize\ttfamily \label{structtext__viewer__open__opts__t_a811cc3276af36acfc54ce4a774f05134} 
+void\texorpdfstring{$\ast$}{*} text\+\_\+viewer\+\_\+open\+\_\+opts\+\_\+t\+::user\+\_\+ctx}
+
+Optional context passed to {\ttfamily on\+\_\+close}. 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+components/file\+\_\+manager/include/\mbox{\hyperlink{text__viewer__screen_8h}{text\+\_\+viewer\+\_\+screen.\+h}}\end{DoxyCompactItemize}

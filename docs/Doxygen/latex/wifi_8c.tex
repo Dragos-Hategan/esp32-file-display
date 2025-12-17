@@ -1,0 +1,91 @@
+\doxysection{components/sntp\+\_\+wifi/wifi.c File Reference}
+\hypertarget{wifi_8c}{}\label{wifi_8c}\index{components/sntp\_wifi/wifi.c@{components/sntp\_wifi/wifi.c}}
+{\ttfamily \#include "{}wifi.\+h"{}}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include "{}freertos/\+Free\+RTOS.\+h"{}}\newline
+{\ttfamily \#include "{}freertos/semphr.\+h"{}}\newline
+{\ttfamily \#include "{}nvs\+\_\+flash.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+netif.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+event.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+wifi.\+h"{}}\newline
+{\ttfamily \#include "{}esp\+\_\+log.\+h"{}}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+Include dependency graph for wifi.\+c\+:
+% FIG 0
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{wifi_8c_a4ac33f01c8b9a7475c2f78caf476d4cf}{MAX\+\_\+\+WIFI\+\_\+\+RETRIES}}~5
+\item 
+\#define \mbox{\hyperlink{wifi_8c_a32dda2164f9eddd656546e58ceffb04d}{RETURN\+\_\+\+ON\+\_\+\+ERROR}}(expr,  step)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+esp\+\_\+err\+\_\+t \mbox{\hyperlink{wifi_8c_af07d467cf00f777301d730126206b67a}{wifi\+\_\+init\+\_\+sta}} (void)
+\begin{DoxyCompactList}\small\item\em Initialize Wi-\/\+Fi in STA mode and wait for IP. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\label{doc-define-members}
+\Hypertarget{wifi_8c_doc-define-members}
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{wifi_8c_a4ac33f01c8b9a7475c2f78caf476d4cf}\index{wifi.c@{wifi.c}!MAX\_WIFI\_RETRIES@{MAX\_WIFI\_RETRIES}}
+\index{MAX\_WIFI\_RETRIES@{MAX\_WIFI\_RETRIES}!wifi.c@{wifi.c}}
+\doxysubsubsection{\texorpdfstring{MAX\_WIFI\_RETRIES}{MAX\_WIFI\_RETRIES}}
+{\footnotesize\ttfamily \label{wifi_8c_a4ac33f01c8b9a7475c2f78caf476d4cf} 
+\#define MAX\+\_\+\+WIFI\+\_\+\+RETRIES~5}
+
+\Hypertarget{wifi_8c_a32dda2164f9eddd656546e58ceffb04d}\index{wifi.c@{wifi.c}!RETURN\_ON\_ERROR@{RETURN\_ON\_ERROR}}
+\index{RETURN\_ON\_ERROR@{RETURN\_ON\_ERROR}!wifi.c@{wifi.c}}
+\doxysubsubsection{\texorpdfstring{RETURN\_ON\_ERROR}{RETURN\_ON\_ERROR}}
+{\footnotesize\ttfamily \label{wifi_8c_a32dda2164f9eddd656546e58ceffb04d} 
+\#define RETURN\+\_\+\+ON\+\_\+\+ERROR(\begin{DoxyParamCaption}\item[{}]{expr}{, }\item[{}]{step}{}\end{DoxyParamCaption})}
+
+{\bfseries Value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\ \ \ \ \textcolor{keywordflow}{do}\ \{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ esp\_err\_t\ \_\_err\ =\ (expr);\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ if\ (\_\_err\ !=\ ESP\_OK)\ \{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ ESP\_LOGE(\mbox{\hyperlink{file__manager_8c_afc3d101f633a076cc1ca84b85b6224b2}{TAG}},\ \textcolor{stringliteral}{"{}\%s\ failed:\ (\%s)"{}},\ \ \ \ \ \ \ \ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (step),\ esp\_err\_to\_name(\_\_err));\ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \_\_err;\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \}\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \(\backslash\)}
+\DoxyCodeLine{\ \ \ \ \}\ \textcolor{keywordflow}{while}\ (0)}
+
+\end{DoxyCode}
+
+
+\label{doc-func-members}
+\Hypertarget{wifi_8c_doc-func-members}
+\doxysubsection{Function Documentation}
+\Hypertarget{wifi_8c_af07d467cf00f777301d730126206b67a}\index{wifi.c@{wifi.c}!wifi\_init\_sta@{wifi\_init\_sta}}
+\index{wifi\_init\_sta@{wifi\_init\_sta}!wifi.c@{wifi.c}}
+\doxysubsubsection{\texorpdfstring{wifi\_init\_sta()}{wifi\_init\_sta()}}
+{\footnotesize\ttfamily \label{wifi_8c_af07d467cf00f777301d730126206b67a} 
+esp\+\_\+err\+\_\+t wifi\+\_\+init\+\_\+sta (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+
+Initialize Wi-\/\+Fi in STA mode and wait for IP. 
+
+This function\+:
+\begin{DoxyEnumerate}
+\item Initializes NVS storage (required for Wi-\/\+Fi).
+\item Initializes the TCP/\+IP network stack and default event loop.
+\item Creates the default Wi-\/\+Fi STA network interface.
+\item Configures Wi-\/\+Fi parameters (SSID, password, auth mode, PMF).
+\item Registers event handlers for Wi-\/\+Fi and IP events.
+\item Starts the Wi-\/\+Fi driver and connects.
+\item Blocks execution until an IP address is successfully obtained.
+\end{DoxyEnumerate}
+
+\begin{DoxyNote}{Note}
+This function blocks indefinitely until an IP is acquired. Automatic reconnection is handled in the event handler.
+\end{DoxyNote}
+\begin{DoxyReturn}{Returns}
+
+\begin{DoxyItemize}
+\item ESP\+\_\+\+OK on success
+\item Other esp\+\_\+err\+\_\+t error codes from NVS or Wi-\/\+Fi modules 
+\end{DoxyItemize}
+\end{DoxyReturn}
