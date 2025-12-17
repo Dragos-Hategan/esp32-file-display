@@ -4,6 +4,9 @@ LVGL-based file manager for ESP32 and ESP32-S3, enabling seamless file navigatio
 
 Video presentation: https://www.youtube.com/watch?v=mk7qSvLgN8o
 
+## Prototype
+![Prototype](docs/Prototype.jpg)
+
 ## Highlights
 - SD navigation with `paged lists`, `sorting` (Name/Date/Size, asc/desc), and `persisted` last path + sort mode in NVS.
 - `File and folder actions`: create folder, create TXT, rename, delete, copy/move with clipboard and Paste/Cancel, size confirmation on copy, conflict resolution (overwrite or “keep both” via rename).
@@ -31,9 +34,6 @@ Video presentation: https://www.youtube.com/watch?v=mk7qSvLgN8o
    - On-screen retry dialog on failure
    - Helper task blocks UI flow until reconnection
 - Optional `heap logging task` when CONFIG_APP_ENABLE_HEAP_STATS is enabled.
-
-## Prototype
-![Prototype](docs/Prototype.jpg)
 
 ## GPIO & SPI Configuration
 The project uses three SPI-based peripherals:
