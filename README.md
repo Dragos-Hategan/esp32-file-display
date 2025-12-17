@@ -1,6 +1,9 @@
 # ESP32 File Manager
 
-LVGL-based file manager for ESP32 and ESP32-S3, enabling seamless file navigation and management. It provides reliable SD card browsing, text editing, image viewing, persistent settings, and time synchronization on a lightweight MCU platform. Designed as a robust, stateful embedded application, not a demo.  
+A production-oriented LVGL file manager for ESP32 and ESP32-S3, built to handle large SD cards on a constrained MCU.
+Supports paged directory browsing, text editing, image viewing, persistent settings, and SNTP time sync — without loading entire folders into RAM.
+
+This is a stateful embedded application designed for real devices, not a demo or proof of concept.
 
 Video presentation: https://www.youtube.com/watch?v=mk7qSvLgN8o
 
