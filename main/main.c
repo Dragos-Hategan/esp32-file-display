@@ -76,7 +76,7 @@ void app_main(void)
 
 static void main_task(void *arg)
 {
-    ESP_LOGI(TAG, "\n\n ********** LVGL File Display ********** \n");
+    ESP_LOGI(TAG, "\n\n ********** ESP32 File Manager ********** \n");
 
     settings_starting_routine();
 
